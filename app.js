@@ -61,7 +61,7 @@ function addLog(kind, title, detail) {
 function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
 function renderMetric(key, value, suffix = "") {
   const result = assess(key);
-  const val = key === "temp" || key === "sleep" ? fmt(value, 1) : fmt(value, 0);
+  const val = key === "temp" || key === "sleep" || (value !== null && value !== undefined && Number(value) % 1 !== 0) ? fmt(value, 1) : fmt(value, 0);
   setText(key + "-value", val);
   const stateEl = document.getElementById(key + "-state");
   const card = stateEl ? stateEl.closest(".metric-card") : null;
