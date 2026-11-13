@@ -28,7 +28,7 @@ No build step or package installation is required.
 2. Open index.html in a local web server (recommended for service-worker/offline behavior).
 3. Try the three demo scenarios and the Health signals and Wellbeing views.
 
-For GitHub Pages, open **Settings → Pages**, select **Deploy from a branch**, choose **main** and **/ (root)**, then save. The site will be published at the Pages URL shown by GitHub.
+For GitHub Pages, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. Then open **Actions → Deploy ASTRA to GitHub Pages → Run workflow** and run it on **main**. The deployment URL will appear in the successful workflow run.
 
 ## Project structure
 
