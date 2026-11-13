@@ -150,7 +150,10 @@ function renderLog() {
 }
 function renderAll() {
   ["hr","spo2","temp","sleep"].forEach(key => renderMetric(key, state[key]));
-  renderAssessment(); renderInputs(); renderChart(); renderLog(); updateCheckinOutputs();
+  renderAssessment(); renderInputs(); renderChart(); renderLog();
+  [["check-sleep","sleepQuality"],["check-stress","stress"],["check-fatigue","fatigue"],["check-mood","mood"]]
+    .forEach(([id,key]) => { document.getElementById(id).value = state.checkin[key]; });
+  updateCheckinOutputs();
 }
 function updateCheckinOutputs() {
   const pairs = [["check-sleep","sleep-quality-out"],["check-stress","stress-out"],["check-fatigue","fatigue-out"],["check-mood","mood-out"]];
