@@ -1,7 +1,7 @@
 # OSD-575 catalog discovery and analysis-gate review
 
 **Review date:** 14 November 2026  
-**Scope:** The run #4 empty `files/575.3` response; Gemini's review; acquisition and offline analysis test design.
+**Scope:** Run #4's empty paginated catalog response, run #5's successful bare-endpoint file discovery, Gemini's review, redirect validation, and offline analysis test design.
 
 ## 1. Independent assessment of Gemini's review
 
@@ -79,13 +79,13 @@ These are synthetic test fixtures, not NASA observations. They validate the anal
 
 ## 6. What remains unproven after live run #5
 
-The exact HDCVD9 catalog record and its NASA-provided remote_url are now verified by live run #5. The catalog record declares a 6,207-byte file and restricted=false. However, the download did not complete: the final redirect host fell outside the current strict NASA HTTPS allowlist. Therefore the CSV bytes remain **not downloaded**, and there is still no live file SHA-256, actual column map, observed measurement table, or biomarker result.
+The exact HDCVD9 catalog record and its NASA-provided remote_url are verified by live run #5. The record declares a 6,207-byte file and restricted=false. The download did not complete because the redirect destination was outside the allowlist that existed during run #5. PR #17 now allows only the exact hostname `nasa-osdr.s3.us-west-2.amazonaws.com`, derived from NASA's documented public bucket name/region and AWS's documented virtual-hosted S3 endpoint syntax, while requiring the final URL's filename to match the catalog record. However, run #5 did not record the final redirect URL, so the actual redirect host and object path have **not yet been independently observed**. A new live run must confirm that the real redirect matches this narrow allowlist before any bytes are accepted. The CSV bytes remain **not downloaded**, and there is still no live file SHA-256, actual column map, observed measurement table, or biomarker result.
 
 Even after a successful download, the HDCVD9 panel is a transformed serum multiplex assay, not continuous heart-rate or blood-pressure telemetry. Its outputs can support only a carefully bounded, descriptive participant-level assay analysis. The project must not turn a cytokine concentration into a clinical diagnosis or a real-time crew alert.
 
 ## 7. Next live validation
 
-The catalog-discovery step is no longer the blocker. The next run must test the catalog-provided redirect against the exact official OSDR public-bucket host documented by NASA. The code must continue to reject arbitrary external redirects, and it must verify that the final object name is the exact HDCVD9 CSV. Only then should it save the original bytes and compute the SHA-256, byte length, parsed schema, column map, and observed structure. Do not construct a direct S3 object key from assumptions; use the actual redirect returned by the NASA catalog URL.
+The catalog-discovery step is no longer the blocker. The next run must capture and validate the actual redirect returned by the catalog-provided NASA URL. NASA documents the public bucket as `nasa-osdr` in `us-west-2`; AWS documents the virtual-hosted endpoint pattern used to derive the allowlisted hostname. Those documents establish the bucket and endpoint convention, but they do not prove which exact host/path the OSDR download endpoint will return for this file. The code must continue to reject arbitrary external redirects and require the exact HDCVD9 filename. Only after the live response matches the allowlist should it save original bytes and compute SHA-256, byte length, parsed schema, column map, and observed structure. Do not construct a direct S3 object key from assumptions; use the actual redirect returned by the NASA catalog URL.
 
 ## 8. Live run #5 evidence (14 November 2026)
 
@@ -95,4 +95,11 @@ The catalog-discovery step is no longer the blocker. The next run must test the 
 - The exact record was LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv, with file_size=6207, restricted=false, and the catalog-provided relative remote_url /geode-py/ws/studies/OSD-575/download?source=datamanager&file=LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv.
 - The downloader rejected the final redirect because it was outside the existing NASA HTTPS host allowlist. The artifact records OSDR_FILE_DOWNLOAD_UNAVAILABLE; file_sha256=null, byte_length=null, raw_bytes_preserved=false, and all parse/mapping/observation gates remain false.
 - This is a **catalog-resolution success but a download-validation failure**. It is not a completed data acquisition and not a scientific result.
-- NASA documents a public OSDR AWS bucket named nasa-osdr in us-west-2; the redirect validator will be extended only for that exact host, not for arbitrary S3 or third-party domains. See the [NASA OSDR AWS guide](https://www.nasa.gov/reference/osdr-help-getting-started-with-aws-and-osdr-data/) and [Registry of Open Data entry](https://registry.opendata.aws/nasa-osdr/).
+- NASA documents the public OSDR bucket name `nasa-osdr` and region `us-west-2`; AWS documents the virtual-hosted URL pattern `https://bucket-name.s3.region.amazonaws.com/key`. PR #17 derives the exact host `nasa-osdr.s3.us-west-2.amazonaws.com` from those facts. The live run #5 artifact did not capture the final redirect URL, so this host/path match remains pending live confirmation. Sources: [NASA OSDR AWS guide](https://www.nasa.gov/reference/osdr-help-getting-started-with-aws-and-osdr-data/), [AWS S3 virtual hosting](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html), and [Registry of Open Data entry](https://registry.opendata.aws/nasa-osdr/).
+
+
+## 9. Redirect-validation change in PR #17
+
+PR #17 adds a strict redirect validator that continues to require HTTPS and accepts only NASA hosts or the single OSDR bucket host `nasa-osdr.s3.us-west-2.amazonaws.com`. For the bucket host it also requires the final path component to equal the exact catalog filename. Unit tests reject arbitrary external hosts, other S3 buckets, HTTP, and mismatched filenames.
+
+This change is grounded in two separate source facts: NASA identifies the public bucket as `nasa-osdr` in `us-west-2`; AWS documents the virtual-hosted S3 endpoint pattern `https://bucket-name.s3.region.amazonaws.com/key`. The resulting hostname is therefore a narrowly derived allowlist entry, **not a redirect destination already observed in run #5**. A live run must still confirm the actual redirect URL before this acquisition path can be considered validated.
