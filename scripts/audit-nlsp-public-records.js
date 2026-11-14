@@ -88,6 +88,77 @@ function collectMetadataHints(value, currentPath = "$", output = [], depth = 0) 
   }
   return output;
 }
+async function fetchObservedDatasetFileExplorerBundle() {
+  const url = ORIGIN + "/assets/DatasetFileExplorer-DzuP8FKk.js";
+  const parsed = new URL(url);
+  if (parsed.origin !== ORIGIN || parsed.pathname !== "/assets/DatasetFileExplorer-DzuP8FKk.js") {
+    throw new Error("Refusing an unobserved NLSP asset URL.");
+  }
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/javascript",
+      "user-agent": "ASTRA-NLSP-Public-Record-Audit/1.0"
+    },
+    redirect: "follow",
+    signal: AbortSignal.timeout(45000)
+  });
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const finalUrl = new URL(response.url);
+  const result = {
+    requested_url: url,
+    final_url: response.url,
+    http_status: response.status,
+    content_type: response.headers.get("content-type"),
+    byte_length: bytes.byteLength,
+    sha256: sha256(bytes),
+    response_ok: response.ok,
+    file_name: "DatasetFileExplorer-DzuP8FKk.js"
+  };
+  if (finalUrl.origin !== ORIGIN) {
+    throw new Error("The NLSP DatasetFileExplorer bundle redirected outside nlsp.nasa.gov.");
+  }
+  if (!response.ok) return { result, source: "" };
+  if (bytes.byteLength > 5 * 1024 * 1024) {
+    result.error = "BUNDLE_EXCEEDED_5_MIB_LIMIT";
+    return { result, source: "" };
+  }
+  await fs.writeFile(path.join(OUTPUT_DIR, result.file_name), bytes);
+  const source = bytes.toString("utf8");
+  const terms = [
+    "getfiles3",
+    "__s3_file_guid",
+    "dataset_file_info",
+    "dataset_fileIndex",
+    "file_download",
+    "download",
+    "file_name",
+    "remote_url",
+    "data_files"
+  ];
+  const contexts = [];
+  const seen = new Set();
+  for (const term of terms) {
+    let cursor = 0;
+    let count = 0;
+    while (cursor < source.length && count < 8 && contexts.length < 50) {
+      const index = source.toLowerCase().indexOf(term.toLowerCase(), cursor);
+      if (index < 0) break;
+      const start = Math.max(0, index - 420);
+      const end = Math.min(source.length, index + term.length + 700);
+      const snippet = source.slice(start, end);
+      const key = term + "|" + snippet.slice(0, 180);
+      if (!seen.has(key)) {
+        seen.add(key);
+        contexts.push({ term, snippet });
+      }
+      cursor = index + term.length;
+      count += 1;
+    }
+  }
+  result.matches = contexts.length;
+  return { result, contexts };
+}
+
 async function requestAndPreserve(url, outputName) {
   const parsedUrl = new URL(url);
   if (parsedUrl.origin !== ORIGIN || !parsedUrl.pathname.startsWith("/api/v1/data/")) {
@@ -189,7 +260,15 @@ async function run() {
               /(file|download|remote|url|md5|guid|access|license|restrict|size|public)/i.test(key) &&
               (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
             )
-          ) : {}
+          ) : {},
+          dataset_file_info: child?.dataset_file_info && typeof child.dataset_file_info === "object"
+            ? {
+                keys: Object.keys(child.dataset_file_info).slice(0, 80),
+                values: Object.fromEntries(Object.entries(child.dataset_file_info).filter(([, value]) =>
+                  typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+                ))
+              }
+            : null
         }))
       }));
       const dataFileSummaries = dataFileItems.map((item) => ({
@@ -233,6 +312,16 @@ async function run() {
   else if (returnedRecords.length > 0) decision = "RECORDS_FOUND_FILE_INVENTORY_REVIEW_REQUIRED";
   else decision = "API_SEARCH_RETURNED_NO_MATCHING_RECORDS";
 
+  let datasetFileExplorer;
+  try {
+    datasetFileExplorer = await fetchObservedDatasetFileExplorerBundle();
+  } catch (error) {
+    datasetFileExplorer = {
+      result: { requested_url: ORIGIN + "/assets/DatasetFileExplorer-DzuP8FKk.js", error: error.message },
+      contexts: []
+    };
+  }
+
   const report = {
     audit_type: "NLSP_OBSERVED_PUBLIC_RECORD_SEARCH_AND_DETAIL_AUDIT",
     audited_at: new Date().toISOString(),
@@ -248,6 +337,7 @@ async function run() {
     searches: searchResults,
     returned_search_records: returnedRecords,
     detail_records: detailResults,
+    observed_dataset_file_explorer_bundle: datasetFileExplorer,
     measurement_files_downloaded: 0,
     file_bytes_downloaded: 0,
     decision,
@@ -266,6 +356,8 @@ async function run() {
       returned_document_count: item.returned_document_count
     })),
     returned_search_records: returnedRecords,
+    dataset_file_explorer_bundle: datasetFileExplorer.result,
+    dataset_file_explorer_contexts: datasetFileExplorer.contexts || [],
     detail_records: detailResults.map((item) => ({
       query_record: item.query_record,
       http_status: item.request.http_status ?? null,
