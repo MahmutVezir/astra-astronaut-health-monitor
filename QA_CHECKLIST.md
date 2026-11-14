@@ -92,7 +92,7 @@ The team still needs to perform and record the manual real-browser checks below.
 | QA-15 | Mobile layout | Test a narrow viewport | Tabs remain usable, cards stack, and page has no horizontal overflow | Not yet recorded |
 | QA-16 | Offline shell | Load once online, then disable network and reload on localhost/HTTPS | App shell is served from cache; external links are unavailable offline | Not yet recorded |
 | QA-18 | PWA installation | Open the deployed app in the target Chromium browser and inspect its install UI; install only on a test device | Browser recognizes the manifest and shows ASTRA icon/name; app opens in standalone mode | Not yet recorded |
-| QA-19 | NASA metadata status | Wait until Research Mode verification completes | The audit panel reads Verified with 28/28 ISA matches; it must not simultaneously show “Not verified” with “Data + analysis verified” | Not yet recorded |
+| QA-19 | NASA ISA sample-map status | Observe the audit panel before and after Research Mode verification, then simulate a failed source fetch | Before verification it says pending; on success it says Verified · 28/28 ISA matches and DATA + ANALYSIS VERIFIED; on failure it says Browser verification failed and never claims verified analysis | Not yet recorded |
 | QA-20 | Partial saved state | On a clean test browser, restore a saved demo record with one signal and missing remaining fields | Missing signals remain “No data”; no nominal values are silently inserted | Automated regression passed; manual browser check not yet recorded |
 | QA-21 | CSV download timing | Export the mission log and open the downloaded CSV | File downloads and opens before its temporary object URL is revoked | Automated regression passed; manual browser check not yet recorded |
 
