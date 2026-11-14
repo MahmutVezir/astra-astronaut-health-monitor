@@ -403,7 +403,7 @@ test("OSD-575 metadata API version mismatch is rejected before downloading data"
 
 
 test("OSD-575 catalog requests the metadata-verified version and follows every page_total page", async () => {
-  const { listStudyFiles } = require("../src/core/osdr-client.js");
+  const { listStudyFiles, selectStudyFile } = require("../src/core/osdr-client.js");
   const pages = [
     {
       page_number: 0,
