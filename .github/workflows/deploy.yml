@@ -1,7 +1,9 @@
-name: Deploy ASTRA to GitHub Pages
+name: Validate and deploy ASTRA
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -29,10 +31,11 @@ jobs:
           node --check app.js
           node --check health-engine.js
           node --check research-data.js
-      - name: Run health-engine tests
+      - name: Run automated tests
         run: npm test
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: test
     environment:
       name: github-pages
