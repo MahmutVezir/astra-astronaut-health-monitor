@@ -216,7 +216,7 @@
     };
     state.scenario = "manual";
     state.updatedAt = new Date().toISOString();
-    const assessment = window.AstraHealth.assess(state.readings);
+    const assessment = window.AstraHealth.assess(state.readings, state.bands);
     addLog("READINGS SAVED", assessment.available + " of " + assessment.total + " signals available; " + assessment.review + " outside illustrative bands.");
     saveState();
     renderAll();
