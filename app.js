@@ -122,12 +122,50 @@
   }
 
   function renderResearchTimeline() {
-    const target = $("osd-timeline");
-    if (!target || !window.AstraResearch || !window.AstraResearch.inspiration4) return;
+    if (!window.AstraResearch || !window.AstraResearch.inspiration4) return;
     const study = window.AstraResearch.inspiration4;
-    target.innerHTML = '<p class="timeline-heading">NASA-reported sample collection points</p><div class="timeline-track">' + study.timepoints.map(function (point) {
+    const markup = '<p class="timeline-heading">NASA-reported sample collection points</p><div class="timeline-track">' + study.timepoints.map(function (point) {
       return '<div class="timeline-point"><span class="timeline-code">' + esc(point.label) + '</span><span class="timeline-phase">' + esc(point.phase) + '</span></div>';
     }).join("") + '</div><p class="timeline-note">Relative to launch (L) or return (R). These are research sample timepoints, not continuous vital-sign measurements.</p>';
+    ["research-timeline", "osd-timeline"].forEach(function (id) {
+      const target = $(id);
+      if (target) target.innerHTML = markup;
+    });
+  }
+
+  function renderResearchMode() {
+    const study = window.AstraResearch && window.AstraResearch.inspiration4;
+    if (!study) return;
+    const audit = study.acquisitionAudit || {};
+    const setText = function (id, value) {
+      const target = $(id);
+      if (target) target.textContent = value === null || value === undefined || value === ""
+        ? "Not available"
+        : String(value);
+    };
+
+    setText("research-version", study.studyId + " · v" + study.datasetVersion);
+    setText("research-participants", study.participantCount);
+    setText("research-samples", study.sampleCountListed);
+    setText("research-timepoint-count", study.timepoints.length);
+    setText("research-assay", study.assay || "Not reported");
+    setText("research-decision", audit.decision || "NOT AUDITED");
+    setText("research-metadata-status", audit.metadataVerified ? "Verified" : "Not verified");
+    setText("research-catalog-status", audit.catalogHttpStatus
+      ? "HTTP " + audit.catalogHttpStatus + " · " + (audit.catalogHits || 0) + " records"
+      : "Not verified");
+    setText("research-file-status", audit.csvDownloaded ? "Downloaded" : "Not downloaded");
+    setText("research-hash-status", audit.fileSha256 || "Not calculated");
+    setText("research-run-status", audit.runNumber
+      ? "#" + audit.runNumber + " · " + new Date(audit.auditedAt).toLocaleDateString()
+      : "Not recorded");
+    setText("research-audit-note", audit.note || "No file-acquisition result has been recorded.");
+
+    const state = $("research-data-state");
+    if (state) {
+      state.textContent = audit.csvDownloaded ? "FILE RETRIEVED" : "NOT RETRIEVED";
+      state.className = "state-label " + (audit.csvDownloaded ? "state-good" : "state-limited");
+    }
   }
 
   function renderLog() {
@@ -163,6 +201,7 @@
     renderTrend();
     renderLog();
     renderInputs();
+    renderResearchMode();
     renderResearchTimeline();
     $("last-updated").textContent = state.updatedAt ? "Updated " + new Date(state.updatedAt).toLocaleString() : "Demo readings loaded";
   }
@@ -178,6 +217,16 @@
       view.classList.toggle("active", active);
       view.hidden = !active;
     });
+    if (document.body && document.body.classList) {
+      document.body.classList.toggle("research-mode", name === "research");
+      document.body.classList.toggle("demo-mode", name !== "research");
+    }
+    const modeIndicator = $("mode-indicator");
+    if (modeIndicator) {
+      modeIndicator.textContent = name === "research"
+        ? "NASA RESEARCH MODE · VERIFIED METADATA · FILE NOT RETRIEVED"
+        : "DEMO / MANUAL INPUT · NO LIVE SENSORS";
+    }
   }
 
   function applyScenario(name) {
@@ -323,6 +372,7 @@
   });
 
   loadState();
+  activateView("research");
   renderAll();
   if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
     window.addEventListener("load", function () {

@@ -34,3 +34,16 @@ test("every local app-shell asset in the service worker exists", function () {
     assert.equal(fs.existsSync(path.join(root, asset.replace(/^\.\//, ""))), true, asset + " should exist");
   });
 });
+
+test("NASA Research Mode is the default entry view and demo controls are separated", function () {
+  const html = read("index.html");
+  const app = read("app.js");
+  const css = read("styles.css");
+  assert.match(html, /class="tab active" data-view="research"/);
+  assert.match(html, /data-view="overview" type="button">Demo &amp; Manual Mode</);
+  assert.ok(html.indexOf('id="view-research"') < html.indexOf('id="view-overview"'));
+  assert.match(app, /activateView\("research"\)/);
+  assert.match(app, /NASA RESEARCH MODE/);
+  assert.match(app, /DEMO \/ MANUAL INPUT/);
+  assert.match(css, /\.research-mode \.demo-only/);
+});

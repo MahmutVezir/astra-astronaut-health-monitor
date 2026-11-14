@@ -17,8 +17,8 @@
         <span><strong>ASTRA</strong><small>CREW HEALTH SYSTEM</small></span>
       </a>
       <div class="topbar-right">
-        <span class="demo-pill"><span class="pulse-dot"></span> SIMULATED DATA · NO LIVE SENSORS</span>
-        <span class="mission-chip">SIM DAY <strong id="mission-day">042</strong></span>
+        <span class="demo-pill"><span class="pulse-dot"></span> <span id="mode-indicator">NASA RESEARCH MODE · VERIFIED METADATA</span></span>
+        <span class="mission-chip demo-only">DEMO DAY <strong id="mission-day">042</strong></span>
       </div>
     </header>
 
@@ -27,9 +27,9 @@
         <div>
           <p class="eyebrow">HUMAN SPACEFLIGHT · CREW WELLBEING</p>
           <h1>Know your baseline.<br><span>Notice the change.</span></h1>
-          <p class="intro-copy">A local-first health log that helps crew members review personal trends, spot readings outside their illustrative reference bands, and see what information is missing.</p>
+          <p class="intro-copy">An evidence-first research workspace for astronaut health studies, with a separate local demonstration for simulated or manually entered indicators.</p>
         </div>
-        <div class="intro-actions">
+        <div class="intro-actions demo-only">
           <label for="demo-scenario">DEMO SCENARIO</label>
           <select id="demo-scenario">
             <option value="nominal">Nominal day</option>
@@ -42,14 +42,63 @@
       </section>
 
       <nav class="tabs" aria-label="Main navigation">
-        <button class="tab active" data-view="overview" type="button">Overview</button>
+        <button class="tab active" data-view="research" type="button">NASA Research Mode</button>
+        <button class="tab" data-view="overview" type="button">Demo & Manual Mode</button>
         <button class="tab" data-view="signals" type="button">Health signals</button>
         <button class="tab" data-view="wellbeing" type="button">Wellbeing</button>
         <button class="tab" data-view="log" type="button">Mission log</button>
         <button class="tab" data-view="sources" type="button">Sources & limits</button>
       </nav>
 
-      <section class="view active" id="view-overview">
+      <section class="view active" id="view-research">
+        <div class="section-heading">
+          <div><p class="eyebrow">NASA OPEN SCIENCE DATA REPOSITORY · OSD-575</p><h2>Research evidence workspace</h2><p class="section-copy">Study metadata is verified. The transformed assay CSV has not been retrieved, so this view intentionally contains no biomarker measurements or derived trends.</p></div>
+          <span class="research-decision" id="research-decision">INSUFFICIENT EVIDENCE</span>
+        </div>
+
+        <div class="research-metrics">
+          <article class="research-metric"><span>STUDY VERSION</span><strong id="research-version">OSD-575 · v3</strong><small>NASA OSDR record</small></article>
+          <article class="research-metric"><span>PARTICIPANTS</span><strong id="research-participants">4</strong><small>Inspiration4 crew</small></article>
+          <article class="research-metric"><span>SAMPLES LISTED</span><strong id="research-samples">28</strong><small>Serum biospecimens</small></article>
+          <article class="research-metric"><span>COLLECTION POINTS</span><strong id="research-timepoint-count">7</strong><small>Before and after flight</small></article>
+        </div>
+
+        <div class="research-details-grid">
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">STUDY CONTEXT</p><h3 id="research-study-title">Inspiration4 serum biomarker study</h3></div><span class="mini-label">HUMAN · SERUM</span></div>
+            <p class="research-description">The OSD-575 study describes serum metabolic-panel and immune/cardiovascular cytokine assays collected around the Inspiration4 mission. It is a biospecimen study, not a continuous heart-rate, SpO₂, temperature or sleep feed.</p>
+            <div class="research-facts">
+              <div><span>Assay</span><strong id="research-assay">Eve Technologies HDCVD9</strong></div>
+              <div><span>Data class</span><strong>ALSDA transformed assay data</strong></div>
+              <div><span>Mission period</span><strong>16–18 September 2021</strong></div>
+              <div><span>License</span><strong>CC0-1.0 · NASA study page</strong></div>
+            </div>
+            <a href="https://osdr.nasa.gov/bio/repo/data/studies/OSD-575" target="_blank" rel="noopener noreferrer">Open NASA OSD-575 record ↗</a>
+          </article>
+
+          <article class="panel research-audit-panel">
+            <div class="panel-heading"><div><p class="eyebrow">LATEST DATA-ACCESS AUDIT</p><h3>Source-file availability</h3></div><span class="state-label state-limited" id="research-data-state">NOT RETRIEVED</span></div>
+            <div class="research-audit-rows">
+              <div><span>NASA metadata</span><strong id="research-metadata-status">Verified</strong></div>
+              <div><span>Versioned file catalog</span><strong id="research-catalog-status">HTTP 200 · 0 records</strong></div>
+              <div><span>Transformed CSV</span><strong id="research-file-status">Not downloaded</strong></div>
+              <div><span>File SHA-256</span><strong id="research-hash-status">Not calculated</strong></div>
+              <div><span>Audit run</span><strong id="research-run-status">#4 · 14 Nov 2026</strong></div>
+            </div>
+            <p class="research-audit-note" id="research-audit-note">The metadata names the HDCVD9 transformed CSV, but the file catalog returned no matching file record or download URL. No measurements were analyzed.</p>
+            <a href="https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43596179113" target="_blank" rel="noopener noreferrer">Open latest audit artifact ↗</a>
+          </article>
+        </div>
+
+        <article class="panel research-timeline-panel">
+          <div class="panel-heading"><div><p class="eyebrow">SAMPLE COLLECTION DESIGN</p><h3>Reported timepoints</h3></div><span class="mini-label">RELATIVE TO LAUNCH / RETURN</span></div>
+          <div class="research-timeline" id="research-timeline" aria-label="OSD-575 sample collection timeline"></div>
+        </article>
+
+        <p class="research-footnote">Research data is not interchangeable with live crew telemetry. Until the source CSV is retrieved and its bytes are hashed, ASTRA will not display inferred biomarker values, plots, risk scores or participant trends for this study.</p>
+      </section>
+
+      <section class="view" id="view-overview" hidden>
         <div class="section-heading">
           <div><p class="eyebrow">CREW HEALTH · LOCAL DEMONSTRATION</p><h2>Crew health overview</h2></div>
           <span class="timestamp" id="last-updated">No readings saved yet</span>

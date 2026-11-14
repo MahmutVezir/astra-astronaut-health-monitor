@@ -71,6 +71,21 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistenc
 
   const dom = launchApp();
   const get = dom.get;
+  const study = researchWindow.AstraResearch.inspiration4;
+  assert.equal(study.datasetVersion, "3");
+  assert.equal(study.participantCount, 4);
+  assert.equal(study.sampleCountListed, 28);
+  assert.equal(study.timepoints.length, 7);
+  assert.ok(study.timepoints.some((point) => point.label === "R+194"));
+  assert.equal(study.acquisitionAudit.decision, "INSUFFICIENT_EVIDENCE");
+  assert.equal(study.acquisitionAudit.csvDownloaded, false);
+  assert.equal(study.acquisitionAudit.fileSha256, null);
+  assert.equal(get("research-decision").textContent, "INSUFFICIENT_EVIDENCE");
+  assert.equal(get("research-participants").textContent, "4");
+  assert.equal(get("research-samples").textContent, "28");
+  assert.equal(get("research-timepoint-count").textContent, "7");
+  assert.match(get("research-timeline").innerHTML, /R\+194/);
+  assert.match(get("mode-indicator").textContent, /NASA RESEARCH MODE/);
   assert.equal(get("overall-status").textContent, "WITHIN CONFIGURED BAND");
 
   get("demo-scenario").value = "shift";

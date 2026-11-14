@@ -2,7 +2,7 @@
 
 **Know your baseline. Notice the change. Act with evidence.**
 
-ASTRA is a small, offline-first web prototype for astronaut health monitoring during long-duration missions. It gathers manually entered or simulated indicators, compares each available value with a locally configurable reference band, and explains whether the entry is within that demo band, needs review, or is missing.
+ASTRA is an offline-first astronaut health-monitoring prototype with two clearly separated views. **NASA Research Mode** is the default entry point and presents traceable study metadata and data-access status. **Demo & Manual Mode** contains simulated or manually entered indicators, compares each available value with a locally configurable illustrative reference band, and explains whether an entry is within that demo band, needs review, or is missing.
 
 > **Important:** ASTRA is a student prototype, not a validated medical device. It does not diagnose, predict an event, prescribe treatment, or replace a flight surgeon or mission medical protocol. All readings in the demo are simulated or manually entered. The reference bands are demonstration settings, not medical thresholds or NASA standards.
 
@@ -14,7 +14,8 @@ ASTRA is a small, offline-first web prototype for astronaut health monitoring du
 - Configurable reference-band comparison with transparent, inspectable rules.
 - Daily crew wellbeing self-report (sleep quality, perceived stress, fatigue, and mood).
 - Local mission log, browser persistence, and CSV export.
-- NASA OSDR research context panel showing the published sample-collection timepoints for Inspiration4 study OSD-575.
+- Research-first landing view for NASA OSDR study OSD-575, including metadata provenance, the latest file-access audit, and all seven recorded sample-collection timepoints.
+- Separate Demo & Manual Mode for simulated or user-entered signals; it is not presented as a live NASA feed.
 - Service-worker app-shell cache for use after the first successful online load.
 
 ## Run the application
@@ -48,6 +49,8 @@ ASTRA includes research context from these NASA sources:
 - **Official 2026 challenge brief.** [Create Health Monitoring Software for Astronauts on Space Missions](https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/).
 
 The app distinguishes source-derived research metadata from simulated or user-entered demo values. It does not treat OSD-575 sample records as live telemetry.
+
+**Current OSD-575 evidence status (14 November 2026):** the NASA metadata API verifies study version 3, four participants, 28 serum samples, and the HDCVD9 transformed-file name. The version-specific file-catalog response returned HTTP 200 but contained zero file records (`hits=0`, `total_hits=1`, empty `studies`). The transformed CSV was not downloaded; therefore no source-file SHA-256 or biomarker analysis exists yet. NASA Research Mode displays this limitation explicitly and abstains from rendering unverified measurements. See [the latest audit run](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43596179113).
 
 ## Transparent assessment logic
 
