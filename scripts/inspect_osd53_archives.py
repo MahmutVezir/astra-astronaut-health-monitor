@@ -216,7 +216,7 @@ def inspect_xls_bytes(member_name: str, raw: bytes) -> dict:
     sheets = []
     for sheet in workbook.sheets():
         preview_rows = []
-        for row_index in range(min(sheet.nrows, 8)):
+        for row_index in range(min(sheet.nrows, 15)):
             preview_rows.append([
                 sheet.cell_value(row_index, column_index)
                 for column_index in range(min(sheet.ncols, 24))
@@ -225,7 +225,7 @@ def inspect_xls_bytes(member_name: str, raw: bytes) -> dict:
             "sheet_name": sheet.name,
             "row_count": sheet.nrows,
             "column_count": sheet.ncols,
-            "preview_first_8_rows_first_24_columns": preview_rows,
+            "preview_first_15_rows_first_24_columns": preview_rows,
         })
     workbook.release_resources()
     return {
