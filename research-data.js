@@ -36,7 +36,7 @@
         catalogReturnedStudyCount: 0,
         csvDownloaded: false,
         fileSha256: null,
-        note: "The NASA metadata response names the transformed HDCVD9 CSV, but the versioned file-catalog response contains no file record or download URL. No measurements were downloaded or analyzed."
+        note: "This is the last live data-access audit (run #4): its versioned paginated catalog request returned no file record or download URL. The current main branch adds two documented bare-endpoint fallbacks, but that updated lookup has not yet been executed live. No measurements were downloaded or analyzed."
       },
       source: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
     },
@@ -79,6 +79,32 @@
         accessNote: "NLSP lists 14 open-access datasets, including processed CFT70 cardiac-function and UTMB echocardiography collections. These are research assessments, not continuous heart-rate streams.",
         role: "Priority next dataset for cardiovascular research context",
         url: "https://nlsp.nasa.gov/search/data/details/9af6f9ba-3730-54ab-a82a-1a32798667ae?dataType=EXPERIMENTS"
+      },
+      {
+        id: "DSO-602",
+        name: "In-flight arterial pressure and Holter monitoring",
+        provider: "NASA Life Sciences Portal (NLSP) / NASA EDOMP",
+        environment: "Shuttle spaceflight · 4–14-day missions",
+        domain: "In-flight cardiovascular monitoring",
+        measures: ["Continuous 24-hour ECG / Holter", "Heart rate and rhythm", "Automated blood pressure every 20 min awake / 30 min asleep"],
+        evidenceStatus: "PUBLIC_PROTOCOL_RESTRICTED_MEASUREMENTS",
+        statusLabel: "Timetable public · ECG/BP restricted",
+        accessNote: "NASA\u0027s NLSP record lists one open-access collection-timetable spreadsheet and restricted-access ECG, blood-pressure and related variables. NASA\u0027s EDOMP report describes 12 astronauts; raw measurement data have not been retrieved or approved for ASTRA.",
+        role: "Best-matched in-flight HR/BP candidate · access verification required",
+        url: "https://nlsp.nasa.gov/search/data/details/f8e3f755-5caa-522c-b628-7153cfe446f5?dataType=EXPERIMENTS"
+      },
+      {
+        id: "DSO-603",
+        name: "Orthostatic function during entry, landing and egress",
+        provider: "NASA EDOMP / NASA Life Sciences Portal (NLSP)",
+        environment: "Shuttle launch, entry, landing and post-landing phases",
+        domain: "Event-specific cardiovascular response",
+        measures: ["Continuous ECG", "Heart rate and arterial pressure at 2-minute intervals", "Systolic / diastolic / mean arterial pressure and pulse pressure"],
+        evidenceStatus: "HISTORICAL_STUDY_DOCUMENTED_FILES_UNVERIFIED",
+        statusLabel: "34-subject study · files unverified",
+        accessNote: "NASA\u0027s EDOMP report documents 34 subjects and two-minute HR/arterial-pressure intervals around launch, entry and landing. This is phase-specific monitoring, not continuous 24-hour crew telemetry. Exact data files, access terms and schema have not been verified.",
+        role: "Event-phase HR/BP candidate · file-level audit pending",
+        url: "https://nlsp.nasa.gov/search/data/details/IDP-LSDA_MISSION-0000000000000326?dataType=MISSIONS"
       },
       {
         id: "DSO-470",
