@@ -446,6 +446,108 @@ function summarizeActigraphyCsv(input) {
   };
 }
 
+function summarizeBRSMCFCsv(input) {
+  const parsed = parseCsvTable(input);
+  const lowerHeaders = parsed.headers.map((value) => value.toLowerCase());
+  const field = (pattern) => parsed.headers[lowerHeaders.findIndex((value) => pattern.test(value))] || null;
+  const subjectField = field(/^subject$/);
+  const phaseField = field(/^test_phase$/);
+  const campaignField = field(/^campaign$/);
+  const dayField = field(/^(br_day|day)$/);
+  const dateField = field(/^date$/);
+  const periodField = field(/period covered/i);
+  const statisticField = field(/^statistic$/);
+  const distinct = (name) => name
+    ? [...new Set(parsed.rows.map((row) => String(row[name] ?? "").trim()).filter(Boolean))].sort()
+    : [];
+  const phaseCounts = {};
+  if (phaseField) {
+    parsed.rows.forEach((row) => {
+      const value = String(row[phaseField] || "").trim() || "MISSING";
+      phaseCounts[value] = (phaseCounts[value] || 0) + 1;
+    });
+  }
+  const campaignCounts = {};
+  if (campaignField) {
+    parsed.rows.forEach((row) => {
+      const value = String(row[campaignField] || "").trim() || "MISSING";
+      campaignCounts[value] = (campaignCounts[value] || 0) + 1;
+    });
+  }
+  const statisticCounts = {};
+  if (statisticField) {
+    parsed.rows.forEach((row) => {
+      const value = String(row[statisticField] || "").trim() || "MISSING";
+      statisticCounts[value] = (statisticCounts[value] || 0) + 1;
+    });
+  }
+  const dates = dateField ? distinct(dateField) : [];
+  const parsedDates = dates.map(parseMonthDayYear).filter(Boolean).sort((a, b) => a.timestamp - b.timestamp);
+  const unparsedDates = dates.filter((value) => parseMonthDayYear(value) === null);
+  const countMissing = (name) => parsed.rows.filter((row) => {
+    const value = String(row[name] ?? "").trim();
+    return !value || /^na$/i.test(value) || /^n\/a$/i.test(value) || /^#div\/0!$/i.test(value);
+  }).length;
+  const metricPattern = /^(SBP|DBP|MPAP|EF pre|SV pre|CO pre|LVM|LV mass|LV vol|LVDV|LVSV|LVDD|LVDS|RVD|RVD|RHR|LHR|PAT|PET|LVOTD|LVOT|IVS|IVSS|LVPWD|LVPWS|FS|Vcf|Recorded_Value|SLNTG .*Diameter|Left Ventricular Diameter.*|Pulmonic Valve.*|Mitral .*Velocity|Stroke Volume|Ejection Fraction)/i;
+  const candidateMetrics = parsed.headers.filter((name) => metricPattern.test(name)).slice(0, 30);
+  const metricStats = {};
+  candidateMetrics.forEach((name) => {
+    const rawValues = parsed.rows.map((row) => String(row[name] ?? "").trim());
+    const values = rawValues.filter((value) =>
+      value && !/^na$/i.test(value) && !/^n\/a$/i.test(value) && !/^#div\/0!$/i.test(value)
+    ).map(Number).filter(Number.isFinite);
+    metricStats[name] = {
+      valid_numeric_count: values.length,
+      missing_or_non_numeric_count: parsed.rows.length - values.length,
+      minimum: values.length ? Math.min(...values) : null,
+      maximum: values.length ? Math.max(...values) : null,
+      unit: "NOT_INFERRED_FROM_COLUMN_NAME"
+    };
+  });
+  const subjectPhaseDay = subjectField && phaseField && dayField
+    ? parsed.rows.map((row) => [
+        String(row[subjectField] || "").trim(),
+        String(row[phaseField] || "").trim(),
+        String(row[dayField] || "").trim()
+      ].join("|")).filter((key) => !key.startsWith("|") && !key.includes("||"))
+    : [];
+  const periodValues = periodField ? distinct(periodField) : [];
+  const errorTokens = parsed.rows.reduce((count, row) =>
+    count + Object.values(row).filter((value) => /#div\/0!|#n\/a/i.test(String(value))).length, 0
+  );
+  const dayValues = distinct(dayField);
+  return {
+    row_count: parsed.rows.length,
+    column_count: parsed.headers.length,
+    headers: parsed.headers,
+    record_granularity: subjectField ? "PARTICIPANT_LEVEL_ROWS" : periodField ? "PERIOD_AGGREGATE_ROWS" : "NOT_DETERMINED",
+    participant_field: subjectField,
+    participant_count: distinct(subjectField).length,
+    participant_ids: distinct(subjectField).slice(0, 100),
+    phase_field: phaseField,
+    phase_counts: phaseCounts,
+    campaign_field: campaignField,
+    campaign_counts: campaignCounts,
+    day_field: dayField,
+    day_values: dayValues.slice(0, 100),
+    date_field: dateField,
+    observed_date_count: dates.length,
+    parseable_date_count: parsedDates.length,
+    earliest_date_iso: parsedDates[0]?.iso || null,
+    latest_date_iso: parsedDates.at(-1)?.iso || null,
+    unparsed_date_values: unparsedDates,
+    period_field: periodField,
+    period_values: periodValues.slice(0, 100),
+    statistic_field: statisticField,
+    statistic_counts: statisticCounts,
+    missing_counts: Object.fromEntries(parsed.headers.map((name) => [name, countMissing(name)])),
+    candidate_numeric_metrics: metricStats,
+    nonnumeric_error_token_count: errorTokens,
+    duplicate_subject_phase_day_rows: subjectPhaseDay.length - new Set(subjectPhaseDay).size,
+    units_inferred: false
+  };
+}
+
 async function downloadBRSMACTFileInventory(fileRecords) {
   const output = [];
   const downloadDir = path.join(OUTPUT_DIR, "downloads");
@@ -624,8 +726,9 @@ async function downloadBRSMCFRelatedFiles(relatedDatasets) {
         const isCsv = /\.csv$/i.test(item.label) || contentType.includes("text/csv");
         const isText = isCsv || /\.txt$/i.test(item.label) || contentType.startsWith("text/");
         if (isCsv) {
+          const csvText = bytes.toString("utf8").replace(/^\uFEFF/, "");
           try {
-            const parsed = parseCsvTable(bytes.toString("utf8"));
+            const parsed = parseCsvTable(csvText);
             result.csv_inspection = {
               parse_status: "PASS",
               row_count: parsed.rows.length,
@@ -633,8 +736,13 @@ async function downloadBRSMCFRelatedFiles(relatedDatasets) {
               headers: parsed.headers,
               first_data_row: parsed.rows[0] || null
             };
+            result.schema_analysis = summarizeBRSMCFCsv(csvText);
           } catch (error) {
-            result.csv_inspection = { parse_status: "FAIL", error: error.message };
+            result.csv_inspection = {
+              parse_status: "FAIL",
+              error: error.message,
+              raw_header_preview: csvText.split(/\r\n|\n|\r/)[0]?.slice(0, 5000) || ""
+            };
           }
         } else if (isText) {
           result.text_preview = bytes.toString("utf8").split(/\r\n|\n|\r/).slice(0, 8);
@@ -950,4 +1058,4 @@ if (require.main === module) {
     process.exitCode = 1;
   });
 }
-module.exports = { makeSearchUrl, makeDetailUrl, makeFileDownloadUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle, parseCsvTable, parseClockDurationMinutes, parseMonthDayYear, summarizeActigraphyCsv };
+module.exports = { makeSearchUrl, makeDetailUrl, makeFileDownloadUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle, parseCsvTable, parseClockDurationMinutes, parseMonthDayYear, summarizeActigraphyCsv, summarizeBRSMCFCsv };
