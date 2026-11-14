@@ -54,4 +54,45 @@ The Research Mode also records a NASA source portfolio: OSD-575 (Inspiration4 se
 
 **Current OSD-575 evidence status (14 November 2026):** live audit run #5 verified the metadata for OSD-575 version 3 and found the exact HDCVD9 transformed CSV in NASA's versioned bare file-catalog response (/files/575.3). The response contained nine study-file records; the exact target record declared 6,207 bytes and restricted=false, and supplied a catalog remote_url. The subsequent download was not accepted because the final redirect host fell outside the downloader's strict NASA HTTPS allowlist. The file was **not** saved: there is still no source-file SHA-256, actual column map, observed measurement table, or biomarker analysis. ASTRA continues to abstain from rendering unverified measurements. [Open live audit run #5](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43600280830).
 
-This supersedes the earlier run #4 observation where the paginated catalog response had hits=0; the bare versioned endpoint exposed the file record. Software CI and live data acquisition remain separate gates: a passing test suite does not establish that NASA bytes were downloaded.
+This supersedes the earlier run #4 observation where the paginated catalog response had hits=0; the bare versioned endpoint exposed the file record. PR #17 now permits a redirect only to the exact NASA OSDR public-bucket hostname derived from NASA's documented bucket name/region and AWS's documented S3 endpoint format, and it checks the final filename. The live run #5 artifact did not preserve the redirect destination, however, so the exact redirect host and object path still require confirmation in a new live run. Software CI and live data acquisition remain separate gates: a passing test suite does not establish that NASA bytes were downloaded.
+
+## Transparent assessment logic
+
+For each demo signal, the engine:
+1. Distinguishes a blank field from a numeric value.
+2. Rejects non-numeric or out-of-app-range entries.
+3. Compares valid values with that signal's illustrative demo reference band.
+4. Returns **Within baseline**, **Review**, or **No data** for that individual signal.
+5. Makes the overall assessment **Limited** when readings are missing; missing information is never silently treated as normal.
+
+The initial reference bands are fictional example settings. Users can configure different lower/upper values locally for the demo profile, but this does not clinically validate them. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
+
+## AI assistance disclosure
+
+ChatGPT (OpenAI) was used during the hackathon to help draft and review application code, test cases, and documentation. The team is responsible for reviewing, testing, and explaining the submitted work. No AI model or external LLM API is integrated into the running application; the dashboard uses transparent deterministic rules. Simulated values are labelled and are not presented as NASA observations.
+
+## Privacy and safety
+
+- The app stores its demo/manual entries in the current browser's local storage.
+- The app has no account system, server database, encryption layer, wearable connection, or remote telemetry service.
+- Do not enter real, identifiable, or sensitive health information.
+- CSV exports should be treated as local user data and handled carefully.
+- Any real mission deployment would require medical, human-factors, cybersecurity, privacy, and operational validation.
+
+## Team roles
+
+- **Mahmut:** project lead, application integration, data model, and technical explanation.
+- **Teammate 1:** interface review, usability, and responsive-browser testing.
+- **Teammate 2 (if present):** NASA source verification, QA execution, documentation, and demo.
+
+## Project structure
+
+- `index.html` — application views and forms
+- `styles.css` — responsive visual system
+- `app.js` — application state, local persistence, scenarios, and CSV export
+- `health-engine.js` — pure, testable assessment rules
+- `research-data.js` — NASA OSDR study metadata and research-source status registry
+- `sw.js` and `manifest.webmanifest` — app-shell cache and install metadata
+- `tests/health-engine.test.js` — automated rule tests
+
+ASTRA is an independent student project created for the NASA Space Apps Challenge. It is not an official NASA product and is not endorsed by NASA.
