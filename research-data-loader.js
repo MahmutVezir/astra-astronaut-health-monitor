@@ -127,18 +127,26 @@
     if (actualSha !== expectedSha) {
       throw new Error("Source integrity check failed: SHA-256 " + actualSha + " does not match the reviewed project pin.");
     }
+    const expectedBytes = config.byteLength ?? evidenceConfig.byteLength;
+    if (expectedBytes !== undefined && sourceBuffer.byteLength !== expectedBytes) {
+      throw new Error("Source byte length " + sourceBuffer.byteLength + " does not match the reviewed " + expectedBytes + "-byte file.");
+    }
 
     const metadata = await responses[1].json();
     const audit = await responses[2].json();
+    const expectedFileName = csvPath.split("/").pop();
     if (!metadata || metadata.dataset_id !== "OSD-575" || String(metadata.dataset_version) !== "3" ||
         !Array.isArray(metadata.records) || metadata.records.length !== 28) {
       throw new Error("The NASA ISA sample map is not the expected OSD-575 Version 3, 28-sample map.");
     }
     if (!audit || audit.dataset_id !== "OSD-575" || String(audit.dataset_version) !== "3" ||
+        audit.file_name !== expectedFileName || audit.file_bytes !== sourceBuffer.byteLength ||
         audit.sha256 !== actualSha || audit.sha256_is_project_maintained_pin_not_nasa_signature !== true ||
-        audit.metadata_sample_join !== "PASS" || audit.normalization_audit?.status !== "PASS" ||
+        audit.metadata_sample_join !== "PASS" || audit.mapped_samples !== 28 ||
+        audit.mapped_participants !== 4 || audit.mapped_timepoints !== 7 ||
+        audit.normalization_audit?.status !== "PASS" || audit.normalization_audit?.analyte_count !== 9 ||
         audit.scientific_decision !== "LIMITED_EVIDENCE") {
-      throw new Error("The imported live audit does not verify the exact source, metadata join, normalization, and conservative evidence decision.");
+      throw new Error("The imported live audit does not verify the exact source, 28-sample metadata join, four participants, seven timepoints, nine-analyte normalization, and conservative evidence decision.");
     }
 
     const bytes = new Uint8Array(sourceBuffer);
@@ -178,8 +186,9 @@
 
     const participantIds = Array.from(new Set(mappedRows.map((row) => row.__participant))).sort();
     const observedTimepoints = TIMEPOINTS.filter((timepoint) => mappedRows.some((row) => row.__timepoint === timepoint));
-    if (participantIds.length !== 4 || observedTimepoints.length !== 7) {
-      throw new Error("The mapped source does not contain the reviewed four participants and seven timepoints.");
+    if (JSON.stringify(participantIds) !== JSON.stringify(["C001", "C002", "C003", "C004"]) ||
+        JSON.stringify(observedTimepoints) !== JSON.stringify(TIMEPOINTS)) {
+      throw new Error("The mapped source does not contain the reviewed C001-C004 participants and all seven timepoints.");
     }
     participantIds.forEach((participant) => {
       const count = mappedRows.filter((row) => row.__participant === participant).length;
