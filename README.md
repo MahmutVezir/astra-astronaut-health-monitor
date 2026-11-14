@@ -1,71 +1,87 @@
-# ASTRA — Astronaut Health Intelligence
+# ASTRA — Astronaut Health Monitoring
 
 **Know your baseline. Notice the change. Act with evidence.**
 
-ASTRA is an offline-first astronaut health monitoring and decision-support prototype for long-duration space missions. It brings selected physiological indicators and crew self-reports into one clear view, compares available readings with an individual's illustrative reference bands, and explains when a value needs review or when the data is incomplete.
+ASTRA is a small, offline-first web prototype for astronaut health monitoring during long-duration missions. It gathers manually entered or simulated indicators, compares each available value with an illustrative personal reference band, and explains whether the entry is within that demo band, needs review, or is missing.
 
-> **Prototype status:** ASTRA is a concept demonstration, not a validated medical device. All crew details and readings shown in the web app are simulated. Its reference bands are illustrative demo settings, not clinical thresholds. It does not diagnose, prescribe, or replace flight surgeons.
+> **Important:** ASTRA is a student prototype, not a validated medical device. It does not diagnose, predict an event, prescribe treatment, or replace a flight surgeon or mission medical protocol. All readings in the demo are simulated or manually entered. The reference bands are demonstration settings, not medical thresholds or NASA standards.
 
-## The problem
+## What works in this version
 
-NASA's 2026 Space Apps Challenge brief highlights that long-duration missions expose astronauts to space radiation, isolation and confinement, altered gravity, and hostile or closed environments. Crew members may need to recognize changes in their own health while far from immediate support.
+- Responsive browser dashboard with four signals: heart rate, blood oxygen (SpO₂), body temperature, and sleep duration.
+- Manual data entry with basic input validation and explicit missing-data handling.
+- Three reproducible scenarios: nominal day, baseline shift, and incomplete data.
+- Personal-reference comparison with transparent, inspectable rules.
+- Daily crew wellbeing self-report (sleep quality, perceived stress, fatigue, and mood).
+- Local mission log, browser persistence, and CSV export.
+- NASA OSDR research context panel showing the published sample-collection timepoints for Inspiration4 study OSD-575.
+- Service-worker app-shell cache for use after the first successful online load.
 
-## What the prototype demonstrates
+## Run the application
 
-- A crew dashboard for heart rate, oxygen saturation, body temperature, and sleep duration.
-- Personal-reference comparison rather than a one-size-fits-all score.
-- Transparent status labels: **Within baseline**, **Review**, and **No data**.
-- An explicit incomplete-data state: missing readings are never silently treated as normal.
-- Optional wellbeing self-report for sleep quality, perceived stress, fatigue, and mood.
-- Local browser storage, CSV export, and an app-shell cache for offline-first use after the first load.
-- Three interactive demo scenarios: nominal day, baseline shift, and incomplete data.
+No third-party JavaScript packages or build step are required.
 
-## Run locally
+1. Clone or download this repository.
+2. In the project folder, run `python -m http.server 8000` (Python 3) or use another local static web server.
+3. Open `http://localhost:8000` in a browser.
+4. Try all three demo scenarios, edit readings under **Health signals**, save a wellbeing check-in, and export the mission log.
 
-No build step or package installation is required.
+Opening `index.html` directly also allows the core interface to run, but service-worker caching requires an HTTP(S) origin such as localhost or GitHub Pages.
 
-1. Download or clone this repository.
-2. Open index.html in a local web server (recommended for service-worker/offline behavior).
-3. Try the three demo scenarios and the Health signals and Wellbeing views.
+## Automated logic tests
 
-For GitHub Pages, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. Then open **Actions → Deploy ASTRA to GitHub Pages → Run workflow** and run it on **main**. The deployment URL will appear in the successful workflow run.
+Requires Node.js 18 or newer. There are no npm dependencies.
+
+```bash
+npm test
+```
+
+The tests cover missing data, inclusive boundaries, readings outside demo bands, invalid inputs, limited assessments, and the three nominal/review conditions. Passing unit tests does not replace browser-level QA; use [QA_CHECKLIST.md](QA_CHECKLIST.md) and record actual device/browser results.
+
+## NASA research used
+
+ASTRA includes research context from these NASA sources:
+
+- **NASA Open Science Data Repository — OSD-575, Inspiration4 Blood Serum Metabolic Panel and Immune/Cardiac Cytokine Arrays.** The application includes the study metadata and its reported pre-flight/post-flight sample timepoints. The study page lists 28 samples and a CC0-1.0 license. The assays are biospecimen-based research; they are **not** a continuous heart-rate or SpO₂ feed. ASTRA does not claim to ingest or calculate results from the raw assay files in this prototype. [Open OSD-575](https://osdr.nasa.gov/bio/repo/data/studies/OSD-575).
+- **NASA Human Research Program — Human Spaceflight Hazards.** This explains the mission context, including radiation, isolation and confinement, distance from Earth, altered gravity, and closed environments. [Read NASA HRP](https://www.nasa.gov/hrp/hazards/).
+- **NASA Standard Measures.** This research describes measurements across multiple body systems, including activity/light exposure, sleep reports, immune-related samples, cognition, and sensorimotor function. [Read NASA Standard Measures](https://www.nasa.gov/reference/standard-measures/).
+- **Official 2026 challenge brief.** [Create Health Monitoring Software for Astronauts on Space Missions](https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/).
+
+The app distinguishes source-derived research metadata from simulated or user-entered demo values. It does not treat OSD-575 sample records as live telemetry.
+
+## Transparent assessment logic
+
+For each signal, the engine:
+1. Distinguishes a blank field from a numeric value.
+2. Rejects non-numeric or out-of-app-range entries.
+3. Compares valid values with that signal's illustrative demo reference band.
+4. Returns **Within baseline**, **Review**, or **No data** for that individual signal.
+5. Makes the overall assessment **Limited** when readings are missing; missing information is never silently treated as normal.
+
+The bands currently configured in `health-engine.js` are fictional example settings for demonstrating software behavior. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
+
+## Privacy and safety
+
+- The app stores its demo/manual entries in the current browser's local storage.
+- The app has no account system, server database, encryption layer, wearable connection, or remote telemetry service.
+- Do not enter real, identifiable, or sensitive health information.
+- CSV exports should be treated as local user data and handled carefully.
+- Any real mission deployment would require medical, human-factors, cybersecurity, privacy, and operational validation.
+
+## Team roles
+
+- **Mahmut:** project lead, application integration, data model, and technical explanation.
+- **Teammate 1:** interface review, usability, and responsive-browser testing.
+- **Teammate 2 (if present):** NASA source verification, QA execution, documentation, and demo.
 
 ## Project structure
 
-- index.html — application structure and views
-- styles.css — responsive dashboard styling
-- app.js — demo data, comparison logic, local persistence, CSV export
-- sw.js — offline app-shell cache
-- manifest.webmanifest — installable web app metadata
+- `index.html` — application views and forms
+- `styles.css` — responsive visual system
+- `app.js` — application state, local persistence, scenarios, and CSV export
+- `health-engine.js` — pure, testable assessment rules
+- `research-data.js` — NASA OSDR study metadata used by the research timeline
+- `sw.js` and `manifest.webmanifest` — app-shell cache and install metadata
+- `tests/health-engine.test.js` — automated rule tests
 
-## Transparent comparison logic
-
-For each signal, ASTRA:
-1. Checks whether a reading is present and numeric.
-2. Compares it with the demo crew member's configured personal reference band.
-3. Labels it Within baseline, Review, or No data.
-4. Explains the reason in plain language.
-
-The prototype deliberately avoids a diagnostic score. The rules are simple and inspectable, and missing data reduces the completeness of the assessment.
-
-## Team workflow
-
-- **Developer — Mahmut:** implement features, maintain the code, and document changes.
-- **Tester / QA — teammate:** test normal, boundary, invalid, and missing-data cases; report reproducible defects; retest fixes.
-
-A feature is considered complete only after its expected behavior has been checked and critical defects are resolved.
-
-## Scientific context
-
-- [NASA Space Apps Challenge 2026 — Health Monitoring Software](https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/)
-- [NASA Human Research Program — Five Hazards of Human Spaceflight](https://www.nasa.gov/hrp/hazards/)
-- [NASA Human Research Program — Risks of Human Spaceflight](https://www.nasa.gov/hrp/risks/)
-
-## Near-term roadmap
-
-1. Validate the web prototype with structured QA cases.
-2. Improve the personal-baseline configuration and explainability.
-3. Evaluate suitable public NASA research datasets before making any data-driven claims.
-4. Refine mission/offline workflows and prepare a short demonstration video.
-
-ASTRA is an independent student prototype created for the NASA Space Apps Challenge. It is not an official NASA product and is not endorsed by NASA.
+ASTRA is an independent student project created for the NASA Space Apps Challenge. It is not an official NASA product and is not endorsed by NASA.
