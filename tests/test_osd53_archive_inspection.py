@@ -52,10 +52,10 @@ class OSD53ArchiveInspectionTests(unittest.TestCase):
 
     def test_detects_two_row_differential_expression_headers(self):
         raw = (
-            "\\t\\tAstronaut A\\tAstronaut A\\tAverage\\tAverage\\t\\t\\t\\n"
-            "\\t\\tPREFLIGHT\\tPOSTFLIGHT\\tPREFLIGHT\\tPOSTFLIGHT\\tRatio\\tLog2 Ratio\\tp-value\\n"
-            "ID_REF\\t\\t1.0\\t1.5\\t1.0\\t1.5\\t1.5\\t0.58\\t0.01\\n"
-            "probe1\\tK00650\\t0.9\\t1.2\\t0.9\\t1.2\\t1.3\\t0.38\\t0.03\\n"
+            "\t\tAstronaut A\tAstronaut A\tAverage\tAverage\t\t\t\n"
+            "\t\tPREFLIGHT\tPOSTFLIGHT\tPREFLIGHT\tPOSTFLIGHT\tRatio\tLog2 Ratio\tp-value\n"
+            "ID_REF\t\t1.0\t1.5\t1.0\t1.5\t1.5\t0.58\t0.01\n"
+            "probe1\tK00650\t0.9\t1.2\t0.9\t1.2\t1.3\t0.38\t0.03\n"
         ).encode("utf-8")
         report = parse_delimited_text("GSE47126_Fold_change_data.txt", raw)
         self.assertEqual(report["row_count"], 2)
@@ -64,7 +64,7 @@ class OSD53ArchiveInspectionTests(unittest.TestCase):
         self.assertEqual(report["headers"][3], "Astronaut A | POSTFLIGHT")
         self.assertTrue(report["is_differential_expression_results_candidate"])
         self.assertFalse(report["is_expression_matrix_candidate"])
-        self.assertEqual(report["header_preview_lines"][1].split("\\t")[2], "PREFLIGHT")
+        self.assertEqual(report["header_preview_lines"][1].split("\t")[2], "PREFLIGHT")
 
     def test_validates_zip_crc_and_member_structure(self):
         report = inspect_zip_bytes("candidate.zip", make_zip())
