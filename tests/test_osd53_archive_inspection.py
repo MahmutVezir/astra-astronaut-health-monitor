@@ -37,6 +37,19 @@ class OSD53ArchiveInspectionTests(unittest.TestCase):
         self.assertEqual(report["row_count"], 1)
         self.assertEqual(report["matrix_sample_columns"], ["GSM100", "GSM101"])
 
+    def test_extracts_sample_spaceflight_and_time_metadata_for_review(self):
+        report = parse_delimited_text(
+            "samples.tsv",
+            (
+                "Sample Name\\tCharacteristics[Organism]\\tFactor Value[Spaceflight]\\t"
+                "Factor Value[Time]\\tCharacteristics[Study Subject]\\n"
+                "GSM100\\tHomo sapiens\\tSpace Flight\\tL-30\\tAstronaut A\\n"
+            ).encode("utf-8"),
+        )
+        self.assertEqual(report["metadata_preview"][0]["Sample Name"], "GSM100")
+        self.assertEqual(report["metadata_preview"][0]["Factor Value[Time]"], "L-30")
+        self.assertEqual(report["metadata_preview"][0]["Characteristics[Study Subject]"], "Astronaut A")
+
     def test_validates_zip_crc_and_member_structure(self):
         report = inspect_zip_bytes("candidate.zip", make_zip())
         self.assertEqual(report["zip_crc"], "PASS")
