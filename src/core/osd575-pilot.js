@@ -79,11 +79,9 @@ function analyzeOsd575FileBytes(options = {}) {
   }
 
   const columnMap = options.columnMap || null;
-  const analysisRows = Array.isArray(options.analysisRows) ? options.analysisRows : parsed.rows;
-  const analysisHeaders = Array.isArray(options.analysisHeaders) ? options.analysisHeaders : parsed.headers;
   const evidence = evaluateEvidence({
-    rows: analysisRows,
-    headers: analysisHeaders,
+    rows: parsed.rows,
+    headers: parsed.headers,
     columnMap,
     expectedParticipantCount: OSD575.participant_count,
     expectedSampleCount: OSD575.sample_count,
@@ -105,8 +103,6 @@ function analyzeOsd575FileBytes(options = {}) {
     trace: buildRecord(integrity.actualSha256, decision, decisionReasons),
     integrity,
     parsed,
-    analysisRows,
-    analysisHeaders,
     evidence,
     columnMap,
     fileSha256: integrity.actualSha256,

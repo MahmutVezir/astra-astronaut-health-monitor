@@ -873,7 +873,6 @@ test("when the exact transformed CSV has a real catalog remote_url, the fetch au
   try {
     const result = await main({
       outputDir,
-      referenceSha256: expectedDigest,
       logger: { log() {}, warn() {}, error() {} },
       fetchImpl: async (url) => {
         const address = String(url);
@@ -956,141 +955,6 @@ test("byte analysis returns INSUFFICIENT_EVIDENCE when no participant has repeat
   assert.equal(single.byteLength, singleBytes.length);
 });
 
-
-test("HDCVD9 rows are joined to the authoritative NASA ISA sample table and processed percentages reproduce the all-crew pre-flight baseline", async () => {
-  const fs = require("node:fs/promises");
-  const os = require("node:os");
-  const path = require("node:path");
-  const {
-    main,
-    extractSampleMetadata,
-    mapRowsUsingSampleMetadata,
-    auditBaselinePercentNormalization
-  } = require("../scripts/fetch-osd575.js");
-  const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "osd575-hdcvd9-metadata-join-"));
-  const metadata = makeOsd575MetadataPayload();
-  const sampleRaw = [];
-  const csvLines = [
-    "Sample Name,crp_concentration_picogram_per_milliliter,crp_percent"
-  ];
-  const baselineValues = [100, 200, 300, 400];
-  for (let index = 0; index < 4; index += 1) {
-    const participant = "C00" + (index + 1);
-    for (const point of [
-      { sample: "L-3", metadata: "Launch minus 3" },
-      { sample: "R+1", metadata: "Return plus 1" }
-    ]) {
-      const sampleName = participant + "_serum_" + point.sample;
-      const concentration = point.sample === "L-3"
-        ? baselineValues[index]
-        : baselineValues[index] * 2;
-      const percent = concentration / (baselineValues.reduce((sum, value) => sum + value, 0) / 4) * 100;
-      sampleRaw.push({ source: participant, sample: sampleName, time: point.metadata });
-      csvLines.push(sampleName + "," + concentration + "," + percent);
-    }
-  }
-  metadata.study["OSD-575"].additionalInformation.samples["s_OSD-575-txt"].raw = sampleRaw;
-  const csvBytes = Buffer.from(csvLines.join("\n") + "\n", "utf8");
-  const expectedDigest = sha256(csvBytes);
-  const sampleMetadata = extractSampleMetadata(metadata);
-  const parsed = parseCsv(csvBytes.toString("utf8"));
-  const mapped = mapRowsUsingSampleMetadata(parsed.headers, parsed.rows, sampleMetadata);
-
-  assert.equal(sampleMetadata.length, 8);
-  assert.equal(mapped.columnMap.participant, "__osdr_metadata_participant_id");
-  assert.equal(mapped.columnMap.sample, "Sample Name");
-  assert.equal(mapped.columnMap.timepoint, "__osdr_metadata_timepoint");
-  assert.deepEqual(mapped.columnMap.measurement, ["crp_concentration_picogram_per_milliliter"]);
-  assert.equal(mapped.provenance.complete_csv_row_match, true);
-  assert.equal(mapped.provenance.full_study_sample_coverage, true);
-  assert.equal(mapped.rows.length, 8);
-  assert.equal(mapped.rows[0].__osdr_metadata_participant_id, "C001");
-  assert.equal(mapped.rows[0].__osdr_metadata_timepoint, "L-3");
-
-  const normalization = auditBaselinePercentNormalization(
-    mapped.rows,
-    mapped.headers,
-    mapped.columnMap
-  );
-  assert.equal(normalization.status, "PASS");
-  assert.equal(normalization.baseline_sample_count, 4);
-  assert.ok(normalization.analytes[0].max_absolute_error <= 1e-6);
-
-  const fileName = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
-  const fileRecord = {
-    file_name: fileName,
-    remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + encodeURIComponent(fileName),
-    file_size: csvBytes.length,
-    restricted: false
-  };
-  const catalog = {
-    hits: 1,
-    input: "575.3",
-    page_number: 0,
-    page_size: 25,
-    page_total: 1,
-    total_hits: 1,
-    studies: { "OSD-575.3": { file_count: 1, study_files: [fileRecord] } },
-    success: true,
-    valid_input: ["575"]
-  };
-  try {
-    const result = await main({
-      outputDir,
-      referenceSha256: expectedDigest,
-      logger: { log() {}, warn() {}, error() {} },
-      fetchImpl: async (url) => {
-        const address = String(url);
-        if (address.includes("/meta/575")) return fakeJsonResponse(address, metadata);
-        if (address.includes("/files/575.3/")) return fakeJsonResponse(address, catalog);
-        if (address.includes("/geode-py/ws/studies/OSD-575/download")) {
-          return {
-            ok: true,
-            status: 200,
-            url: address,
-            headers: {
-              get: (name) => name.toLowerCase() === "content-length" ? String(csvBytes.length) : "text/csv"
-            },
-            arrayBuffer: async () => csvBytes.buffer.slice(csvBytes.byteOffset, csvBytes.byteOffset + csvBytes.byteLength)
-          };
-        }
-        throw new Error("Unexpected network request: " + address);
-      }
-    });
-
-    assert.equal(result.decision, "LIMITED_EVIDENCE");
-    assert.equal(result.manifest.reference_sha256, expectedDigest);
-    assert.equal(result.manifest.reference_sha256_status, "MATCHED_REVIEWED_REFERENCE_SHA256");
-    assert.equal(result.pilotReport.row_mapping_provenance.method, "EXACT_SAMPLE_NAME_JOIN_TO_OSDR_ISA_SAMPLE_TABLE");
-    assert.equal(result.pilotReport.observed.participant_count, 4);
-    assert.equal(result.pilotReport.observed.sample_count, 8);
-    assert.deepEqual(result.pilotReport.observed.timepoints, ["L-3", "R+1"]);
-    assert.equal(result.pilotReport.observed.paired_participant_count, 4);
-    assert.equal(result.pilotReport.baseline_percent_normalization_audit.status, "PASS");
-    assert.equal(result.pilotReport.analysis_gate.data_pipeline_completed, true);
-    assert.equal(result.pilotReport.trace_contract.decision, "LIMITED_EVIDENCE");
-    assert.ok(result.pilotReport.trace_contract.decision_reasons.some(
-      (item) => item.code === "LOW_INDEPENDENT_PARTICIPANT_COUNT"
-    ));
-    const saved = await fs.readFile(path.join(outputDir, fileName));
-    assert.equal(sha256(saved), expectedDigest);
-  } finally {
-    await fs.rm(outputDir, { recursive: true, force: true });
-  }
-});
-
-test("metadata-backed mapping refuses CSV sample names that cannot be joined to the official ISA table", () => {
-  const { extractSampleMetadata, mapRowsUsingSampleMetadata } = require("../scripts/fetch-osd575.js");
-  const metadata = makeOsd575MetadataPayload();
-  const sampleMetadata = extractSampleMetadata(metadata);
-  const headers = ["Sample Name", "crp_concentration_picogram_per_milliliter"];
-  const rows = [{ "Sample Name": "C999_serum_L-3", crp_concentration_picogram_per_milliliter: "42" }];
-  const mapped = mapRowsUsingSampleMetadata(headers, rows, sampleMetadata);
-  assert.equal(mapped.columnMap, null);
-  assert.equal(mapped.provenance.complete_csv_row_match, false);
-  assert.deepEqual(mapped.provenance.unmatched_csv_sample_names, ["C999_serum_L-3"]);
-});
-
 test("end-to-end audit uses the documented unversioned catalog fallback and analyzes synthetic incomplete CSV bytes", async () => {
   const fs = require("node:fs/promises");
   const os = require("node:os");
@@ -1138,7 +1002,6 @@ test("end-to-end audit uses the documented unversioned catalog fallback and anal
   try {
     const result = await main({
       outputDir,
-      referenceSha256: expectedDigest,
       logger: { log() {}, warn() {}, error() {} },
       fetchImpl: async (url) => {
         const address = String(url);
@@ -1175,7 +1038,7 @@ test("end-to-end audit uses the documented unversioned catalog fallback and anal
     assert.equal(result.pilotReport.column_map.timepoint, "Factor Value: Time");
     assert.equal(result.pilotReport.observed.participant_count, 4);
     assert.equal(result.pilotReport.observed.sample_count, 4);
-    assert.deepEqual(result.pilotReport.observed.timepoints, ["L-3"]);
+    assert.deepEqual(result.pilotReport.observed.timepoints, ["Launch minus 3"]);
     assert.ok(result.pilotReport.trace_contract.decision_reasons.some(
       (item) => item.code === "INSUFFICIENT_PAIRED_TIMEPOINTS"
     ));
