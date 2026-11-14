@@ -25,6 +25,18 @@ test("all local scripts, stylesheet and manifest referenced by index.html exist"
   assets.forEach((asset) => assert.equal(fs.existsSync(path.join(root, asset)), true, asset + " should exist"));
 });
 
+test("PWA manifest declares scalable 192px and 512px ASTRA icons that exist locally", function () {
+  const manifest = JSON.parse(read("manifest.webmanifest"));
+  assert.equal(manifest.name, "ASTRA — Crew Health Monitor");
+  assert.equal(manifest.start_url, "./");
+  assert.equal(manifest.display, "standalone");
+  assert.ok(manifest.icons.some((icon) => icon.sizes === "192x192" && icon.type === "image/svg+xml"));
+  assert.ok(manifest.icons.some((icon) => icon.sizes === "512x512" && icon.type === "image/svg+xml"));
+  manifest.icons.forEach((icon) => {
+    assert.equal(fs.existsSync(path.join(root, icon.src)), true, icon.src + " should exist");
+  });
+});
+
 test("every local app-shell asset in the service worker exists", function () {
   const worker = read("sw.js");
   const block = worker.match(/const APP_SHELL = \[([^\]]+)\]/);
