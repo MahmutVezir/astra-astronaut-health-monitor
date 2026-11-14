@@ -40,3 +40,14 @@ test("nominal demo scenario stays within demo bands", function () {
   assert.equal(result.status, "WITHIN");
   assert.equal(result.available, 4);
 });
+
+test("supports a user-configured reference band", function () {
+  const bands = { heartRate: { lower: 70, upper: 90 } };
+  assert.equal(health.evaluateSignal("heartRate", 68, bands).status, "REVIEW");
+  assert.equal(health.evaluateSignal("heartRate", 75, bands).status, "WITHIN");
+});
+
+test("rejects an invalid configured reference band", function () {
+  const bands = { heartRate: { lower: 100, upper: 80 } };
+  assert.equal(health.evaluateSignal("heartRate", 75, bands).status, "INVALID");
+});
