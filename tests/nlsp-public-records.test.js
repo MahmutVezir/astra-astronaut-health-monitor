@@ -3,7 +3,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   makeSearchUrl, makeDetailUrl, makeFileDownloadUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle,
-  parseCsvTable, parseClockDurationMinutes, parseMonthDayYear, summarizeActigraphyCsv
+  parseCsvTable, parseClockDurationMinutes, parseMonthDayYear, summarizeActigraphyCsv,
+  summarizeBRSMCFCsv
 } = require("../scripts/audit-nlsp-public-records.js");
 
 test("search uses the observed NLSP experiments route and encodes the search term", () => {
@@ -115,4 +116,43 @@ test("file download URLs use the observed NLSP same-origin download route", () =
   assert.equal(url.origin, "https://nlsp.nasa.gov");
   assert.equal(url.pathname, "/api/v1/files/file%2Fid%20with%20spaces/download");
   assert.throws(() => makeFileDownloadUrl(" "));
+});
+
+
+test("BRSMCF participant CSV audit summarizes cohort, phases, dates and named cardiac variables without inferring units", () => {
+  const csv = [
+    "ID,Campaign,Subject,Test_Phase,BR_Day,Date,SBP,DBP,EF pre,SV pre,CO pre",
+    "1,C3A,101,PRE_TEST,5,9/3/2004,110,70,62.4,46.3,3.43",
+    "2,C3A,101,IN_TEST,10,9/8/2004,108,68,64.2,48.0,3.55",
+    "3,C3B,202,POST_TEST,15,9/13/2004,114,72,NA,50.1,#DIV/0!"
+  ].join("\r\n");
+  const result = summarizeBRSMCFCsv(csv);
+  assert.equal(result.row_count, 3);
+  assert.equal(result.column_count, 11);
+  assert.equal(result.record_granularity, "PARTICIPANT_LEVEL_ROWS");
+  assert.deepEqual(result.participant_ids, ["101", "202"]);
+  assert.deepEqual(result.phase_counts, { PRE_TEST: 1, IN_TEST: 1, POST_TEST: 1 });
+  assert.deepEqual(result.campaign_counts, { C3A: 2, C3B: 1 });
+  assert.equal(result.earliest_date_iso, "2004-09-03");
+  assert.equal(result.latest_date_iso, "2004-09-13");
+  assert.equal(result.candidate_numeric_metrics.SBP.minimum, 108);
+  assert.equal(result.candidate_numeric_metrics.SBP.maximum, 114);
+  assert.equal(result.candidate_numeric_metrics["EF pre"].valid_numeric_count, 2);
+  assert.equal(result.candidate_numeric_metrics["EF pre"].missing_or_non_numeric_count, 1);
+  assert.equal(result.candidate_numeric_metrics["EF pre"].unit, "NOT_INFERRED_FROM_COLUMN_NAME");
+  assert.equal(result.nonnumeric_error_token_count, 1);
+  assert.equal(result.units_inferred, false);
+});
+
+test("BRSMCF average-file audit identifies period aggregates rather than participant records", () => {
+  const csv = [
+    "ID,Period Covered,Statistic,EF pre,SV pre",
+    "1,BR-5 to BR-4,AVERAGE,62.1,44.2",
+    "2,BR-4 to BR-3,AVERAGE,60.7,42.9"
+  ].join("\n");
+  const result = summarizeBRSMCFCsv(csv);
+  assert.equal(result.record_granularity, "PERIOD_AGGREGATE_ROWS");
+  assert.equal(result.participant_count, 0);
+  assert.deepEqual(result.period_values, ["BR-4 to BR-3", "BR-5 to BR-4"]);
+  assert.deepEqual(result.statistic_counts, { AVERAGE: 2 });
 });
