@@ -90,6 +90,50 @@
           </article>
         </div>
 
+        <section class="panel research-evidence-panel" aria-labelledby="research-evidence-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">VERIFIED NASA TRANSFORMED DATA · HDCVD9</p>
+              <h3 id="research-evidence-title">Crew biomarker profiles</h3>
+              <p class="section-copy">Participant-level descriptive views from the original transformed serum file. Measurements are shown only after source hash, sample mapping and normalization checks pass.</p>
+            </div>
+            <span class="state-label state-limited" id="research-evidence-status">POST-MAP AUDIT PENDING</span>
+          </div>
+
+          <div class="research-evidence-metrics">
+            <article><span>HASH-VERIFIED SOURCE ROWS</span><strong id="research-evidence-rows">—</strong><small>CSV sample rows</small></article>
+            <article><span>ISA SAMPLE MATCHES</span><strong id="research-evidence-matches">—</strong><small>Exact Sample Name join</small></article>
+            <article><span>INDEPENDENT PARTICIPANTS</span><strong id="research-evidence-people">—</strong><small>Repeated measurements are not independent people</small></article>
+            <article><span>NORMALIZATION CHECK</span><strong id="research-evidence-normalization">—</strong><small>All-crew pre-flight mean</small></article>
+          </div>
+
+          <p class="research-evidence-error" id="research-evidence-error" role="alert" hidden></p>
+
+          <div class="research-chart-controls">
+            <div>
+              <label for="research-marker-select">BIOMARKER</label>
+              <select id="research-marker-select" disabled>
+                <option value="">Waiting for verified source data</option>
+              </select>
+            </div>
+            <p id="research-marker-unit">Concentration unit and normalization are shown after the source checks complete.</p>
+          </div>
+
+          <div class="research-chart-frame">
+            <svg id="research-marker-chart" viewBox="0 0 860 360" role="img" aria-label="Participant-level normalized biomarker values across NASA OSD-575 sample collection timepoints">
+              <text x="430" y="175" text-anchor="middle" class="chart-placeholder">Waiting for post-mapping audit</text>
+            </svg>
+          </div>
+          <div class="research-chart-legend" id="research-chart-legend" aria-label="Participant legend"></div>
+          <div class="research-table-wrap" id="research-evidence-table" aria-live="polite"></div>
+          <p class="research-normalization-note" id="research-normalization-note">Normalization values are percentages of the mean concentration across all four crew members at their three pre-flight collections (12 samples total). The 100% reference is a mathematical baseline, not a clinical threshold.</p>
+          <p class="research-flagged-note" id="research-flagged-marker-note">Fibrinogen is present in the preserved source file but will be flagged separately because vendor documentation says it cannot be measured in serum. It must not be used for biological interpretation unless the discrepancy is resolved.</p>
+          <div class="research-source-download">
+            <a href="./data/osdr/OSD-575/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv" download>Download preserved NASA transformed CSV ↗</a>
+            <span id="research-source-hash">Expected SHA-256: fdba6c3ce454…d9cfc75c</span>
+          </div>
+        </section>
+
         <article class="panel research-timeline-panel">
           <div class="panel-heading"><div><p class="eyebrow">SAMPLE COLLECTION DESIGN</p><h3>Reported timepoints</h3></div><span class="mini-label">RELATIVE TO LAUNCH / RETURN</span></div>
           <div class="research-timeline" id="research-timeline" aria-label="OSD-575 sample collection timeline"></div>
@@ -207,6 +251,7 @@
     </main>
   </div>
   <script src="research-data.js"></script>
+  <script src="research-data-loader.js"></script>
   <script src="health-engine.js"></script>
   <script src="app.js"></script>
 </body>
