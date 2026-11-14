@@ -54,15 +54,14 @@ Run `npm test` with Node.js 18+.
 - Main commit: `a492284096a3e687d67047972b94182748089bcc`.
 - GitHub Actions validation + deployment: [run 43632725370](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43632725370).
 - JavaScript syntax checks: passed.
-- Automated test suite: **99 passed, 0 failed, 0 skipped**.
+- Automated test suite: **99 passed, 0 failed, 0 skipped** (confirmed from the test job log; run duration about 542 ms).
 - Research Mode integration: passed against the committed NASA OSD-575 files; source SHA-256, 28/28 sample mapping, nine-analyte normalization, participant charts/table, and fibrinogen warning were verified.
-- Service Worker tests: passed for initial Research Mode precaching (including the app icon), offline navigation fallback, same-origin cache writes, cache-version cleanup limited to ASTRA, and request pass-through.
-- PWA static checks: passed for manifest identity, standalone display, declared 192×192 and 512×512 SVG icon entries, and local icon-file existence.
+- Service Worker tests: passed for initial Research Mode precaching, offline navigation fallback, same-origin cache writes, cache-version cleanup limited to ASTRA, and request pass-through.
+- Mission-log CSV export: automated UI test verifies MIME type, filename, saved records, wellbeing entry, URL cleanup, and empty-log fallback.
 - GitHub Pages deployment: successful for this main commit.
 - NLSP DSO-470 discovery: [run 43615678402](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678402) succeeded; discovery artifact preserved; zero measurement files downloaded.
 - Initial NASA OSD-575 acquisition: [run #9 (43612460864)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
 - Latest NASA OSD-575 re-audit: [run #10 (43616651617)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43616651617).
-- Verified source import: [run 43612482985](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612482985).
 
 The team still needs to perform and record the manual real-browser checks below. CI success is not a substitute for that visual QA.
 
