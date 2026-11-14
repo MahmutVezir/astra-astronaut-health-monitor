@@ -50,6 +50,8 @@ ASTRA includes research context from these NASA sources:
 
 The app distinguishes source-derived research metadata from simulated or user-entered demo values. It does not treat OSD-575 sample records as live telemetry.
 
+The Research Mode also records a NASA source portfolio: OSD-575 (Inspiration4 serum biospecimens), NLSP BRSMACT (bed-rest actigraphy and sleep summaries), NLSP BRSMCF (bed-rest cardiovascular-function assessments), and DSO 470 (a candidate Shuttle-flight cardiovascular study). Catalogue presence is not treated as file validation: each source remains clearly marked until its exact downloadable files, reuse terms, byte hashes, schema, units, and scientific scope have been inspected. See [the source portfolio and acquisition gates](docs/nasa-research-data-portfolio-2026-11-14.md).
+
 **Current OSD-575 evidence status (14 November 2026):** the NASA metadata API verifies study version 3, four participants, 28 serum samples, and the HDCVD9 transformed-file name. The version-specific file-catalog response returned HTTP 200 but contained zero file records (`hits=0`, `total_hits=1`, empty `studies`). The transformed CSV was not downloaded; therefore no source-file SHA-256 or biomarker analysis exists yet. NASA Research Mode displays this limitation explicitly and abstains from rendering unverified measurements. See [the latest audit run](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43596179113).
 
 ## Transparent assessment logic

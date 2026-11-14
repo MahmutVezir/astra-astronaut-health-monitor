@@ -39,6 +39,60 @@
         note: "The NASA metadata response names the transformed HDCVD9 CSV, but the versioned file-catalog response contains no file record or download URL. No measurements were downloaded or analyzed."
       },
       source: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
-    }
+    },
+    sources: [
+      {
+        id: "OSD-575",
+        name: "Inspiration4 serum biomarker study",
+        provider: "NASA OSDR / ALSDA",
+        environment: "Commercial spaceflight · human biospecimens",
+        domain: "Immune and cardiovascular-related serum proteins",
+        measures: ["HDCVD9 multiplex assay", "Transformed serum measurements"],
+        evidenceStatus: "METADATA_VERIFIED_FILE_NOT_RETRIEVED",
+        statusLabel: "File access blocked",
+        accessNote: "Study metadata is verified; the versioned file catalog returned zero file records. No CSV values or file hash are available.",
+        role: "Primary spaceflight research source",
+        url: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
+      },
+      {
+        id: "BRSMACT_Campaign_1_Actigraphy",
+        name: "UTMB Bedrest Campaign 1 Actigraphy",
+        provider: "NASA Life Sciences Portal (NLSP)",
+        environment: "Ground-based head-down bed-rest analogue",
+        domain: "Sleep and circadian research",
+        measures: ["Sleep duration", "Sleep latency", "Sleep efficiency"],
+        evidenceStatus: "PUBLIC_LISTING_FILE_QA_PENDING",
+        statusLabel: "Public listing · file QA pending",
+        accessNote: "NLSP lists this processed dataset as available online with three files. The reported values are campaign-level processed actigraphy summaries, not live astronaut telemetry.",
+        role: "Priority next dataset for sleep evidence",
+        url: "https://nlsp.nasa.gov/search/data/details/e26501eb-7d7a-5012-8c8e-c5bdb3eecaf6?dataType=DATASETS"
+      },
+      {
+        id: "BRSMCF",
+        name: "Bed Rest Standard Measures: Cardiovascular Function",
+        provider: "NASA Life Sciences Portal (NLSP)",
+        environment: "Ground-based head-down bed-rest / artificial-gravity analogues",
+        domain: "Cardiovascular structure and function",
+        measures: ["Echocardiography-derived cardiac function", "Stroke volume", "Ejection fraction"],
+        evidenceStatus: "PUBLIC_DATASETS_LISTED_FILE_QA_PENDING",
+        statusLabel: "14 public datasets listed · file QA pending",
+        accessNote: "NLSP lists 14 open-access datasets, including processed CFT70 cardiac-function and UTMB echocardiography collections. These are research assessments, not continuous heart-rate streams.",
+        role: "Priority next dataset for cardiovascular research context",
+        url: "https://nlsp.nasa.gov/search/data/details/9af6f9ba-3730-54ab-a82a-1a32798667ae?dataType=EXPERIMENTS"
+      },
+      {
+        id: "DSO-470",
+        name: "Space Adaptation Syndrome and cerebral blood velocity",
+        provider: "NASA Life Sciences Portal (NLSP)",
+        environment: "Shuttle flights · STS-29, STS-34 and STS-42",
+        domain: "In-flight cardiovascular / cerebral blood-flow physiology",
+        measures: ["Heart rate", "Diastolic blood pressure", "Cerebral artery blood-flow velocity"],
+        evidenceStatus: "PUBLIC_INDEX_CANDIDATE_DETAIL_QA_PENDING",
+        statusLabel: "Public index candidate · detail QA pending",
+        accessNote: "The NLSP experiment index marks the data as complete and publicly available and lists heart rate and diastolic blood pressure. The exact study record and downloadable file listing still require verification before ingestion.",
+        role: "Highest-priority in-flight cardiovascular data candidate",
+        url: "https://nlsp.nasa.gov/explore"
+      }
+    ]
   };
 })(typeof window !== "undefined" ? window : globalThis);

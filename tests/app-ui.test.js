@@ -85,6 +85,19 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistenc
   assert.equal(get("research-samples").textContent, "28");
   assert.equal(get("research-timepoint-count").textContent, "7");
   assert.match(get("research-timeline").innerHTML, /R\+194/);
+  const sources = researchWindow.AstraResearch.sources;
+  assert.equal(sources.length, 4);
+  assert.ok(sources.some((source) => source.id === "OSD-575"));
+  assert.ok(sources.some((source) => source.id === "BRSMACT_Campaign_1_Actigraphy"));
+  assert.ok(sources.some((source) => source.id === "BRSMCF"));
+  assert.ok(sources.some((source) => source.id === "DSO-470"));
+  const actigraphy = sources.find((source) => source.id === "BRSMACT_Campaign_1_Actigraphy");
+  assert.equal(actigraphy.evidenceStatus, "PUBLIC_LISTING_FILE_QA_PENDING");
+  assert.match(actigraphy.accessNote, /not live astronaut telemetry/);
+  const dso470 = sources.find((source) => source.id === "DSO-470");
+  assert.equal(dso470.evidenceStatus, "PUBLIC_INDEX_CANDIDATE_DETAIL_QA_PENDING");
+  assert.match(get("research-source-grid").innerHTML, /BRSMACT_Campaign_1_Actigraphy/);
+  assert.match(get("research-source-grid").innerHTML, /DSO-470/);
   assert.match(get("mode-indicator").textContent, /NASA RESEARCH MODE/);
   assert.equal(get("overall-status").textContent, "WITHIN CONFIGURED BAND");
 
