@@ -46,6 +46,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
 
     group_headers = None
     condition_headers = None
+    group_header_line_index = None
     for index, line in enumerate(lines[:1000]):
         stripped = line.strip()
         if not stripped or stripped.startswith(("!", "#")):
@@ -54,28 +55,36 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
             fields = next(csv.reader([line], delimiter=delimiter))
         except csv.Error:
             continue
-        if len(fields) >= 2:
-            header_index = index
-            headers = [field.strip().lstrip("\ufeff") for field in fields]
-            if index + 2 < len(lines):
+        if len(fields) < 2:
+            continue
+        for condition_index in range(index + 1, min(index + 5, len(lines))):
+            try:
+                condition_fields = next(csv.reader([lines[condition_index]], delimiter=delimiter))
+            except csv.Error:
+                continue
+            normalized_conditions = [field.strip() for field in condition_fields]
+            if not any(value.upper() in {"PREFLIGHT", "POSTFLIGHT"} for value in normalized_conditions):
+                continue
+            for column_index in range(condition_index + 1, min(condition_index + 4, len(lines))):
                 try:
-                    condition_fields = next(csv.reader([lines[index + 1]], delimiter=delimiter))
-                    column_fields = next(csv.reader([lines[index + 2]], delimiter=delimiter))
+                    column_fields = next(csv.reader([lines[column_index]], delimiter=delimiter))
                 except csv.Error:
-                    condition_fields = []
-                    column_fields = []
-                normalized_conditions = [field.strip() for field in condition_fields]
+                    continue
                 normalized_columns = [field.strip() for field in column_fields]
-                if (
-                    normalized_columns
-                    and normalized_columns[0].upper() == "ID_REF"
-                    and any(value.upper() in {"PREFLIGHT", "POSTFLIGHT"} for value in normalized_conditions)
-                ):
-                    group_headers = headers
+                if normalized_columns and normalized_columns[0].upper() == "ID_REF":
+                    group_headers = [field.strip().lstrip("\ufeff") for field in fields]
                     condition_headers = normalized_conditions
                     headers = normalized_columns
-                    header_index = index + 2
+                    header_index = column_index
+                    group_header_line_index = index
+                    break
+            if group_headers is not None:
+                break
+        if group_headers is not None:
             break
+        header_index = index
+        headers = [field.strip().lstrip("\ufeff") for field in fields]
+        break
 
     if header_index is None or headers is None:
         return None
@@ -175,7 +184,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         "group_headers": group_headers[:80] if group_headers else None,
         "condition_headers": condition_headers[:80] if condition_headers else None,
         "header_preview_lines": (
-            lines[header_index - 2:header_index + 1]
+            lines[group_header_line_index:header_index + 1]
             if condition_headers is not None
             else lines[header_index:header_index + 2]
         ),
