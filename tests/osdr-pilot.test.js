@@ -232,14 +232,77 @@ test("OSD-575 pilot marks a checksum mismatch as INVALID_DATA", async () => {
   assert.equal(record.decision_reasons[0].code, "SHA256_MISMATCH");
 });
 
-test("OSDR file links must remain on HTTPS NASA domains", () => {
-  const { resolveOsdrDownloadUrl } = require("../src/core/osdr-client.js");
+test("catalog download URLs stay on NASA HTTPS and redirects allow only the official OSDR public bucket", () => {
+  const {
+    resolveOsdrDownloadUrl,
+    validateOsdrDownloadResponseUrl
+  } = require("../src/core/osdr-client.js");
+  const fileName = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
   assert.equal(
     resolveOsdrDownloadUrl("/geode-py/ws/studies/OSD-575/download?file=x.csv"),
     "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download?file=x.csv"
   );
   assert.throws(() => resolveOsdrDownloadUrl("https://example.com/data.csv"), /outside NASA/);
   assert.throws(() => resolveOsdrDownloadUrl("http://osdr.nasa.gov/file.csv"), /outside NASA/);
+  assert.equal(
+    validateOsdrDownloadResponseUrl("https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download?file=x.csv"),
+    "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download?file=x.csv"
+  );
+  assert.equal(
+    validateOsdrDownloadResponseUrl(
+      "https://nasa-osdr.s3.us-west-2.amazonaws.com/OSD-575/version-3/ALSDA/" + fileName,
+      fileName
+    ),
+    "https://nasa-osdr.s3.us-west-2.amazonaws.com/OSD-575/version-3/ALSDA/" + fileName
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl("https://example.com/" + fileName, fileName),
+    /outside verified NASA HTTPS endpoints/
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl("https://another-bucket.s3.us-west-2.amazonaws.com/" + fileName, fileName),
+    /outside verified NASA HTTPS endpoints/
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl("http://nasa-osdr.s3.us-west-2.amazonaws.com/" + fileName, fileName),
+    /outside verified NASA HTTPS endpoints/
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl(
+      "https://nasa-osdr.s3.us-west-2.amazonaws.com/OSD-575/version-3/other.csv",
+      fileName
+    ),
+    /exact catalog filename/
+  );
+});
+
+test("OSDR download accepts only the exact file redirect in NASA's official public bucket", async () => {
+  const { downloadStudyFile } = require("../src/core/osdr-client.js");
+  const fileName = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
+  const bytes = Buffer.from("source,sample,timepoint,marker\nC001,S1,L-3,1\n", "utf8");
+  const record = {
+    file_name: fileName,
+    remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + fileName
+  };
+  const result = await downloadStudyFile(record, async () => ({
+    ok: true,
+    status: 200,
+    url: "https://nasa-osdr.s3.us-west-2.amazonaws.com/OSD-575/version-3/ALSDA/" + fileName,
+    headers: { get: (name) => name.toLowerCase() === "content-length" ? String(bytes.length) : "text/csv" },
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+  }));
+  assert.deepEqual(result.bytes, bytes);
+  assert.equal(result.downloadUrl, "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + fileName);
+  await assert.rejects(
+    () => downloadStudyFile(record, async () => ({
+      ok: true,
+      status: 200,
+      url: "https://example.com/" + fileName,
+      headers: { get: () => null },
+      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+    })),
+    /outside verified NASA HTTPS endpoints/
+  );
 });
 
 test("unavailable OSDR catalog produces an explicit abstention record", async () => {
