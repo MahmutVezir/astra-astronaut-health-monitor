@@ -127,6 +127,7 @@ async function fetchJsonCaptured(url, fetchImpl, snapshots) {
   snapshots.push({
     url,
     status: response.status,
+    raw_response_text: text,
     body
   });
   return jsonResponse(true, response.status, body, response.url || url);
@@ -145,10 +146,19 @@ async function main() {
   };
 
   console.log("[OSD-575] Fetching live NASA metadata and file catalog...");
-  const [metadata, studyPage] = await Promise.all([
-    fetchStudyMetadata(DATASET_ID, metadataFetch),
-    verifyOfficialStudyPage(fetchWithTimeout)
-  ]);
+  const metadata = await fetchStudyMetadata(DATASET_ID, metadataFetch);
+  await fs.writeFile(
+    path.join(OUTPUT_DIR, "metadata-response.json"),
+    JSON.stringify(metadataSnapshots, null, 2) + "\\n",
+    "utf8"
+  );
+
+  const studyPage = await verifyOfficialStudyPage(fetchWithTimeout);
+  await fs.writeFile(
+    path.join(OUTPUT_DIR, "study-page-verification.json"),
+    JSON.stringify(studyPage, null, 2) + "\\n",
+    "utf8"
+  );
 
   const study = metadata && metadata.study && metadata.study[DATASET_ID];
   if (!study || typeof study !== "object") {
@@ -156,6 +166,12 @@ async function main() {
   }
 
   const fileRecords = await listStudyFiles(DATASET_ID, { fetchImpl: catalogFetch });
+  await fs.writeFile(
+    path.join(OUTPUT_DIR, "file-catalog-response.json"),
+    JSON.stringify(catalogSnapshots, null, 2) + "\\n",
+    "utf8"
+  );
+
   const fileRecord = selectStudyFile(fileRecords, FILE_NAME);
   if (!fileRecord) {
     throw new Error("The exact transformed CSV was not present in the live OSDR file catalog; no alternative file was selected.");
