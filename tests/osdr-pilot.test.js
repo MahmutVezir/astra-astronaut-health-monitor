@@ -474,7 +474,7 @@ test("catalog file selection matches the exact target at the end of remote_url f
   ];
 
   assert.equal(selectStudyFile(records, target), records[0]);
-  assert.deepEqual(getCsvFileCandidates(records), [target, "another.csv"]);
+  assert.deepEqual(getCsvFileCandidates(records), ["another.csv", target, "other.csv"]);
 });
 
 test("catalog pagination rejects a truncated study_file list when file_count is larger", async () => {
