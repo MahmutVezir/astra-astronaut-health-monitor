@@ -1,6 +1,10 @@
 name: Fetch and audit NASA OSD-575
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fetch-osd575.yml"
   workflow_dispatch:
     inputs:
       confirm_download:
@@ -21,7 +25,7 @@ concurrency:
 
 jobs:
   fetch-and-audit:
-    if: ${{ inputs.confirm_download == 'yes' }}
+    if: ${{ github.event_name == 'push' || inputs.confirm_download == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
