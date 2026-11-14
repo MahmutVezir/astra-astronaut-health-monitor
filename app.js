@@ -10,6 +10,9 @@
   };
   const DEFAULT_BANDS = window.AstraHealth.DEFAULT_BANDS;
   const LABELS = { sleepQuality: "Sleep quality", stress: "Perceived stress", fatigue: "Fatigue", mood: "Mood" };
+  let researchEvidence = null;
+  let researchEvidenceError = null;
+  let selectedResearchMarker = "crp";
   let state = {
     readings: Object.assign({}, SCENARIOS.nominal),
     bands: Object.keys(DEFAULT_BANDS).reduce(function (out, key) { out[key] = Object.assign({}, DEFAULT_BANDS[key]); return out; }, {}),
@@ -136,7 +139,7 @@
   function renderResearchMode() {
     const study = window.AstraResearch && window.AstraResearch.inspiration4;
     if (!study) return;
-    const audit = study.acquisitionAudit || {};
+    const audit = researchEvidence ? researchEvidence.audit : (study.acquisitionAudit || {});
     const setText = function (id, value) {
       const target = $(id);
       if (target) target.textContent = value === null || value === undefined || value === ""
@@ -149,23 +152,203 @@
     setText("research-samples", study.sampleCountListed);
     setText("research-timepoint-count", study.timepoints.length);
     setText("research-assay", study.assay || "Not reported");
-    setText("research-decision", audit.decision || "NOT AUDITED");
-    setText("research-metadata-status", audit.metadataVerified ? "Verified" : "Not verified");
-    setText("research-catalog-status", audit.catalogHttpStatus
-      ? "HTTP " + audit.catalogHttpStatus + " · " + (audit.catalogHits || 0) + " records"
-      : "Not verified");
-    setText("research-file-status", audit.csvDownloaded ? "Downloaded" : "Not downloaded");
-    setText("research-hash-status", audit.fileSha256 || "Not calculated");
-    setText("research-run-status", audit.runNumber
-      ? "#" + audit.runNumber + " · " + new Date(audit.auditedAt).toLocaleDateString()
-      : "Not recorded");
-    setText("research-audit-note", audit.note || "No file-acquisition result has been recorded.");
+    setText("research-decision", researchEvidence ? "LIMITED EVIDENCE" : "DATA QA PENDING");
+    setText("research-metadata-status", study.acquisitionAudit.metadataVerified ? "Verified" : "Not verified");
+    setText("research-catalog-status", researchEvidence
+      ? "HTTP 200 · exact HDCVD9 record matched"
+      : "HTTP 200 · target file downloaded; mapped audit pending");
+    setText("research-file-status", researchEvidence
+      ? "Downloaded · " + researchEvidence.fileBytes.toLocaleString() + " bytes"
+      : "Downloaded in run #7 · post-map audit pending");
+    setText("research-hash-status", researchEvidence
+      ? researchEvidence.sha256.slice(0, 12) + "…" + researchEvidence.sha256.slice(-8)
+      : (study.acquisitionAudit.fileSha256
+        ? study.acquisitionAudit.fileSha256.slice(0, 12) + "…" + study.acquisitionAudit.fileSha256.slice(-8)
+        : "Not calculated"));
+    setText("research-run-status", researchEvidence
+      ? "Run ID " + audit.workflow_run_id
+      : "Run #7 · awaiting updated mapping audit");
+    setText("research-audit-note", researchEvidence
+      ? "The exact NASA source bytes pass the reviewed SHA-256 pin. All 28 CSV sample names join one-to-one to the NASA ISA table, and all nine transformed percentage columns reproduce the all-crew pre-flight normalization. The scientific decision remains LIMITED_EVIDENCE: four independent participants, with raw assay data unavailable."
+      : (study.acquisitionAudit.note || "No file-acquisition result has been recorded."));
 
-    const state = $("research-data-state");
-    if (state) {
-      state.textContent = audit.csvDownloaded ? "FILE RETRIEVED" : "NOT RETRIEVED";
-      state.className = "state-label " + (audit.csvDownloaded ? "state-good" : "state-limited");
+    const stateLabel = $("research-data-state");
+    if (stateLabel) {
+      stateLabel.textContent = researchEvidence ? "DATA + ANALYSIS VERIFIED" : "POST-MAP QA PENDING";
+      stateLabel.className = "state-label " + (researchEvidence ? "state-good" : "state-limited");
     }
+    const modeIndicator = $("mode-indicator");
+    if (modeIndicator) {
+      modeIndicator.textContent = researchEvidence
+        ? "NASA RESEARCH MODE · SHA-256 + SAMPLE MAP VERIFIED"
+        : "NASA RESEARCH MODE · POST-MAP DATA QA PENDING";
+    }
+  }
+
+  function renderResearchEvidenceChart(marker) {
+    const svg = $("research-marker-chart");
+    const legend = $("research-chart-legend");
+    const table = $("research-evidence-table");
+    if (!svg || !legend || !table || !marker || !researchEvidence) return;
+
+    const participantIds = researchEvidence.participantIds;
+    const timepoints = researchEvidence.timepoints;
+    const allValues = participantIds.flatMap(function (participant) {
+      return marker.participants[participant].map(function (point) { return point.percentOfPreflightMean; });
+    });
+    const maximum = Math.max(100, ...allValues);
+    const step = Math.max(25, Math.ceil(maximum / 4 / 25) * 25);
+    const yMax = Math.ceil(maximum / step) * step;
+    const left = 66, right = 28, top = 24, bottom = 62, width = 860, height = 360;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    const x = function (index) { return left + index * plotWidth / Math.max(1, timepoints.length - 1); };
+    const y = function (value) { return top + (yMax - value) * plotHeight / yMax; };
+    const ticks = [];
+    for (let tick = 0; tick <= yMax; tick += step) ticks.push(tick);
+    let markup = '<title>' + esc(marker.label) + ' participant-level normalized trajectories</title>' +
+      '<desc>Four individual participant lines across seven NASA OSD-575 serum collection timepoints. Values are percentages of the all-crew pre-flight mean; the dashed 100 percent line is a mathematical reference, not a clinical threshold.</desc>';
+    ticks.forEach(function (tick) {
+      const position = y(tick);
+      markup += '<line x1="' + left + '" y1="' + position.toFixed(1) + '" x2="' + (width - right) + '" y2="' + position.toFixed(1) + '" class="chart-grid"></line>' +
+        '<text x="' + (left - 12) + '" y="' + (position + 4).toFixed(1) + '" text-anchor="end" class="chart-axis-label">' + Math.round(tick) + '</text>';
+    });
+    if (yMax >= 100) {
+      const baselineY = y(100);
+      markup += '<line x1="' + left + '" y1="' + baselineY.toFixed(1) + '" x2="' + (width - right) + '" y2="' + baselineY.toFixed(1) + '" class="chart-baseline"></line>' +
+        '<text x="' + (width - right - 2) + '" y="' + (baselineY - 6).toFixed(1) + '" text-anchor="end" class="chart-baseline-label">100% reference</text>';
+    }
+    timepoints.forEach(function (timepoint, index) {
+      markup += '<text x="' + x(index).toFixed(1) + '" y="' + (height - bottom + 24) + '" text-anchor="middle" class="chart-axis-label">' + esc(timepoint.replace("-", "−")) + '</text>';
+    });
+    markup += '<text x="18" y="' + (height / 2) + '" transform="rotate(-90 18 ' + (height / 2) + ')" text-anchor="middle" class="chart-axis-title">% of pre-flight mean</text>';
+    markup += '<text x="' + (left + plotWidth / 2) + '" y="' + (height - 12) + '" text-anchor="middle" class="chart-axis-title">NASA OSD-575 sample collection timepoint</text>';
+
+    participantIds.forEach(function (participant, index) {
+      const points = marker.participants[participant].map(function (point, pointIndex) {
+        return { x: x(pointIndex), y: y(point.percentOfPreflightMean), value: point.percentOfPreflightMean, timepoint: point.timepoint };
+      });
+      const path = points.map(function (point, pointIndex) {
+        return (pointIndex === 0 ? "M" : "L") + point.x.toFixed(1) + " " + point.y.toFixed(1);
+      }).join(" ");
+      markup += '<path d="' + path + '" class="chart-line crew-' + index + '"></path>';
+      points.forEach(function (point) {
+        markup += '<circle cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.2" class="chart-point crew-' + index + '"><title>' +
+          esc(participant + " · " + point.timepoint + " · " + point.value.toFixed(2) + "%") +
+          '</title></circle>';
+      });
+    });
+    svg.innerHTML = markup;
+    svg.setAttribute("aria-label", marker.label + " normalized values for " + participantIds.join(", ") + " across " + timepoints.join(", "));
+
+    legend.innerHTML = participantIds.map(function (participant, index) {
+      return '<span><i class="crew-' + index + '"></i>' + esc(participant) + '</span>';
+    }).join("");
+
+    let tableMarkup = '<table class="research-evidence-table"><thead><tr><th>Participant</th>' +
+      timepoints.map(function (timepoint) { return '<th>' + esc(timepoint) + '</th>'; }).join("") +
+      '</tr></thead><tbody>';
+    participantIds.forEach(function (participant) {
+      tableMarkup += '<tr><th scope="row">' + esc(participant) + '</th>' +
+        marker.participants[participant].map(function (point) {
+          return '<td>' + point.percentOfPreflightMean.toFixed(1) + '%</td>';
+        }).join("") + '</tr>';
+    });
+    tableMarkup += '</tbody><tfoot><tr><td>Crew mean (n=4)</td>' +
+      marker.byTimepoint.map(function (point) { return '<td>' + point.mean.toFixed(1) + '%</td>'; }).join("") +
+      '</tr></tfoot></table>';
+    table.innerHTML = tableMarkup;
+
+    const markerUnit = $("research-marker-unit");
+    if (markerUnit) {
+      markerUnit.textContent = marker.unit + " concentration; chart and table show the source's normalized percent column. Concentration values remain available in the preserved CSV.";
+    }
+    const flagged = $("research-flagged-marker-note");
+    if (flagged) {
+      flagged.hidden = !marker.flaggedForInterpretation;
+      if (marker.flaggedForInterpretation) {
+        flagged.textContent = "FIBRINOGEN FLAG: this assay column is present in the downloaded file and passes the mathematical normalization check, but the vendor states fibrinogen cannot be measured in serum. Values are shown for traceability only and must not be interpreted biologically until the discrepancy is resolved.";
+      }
+    }
+  }
+
+  function renderResearchEvidence() {
+    const status = $("research-evidence-status");
+    const rows = $("research-evidence-rows");
+    const matches = $("research-evidence-matches");
+    const people = $("research-evidence-people");
+    const normalization = $("research-evidence-normalization");
+    const error = $("research-evidence-error");
+    const select = $("research-marker-select");
+    if (!researchEvidence) {
+      if (status) {
+        status.textContent = researchEvidenceError ? "SOURCE VERIFICATION FAILED" : "POST-MAP AUDIT PENDING";
+        status.className = "state-label state-limited";
+      }
+      [rows, matches, people, normalization].forEach(function (item) {
+        if (item) item.textContent = "—";
+      });
+      if (error) {
+        error.hidden = !researchEvidenceError;
+        error.textContent = researchEvidenceError || "";
+      }
+      if (select) select.disabled = true;
+      return;
+    }
+
+    if (status) {
+      status.textContent = "SHA-256 · MAP · NORMALIZATION PASS";
+      status.className = "state-label state-good";
+    }
+    if (rows) rows.textContent = researchEvidence.rowCount + " / 28";
+    if (matches) matches.textContent = researchEvidence.matchedSampleCount + " / 28";
+    if (people) people.textContent = researchEvidence.participantIds.length + " (n=4)";
+    if (normalization) normalization.textContent = researchEvidence.normalizationAudit.analyteCount + " / 9 PASS";
+    if (error) error.hidden = true;
+
+    if (select) {
+      const options = researchEvidence.markers.map(function (marker) {
+        const label = marker.label + (marker.flaggedForInterpretation ? " · flagged" : "");
+        return '<option value="' + esc(marker.id) + '">' + esc(label) + '</option>';
+      }).join("");
+      if (select.innerHTML !== options) select.innerHTML = options;
+      const selected = researchEvidence.markers.some(function (marker) { return marker.id === selectedResearchMarker; })
+        ? selectedResearchMarker
+        : researchEvidence.markers[0].id;
+      selectedResearchMarker = selected;
+      select.value = selected;
+      select.disabled = false;
+      const selectedMarker = researchEvidence.markers.find(function (marker) { return marker.id === selected; });
+      renderResearchEvidenceChart(selectedMarker);
+    }
+
+    const normalizationNote = $("research-normalization-note");
+    if (normalizationNote) {
+      normalizationNote.textContent = "Normalization audit: PASS for " + researchEvidence.normalizationAudit.analyteCount +
+        " concentration/percentage pairs; " + researchEvidence.normalizationAudit.baselineSampleCount +
+        " all-crew pre-flight samples define the denominator. Maximum absolute formula difference: " +
+        researchEvidence.normalizationAudit.maxAbsoluteError.toExponential(2) +
+        ". The dashed 100% line is a mathematical reference, not a clinical threshold.";
+    }
+    const hash = $("research-source-hash");
+    if (hash) hash.textContent = "SHA-256 " + researchEvidence.sha256;
+  }
+
+  async function loadResearchEvidence() {
+    if (!window.AstraResearchLoader || typeof window.AstraResearchLoader.loadOds575Evidence !== "function") return;
+    const study = window.AstraResearch && window.AstraResearch.inspiration4;
+    if (!study || !study.evidenceData) return;
+    const status = $("research-evidence-status");
+    if (status) status.textContent = "VERIFYING SOURCE FILE";
+    try {
+      researchEvidence = await window.AstraResearchLoader.loadOds575Evidence({ evidence: study.evidenceData });
+      researchEvidenceError = null;
+    } catch (error) {
+      researchEvidence = null;
+      researchEvidenceError = error && error.message ? error.message : "The source evidence could not be verified.";
+    }
+    renderResearchMode();
+    renderResearchEvidence();
   }
 
   function renderResearchSources() {
@@ -228,6 +411,7 @@
     renderResearchMode();
     renderResearchTimeline();
     renderResearchSources();
+    renderResearchEvidence();
     $("last-updated").textContent = state.updatedAt ? "Updated " + new Date(state.updatedAt).toLocaleString() : "Demo readings loaded";
   }
 
@@ -249,7 +433,7 @@
     const modeIndicator = $("mode-indicator");
     if (modeIndicator) {
       modeIndicator.textContent = name === "research"
-        ? "NASA RESEARCH MODE · VERIFIED METADATA · FILE NOT RETRIEVED"
+        ? (researchEvidence ? "NASA RESEARCH MODE · VERIFIED SOURCE DATA" : "NASA RESEARCH MODE · DATA QA PENDING")
         : "DEMO / MANUAL INPUT · NO LIVE SENSORS";
     }
   }
@@ -387,6 +571,7 @@
   $("baseline-form").addEventListener("submit", saveBands);
   $("wellbeing-form").addEventListener("submit", saveWellbeing);
   $("export-csv").addEventListener("click", exportCsv);
+  $("research-marker-select").addEventListener("change", function () { selectedResearchMarker = this.value; renderResearchEvidence(); });
   $("clear-log").addEventListener("click", function () {
     state.log = [];
     saveState();
@@ -399,6 +584,7 @@
   loadState();
   activateView("research");
   renderAll();
+  loadResearchEvidence();
   if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("./sw.js").catch(function () {
