@@ -303,7 +303,7 @@ test("OSDR download accepts the observed ALSDA bucket only for the exact HDCVD9 
   const bytes = Buffer.from("source,sample,timepoint,marker\nC001,S1,L-3,1\n", "utf8");
   const record = {
     file_name: fileName,
-    file_size: Buffer.byteLength("source,sample,timepoint,marker\\nC001,S1,L-3,1\\n", "utf8"),
+    file_size: bytes.length,
     remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + fileName
   };
   const result = await downloadStudyFile(record, async () => ({
