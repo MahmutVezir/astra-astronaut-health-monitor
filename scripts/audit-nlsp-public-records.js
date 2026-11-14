@@ -173,6 +173,34 @@ async function run() {
       const payload = fetched.payload;
       const record = payload && typeof payload === "object" ? (payload.record || payload.data?.record || payload.data || payload) : null;
       const related = payload && typeof payload === "object" ? payload.related || null : null;
+      const datasetItems = Array.isArray(related?.datasets) ? related.datasets : [];
+      const dataFileItems = Array.isArray(related?.data_files?.items) ? related.data_files.items : [];
+      const datasetSummaries = datasetItems.map((dataset) => ({
+        id: getRecordId(dataset),
+        title: String(dataset?.title || dataset?.dataset_title || dataset?.name || dataset?.label || "").trim(),
+        keys: dataset && typeof dataset === "object" ? Object.keys(dataset).slice(0, 80) : [],
+        children_count: Array.isArray(dataset?.children) ? dataset.children.length : 0,
+        children: (Array.isArray(dataset?.children) ? dataset.children : []).slice(0, 100).map((child) => ({
+          id: getRecordId(child),
+          label: String(child?.label || child?.file_name || child?.name || "").trim(),
+          keys: child && typeof child === "object" ? Object.keys(child).slice(0, 60) : [],
+          values: child && typeof child === "object" ? Object.fromEntries(
+            Object.entries(child).filter(([key, value]) =>
+              /(file|download|remote|url|md5|guid|access|license|restrict|size|public)/i.test(key) &&
+              (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+            )
+          ) : {}
+        }))
+      }));
+      const dataFileSummaries = dataFileItems.map((item) => ({
+        keys: item && typeof item === "object" ? Object.keys(item).slice(0, 80) : [],
+        values: item && typeof item === "object" ? Object.fromEntries(
+          Object.entries(item).filter(([key, value]) =>
+            /(file|download|remote|url|md5|guid|access|license|restrict|size|public)/i.test(key) &&
+            (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+          )
+        ) : {}
+      }));
       detailResults.push({
         query_record: item,
         request: fetched.result,
@@ -181,6 +209,10 @@ async function run() {
         top_level_keys: payload && typeof payload === "object" ? Object.keys(payload).slice(0, 80) : [],
         record_keys: record && typeof record === "object" ? Object.keys(record).slice(0, 120) : [],
         related_keys: related && typeof related === "object" ? Object.keys(related).slice(0, 80) : [],
+        related_dataset_count: datasetItems.length,
+        related_data_file_count: dataFileItems.length,
+        related_datasets: datasetSummaries,
+        related_data_files: dataFileSummaries,
         file_access_hints: collectMetadataHints(payload)
       });
     } catch (error) {
