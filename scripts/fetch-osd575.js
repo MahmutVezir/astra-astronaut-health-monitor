@@ -6,7 +6,7 @@ const crypto = require("node:crypto");
 
 const { fetchStudyMetadata, listStudyFiles, selectStudyFile, getCsvFileCandidates, getRemoteUrl, downloadStudyFile } = require("../src/core/osdr-client.js");
 const { parseCsv } = require("../src/core/csv.js");
-const { OSD575, runOsd575Pilot } = require("../src/core/osd575-pilot.js");
+const { OSD575, analyzeOsd575FileBytes } = require("../src/core/osd575-pilot.js");
 const { createTraceRecord } = require("../src/core/trace-contract.js");
 
 const DATASET_ID = "OSD-575";
@@ -401,23 +401,97 @@ async function main(options = {}) {
     }
   }
 
-  logger.log("[OSD-575] Fetching the OSDR file catalog...");
-  let fileRecords = [];
+  logger.log("[OSD-575] Discovering the exact file through documented OSDR catalog forms...");
+  const catalogAttempts = [];
+  const combinedFileRecords = new Map();
   let catalogError = null;
-  try {
-    fileRecords = await listStudyFiles(DATASET_ID, {
-      fetchImpl: catalogFetch,
-      studyVersion: studyMetadata ? studyMetadata.dataset_version : DATASET_VERSION
-    });
-  } catch (error) {
-    catalogError = error;
-  } finally {
-    await writeJson(outputDir, "file-catalog-response.json", catalogSnapshots);
+  let fileRecord = null;
+  let fileRecordSource = null;
+
+  async function attemptCatalog(label, catalogOptions) {
+    const startIndex = catalogSnapshots.length;
+    try {
+      const records = await listStudyFiles(DATASET_ID, {
+        ...catalogOptions,
+        fetchImpl: async (url, requestOptions) => {
+          const response = await fetchJsonCaptured(url, fetchImpl, catalogSnapshots);
+          const snapshot = catalogSnapshots[catalogSnapshots.length - 1];
+          if (snapshot) snapshot.catalog_attempt = label;
+          return response;
+        }
+      });
+      records.forEach((record) => {
+        const key = (record.file_name || record.filename || record.name || "") +
+          "|" + (record.remote_url || record.download_url || record.url || "");
+        combinedFileRecords.set(key, record);
+      });
+      const match = selectStudyFile(records, FILE_NAME);
+      catalogAttempts.push({
+        label,
+        requests: catalogSnapshots.slice(startIndex).map((snapshot) => snapshot.url),
+        response_count: catalogSnapshots.length - startIndex,
+        returned_record_count: records.length,
+        csv_filenames: getCsvFileCandidates(records),
+        exact_target_found: Boolean(match),
+        error: null
+      });
+      if (match) {
+        fileRecord = match;
+        fileRecordSource = label;
+      }
+      return records;
+    } catch (error) {
+      catalogAttempts.push({
+        label,
+        requests: catalogSnapshots.slice(startIndex).map((snapshot) => snapshot.url),
+        response_count: catalogSnapshots.length - startIndex,
+        returned_record_count: null,
+        csv_filenames: [],
+        exact_target_found: false,
+        error: error.message
+      });
+      return [];
+    }
   }
 
-  const fileRecord = !catalogError && !metadataValidationError
-    ? selectStudyFile(fileRecords, FILE_NAME)
-    : null;
+  if (!metadataFetchError && !metadataValidationError) {
+    // First repeat the request that produced the observed empty versioned catalog.
+    await attemptCatalog("VERSIONED_PAGINATED_TRAILING_SLASH", {
+      studyVersion: studyMetadata.dataset_version,
+      trailingSlash: true,
+      bareFirstPage: false,
+      allFiles: true
+    });
+
+    // NASA documents the decimal-version accession as a bare /files/{id.version} request.
+    if (!fileRecord) {
+      await attemptCatalog("VERSIONED_DOCUMENTED_BARE_ENDPOINT", {
+        studyVersion: studyMetadata.dataset_version,
+        trailingSlash: false,
+        bareFirstPage: true
+      });
+    }
+
+    // NASA also documents the unversioned /files/{study_id} endpoint.
+    if (!fileRecord) {
+      await attemptCatalog("UNVERSIONED_DOCUMENTED_BARE_ENDPOINT", {
+        studyVersion: null,
+        trailingSlash: false,
+        bareFirstPage: true
+      });
+    }
+  }
+
+  const fileRecords = [...combinedFileRecords.values()];
+  if (!fileRecord && catalogAttempts.length > 0 &&
+      catalogAttempts.every((attempt) => attempt.error !== null)) {
+    catalogError = new Error(
+      "Every documented OSDR file-catalog form failed: " +
+      catalogAttempts.map((attempt) => attempt.label + ": " + attempt.error).join(" | ")
+    );
+  }
+  await writeJson(outputDir, "file-catalog-response.json", catalogSnapshots);
+
   const catalogDownloadUrl = fileRecord ? getRemoteUrl(fileRecord) : null;
 
   let downloaded = null;
@@ -454,14 +528,14 @@ async function main(options = {}) {
     trace = createAuditTrace(
       "INSUFFICIENT_EVIDENCE",
       hasMetadataReference
-        ? "METADATA_FILE_REFERENCE_WITHOUT_CATALOG_DOWNLOAD_RECORD"
+        ? "NO_CATALOG_MATCH_AFTER_DOCUMENTED_LOOKUPS"
         : "REQUESTED_FILE_NOT_IN_CATALOG",
       hasMetadataReference
         ? "NASA meta/575 identifies the exact transformed CSV in " +
           metadataFileReferences.occurrences.map((item) => item.source_path).join("; ") +
-          ", but the captured files/575.3 response contains no matching file record or download URL. " +
-          "No download URL was guessed and no substitute file was selected."
-        : "The exact transformed CSV was not found in the captured NASA metadata or file-catalog records. No substitute file was selected."
+          ", but none of the documented versioned and unversioned catalog requests returned an exact file record with a verified download URL. " +
+          "This is a catalog-resolution failure, not proof that the file does not exist. No URL was synthesized and no substitute file was selected."
+        : "The exact transformed CSV was not found in the captured NASA metadata or documented file-catalog responses. No substitute file was selected."
     );
   } else if (!catalogDownloadUrl) {
     trace = createAuditTrace(
@@ -523,26 +597,38 @@ async function main(options = {}) {
         };
       };
 
-      trace = await runOsd575Pilot({
-        fetchImpl: replayFetch,
+      const analysis = analyzeOsd575FileBytes({
+        bytes: downloaded.bytes,
         columnMap,
-        studyVersion: studyMetadata.dataset_version,
-        rawDataAvailable: studyMetadata.raw_data_file_status !== "Not Available"
+        rawDataAvailable: studyMetadata.raw_data_file_status !== "Not Available",
+        minIndependentParticipants: 10
       });
+      trace = analysis.trace;
+      parsed = analysis.parsed || parsed;
+      parseError = analysis.trace.decision === "INVALID_DATA" &&
+        analysis.trace.decision_reasons.some((reason) => reason.code === "CSV_PARSE_FAILED")
+        ? analysis.trace.decision_reasons[0].message
+        : parseError;
 
       observed = parsed ? {
         header_count: parsed.headers.length,
         row_count: parsed.rows.length,
         participant_count: columnMap
-          ? new Set(parsed.rows.map((row) => row[columnMap.participant]).filter(Boolean)).size
+          ? new Set(parsed.rows.map((row) => String(row[columnMap.participant] ?? "").trim()).filter(Boolean)).size
           : null,
         sample_count: columnMap
-          ? new Set(parsed.rows.map((row) => row[columnMap.sample]).filter(Boolean)).size
+          ? new Set(parsed.rows.map((row) => String(row[columnMap.sample] ?? "").trim()).filter(Boolean)).size
           : null,
         timepoints: columnMap
-          ? [...new Set(parsed.rows.map((row) => row[columnMap.timepoint]).filter(Boolean))].sort()
+          ? [...new Set(parsed.rows.map((row) => String(row[columnMap.timepoint] ?? "").trim()).filter(Boolean))].sort()
           : [],
-        measurement_columns: columnMap ? columnMap.measurement : []
+        measurement_columns: columnMap ? columnMap.measurement : [],
+        numeric_measurement_cells: analysis.evidence
+          ? analysis.evidence.numeric_measurement_cells
+          : null,
+        paired_participant_count: analysis.evidence
+          ? analysis.evidence.paired_participant_count
+          : null
       } : null;
     } catch (error) {
       trace = createAuditTrace(
@@ -561,10 +647,27 @@ async function main(options = {}) {
     }),
     source_metadata_api: METADATA_URL,
     source_file_catalog_api: catalogSnapshots[0] ? catalogSnapshots[0].url : CATALOG_URL,
+    source_file_catalog_apis: catalogSnapshots.map((snapshot) => snapshot.url),
+    catalog_discovery_attempts: catalogAttempts,
+    catalog_access_state: downloaded
+      ? "FILE_DOWNLOADED_AND_HASHED"
+      : fileRecord
+        ? "CATALOG_MATCH_FOUND_BUT_DOWNLOAD_NOT_VERIFIED"
+        : "NO_VERIFIED_CATALOG_MATCH_OR_DOWNLOAD_URL",
     source_study_page: STUDY_PAGE_URL,
     file_name: FILE_NAME,
     metadata_file_references: metadataFileReferences,
     file_catalog_record_found: Boolean(fileRecord),
+    file_catalog_record_source: fileRecordSource,
+    file_catalog_record: fileRecord
+      ? {
+          file_name: fileRecord.file_name || fileRecord.filename || fileRecord.name || null,
+          remote_url: getRemoteUrl(fileRecord),
+          file_size: fileRecord.file_size ?? null,
+          category: fileRecord.category ?? null,
+          restricted: fileRecord.restricted ?? null
+        }
+      : null,
     file_download_url: downloaded ? downloaded.downloadUrl : null,
     file_sha256: digest,
     reference_sha256: null,
@@ -592,9 +695,11 @@ async function main(options = {}) {
     column_map: columnMap,
     observed,
     metadata_file_references: metadataFileReferences,
+    catalog_discovery_attempts: catalogAttempts,
     catalog_file_candidates: getCsvFileCandidates(fileRecords),
     catalog_page_diagnostics: catalogSnapshots.map((snapshot) => ({
       url: snapshot.url,
+      catalog_attempt: snapshot.catalog_attempt || null,
       status: snapshot.status,
       page_number: snapshot.body && snapshot.body.page_number,
       page_size: snapshot.body && snapshot.body.page_size,
@@ -608,6 +713,17 @@ async function main(options = {}) {
         ? Object.keys(snapshot.body)
         : []
     })),
+    analysis_gate: {
+      catalog_match_found: Boolean(fileRecord),
+      download_url_verified: Boolean(downloaded && downloaded.downloadUrl),
+      raw_bytes_preserved: Boolean(downloaded),
+      file_sha256_calculated: Boolean(digest),
+      byte_length: downloaded ? downloaded.bytes.length : null,
+      csv_parse_passed: Boolean(parsed),
+      column_map_available: Boolean(columnMap),
+      observed_structure_available: Boolean(observed),
+      complete: Boolean(downloaded && digest && parsed && columnMap && observed)
+    },
     trace_contract: trace,
     license_note: studyMetadata &&
       studyMetadata.license_api_status === "NOT_EXPOSED_BY_LEGACY_METADATA_API"
