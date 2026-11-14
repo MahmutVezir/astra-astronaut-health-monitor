@@ -14,6 +14,7 @@ Run `npm test` with Node.js 18+.
 - Missing readings cause an overall `LIMITED` assessment.
 - Fully populated out-of-band readings produce `REVIEW`.
 - The nominal demo scenario produces `WITHIN`.
+- Static integration tests verify that app.js element IDs exist in index.html and all referenced offline-shell assets exist.
 
 ## Browser functional tests
 
