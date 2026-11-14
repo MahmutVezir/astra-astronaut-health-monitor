@@ -95,3 +95,18 @@ The source-level import stores the original CSV bytes, the derived ISA sample ma
 The Research Mode browser loader performs a second gate over the committed files. It verifies the exact SHA-256 and byte length, parses the 28 × 19 CSV, checks the 28-sample join and four participant IDs, confirms all seven timepoints and verifies all nine numeric concentration/percentage pairs before biomarker plots are displayed. If any of these checks fail, measurements remain hidden.
 
 This update supersedes the earlier statement above that the live mapping/normalization gate was still pending. It does **not** change the scientific limitations: the study has four independent participants, observations are repeated serum samples, raw assay data are unavailable, and fibrinogen remains flagged because of the vendor's serum suitability statement. OSD-575 is not a source of continuous heart-rate, blood-pressure, SpO₂, temperature or sleep telemetry.
+
+## Latest production re-audit — live run #10 (14 November 2026)
+
+The latest successful live workflow [run #10 (43616651617)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43616651617) re-ran the OSD-575 acquisition pipeline after the runner was pinned to Ubuntu 24.04. The run completed successfully and recorded the same exact transformed CSV:
+
+- Exact file: `LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv`
+- Downloaded byte length: **6,207**
+- Project-maintained SHA-256: `fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c`
+- Sample mapping: **28/28** unique sample names, one-to-one with NASA ISA metadata
+- Independent participants: **4**
+- Collection points: **7** per participant
+- Normalization: **PASS** for all **9** concentration/percentage pairs
+- Evidence decision: **LIMITED_EVIDENCE**
+
+The source-audit record currently committed at `data/osdr/OSD-575/source-audit.json` identifies workflow run `43616651617`. This is the latest live source audit, while run #9 above remains the initial successful production acquisition/import event. The re-audit confirms the same byte sequence and analysis gates; it does not increase the number of independent participants, make raw assay data available, resolve the fibrinogen assay-suitability caveat, or turn the serum samples into continuous in-flight telemetry.
