@@ -84,3 +84,17 @@ test("NASA research source registry keeps DSO 602 separate from NLSP experiment 
     assert.ok(Array.isArray(source.measures) && source.measures.length > 0, source.id);
   });
 });
+
+
+test("every navigation tab targets exactly one existing view section", function () {
+  const html = read("index.html");
+  const tabViews = Array.from(html.matchAll(/data-view="([^"]+)"/g), (match) => match[1]);
+  const sectionViews = Array.from(
+    html.matchAll(/<section class="view(?: active)?" id="view-([^"]+)"/g),
+    (match) => match[1]
+  );
+  assert.equal(new Set(tabViews).size, tabViews.length, "navigation targets must be unique");
+  assert.equal(new Set(sectionViews).size, sectionViews.length, "view sections must be unique");
+  assert.deepEqual([...tabViews].sort(), [...sectionViews].sort());
+  assert.equal(tabViews.length, 6);
+});
