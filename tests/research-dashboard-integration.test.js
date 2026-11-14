@@ -49,6 +49,11 @@ function createDom() {
 }
 
 test("Research Mode renders NASA OSD-575 participant charts only after the committed source passes browser-side verification", async () => {
+  const initialHtml = await read("index.html");
+  assert.match(initialHtml, /NASA ISA sample map<\/span><strong id="research-metadata-status">Browser verification pending<\/strong>/);
+  assert.match(initialHtml, /id="research-data-state">BROWSER VERIFICATION PENDING<\/span>/);
+  assert.match(initialHtml, /id="research-evidence-status">BROWSER VERIFICATION PENDING<\/span>/);
+
   const csvPath = path.join(dataRoot, "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv");
   const metadataPath = path.join(dataRoot, "isa-sample-map.json");
   const auditPath = path.join(dataRoot, "source-audit.json");
