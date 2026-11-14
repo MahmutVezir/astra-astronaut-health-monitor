@@ -1,0 +1,43 @@
+name: Audit NASA NLSP public records and file metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-nlsp-public-records.yml"
+      - "scripts/audit-nlsp-public-records.js"
+      - "tests/nlsp-public-records.test.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nlsp-public-record-audit
+  cancel-in-progress: false
+
+jobs:
+  audit-public-records:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out ASTRA
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate script syntax
+        run: node --check scripts/audit-nlsp-public-records.js
+      - name: Run deterministic parser tests
+        run: node --test tests/nlsp-public-records.test.js
+      - name: Query observed NLSP public record API routes
+        run: node scripts/audit-nlsp-public-records.js
+      - name: Preserve exact API responses and audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nlsp-public-record-audit-${{ github.run_id }}
+          path: artifacts/nlsp-public-record-audit/
+          if-no-files-found: warn
+          retention-days: 30
