@@ -494,6 +494,7 @@ async function main(options = {}) {
   const catalogDownloadUrl = fileRecord ? getRemoteUrl(fileRecord) : null;
 
   let downloaded = null;
+  let downloadFailure = null;
   let rawBytesSaved = false;
   let digest = null;
   let trace = null;
@@ -593,6 +594,10 @@ async function main(options = {}) {
           : null
       } : null;
     } catch (error) {
+      downloadFailure = {
+        message: error.message,
+        redirect: error.redirect || null
+      };
       trace = createAuditTrace(
         "INSUFFICIENT_EVIDENCE",
         "OSDR_FILE_DOWNLOAD_UNAVAILABLE",
@@ -600,6 +605,15 @@ async function main(options = {}) {
       );
     }
   }
+
+  const downloadResponse = downloaded ? {
+    final_url: downloaded.finalResponseUrl,
+    final_host: downloaded.finalResponseHost,
+    final_path: downloaded.finalResponsePath,
+    redirected: downloaded.redirected,
+    http_status: downloaded.httpStatus,
+    content_type: downloaded.contentType
+  } : null;
 
   const decision = trace.decision;
   const manifest = {
@@ -631,6 +645,8 @@ async function main(options = {}) {
         }
       : null,
     file_download_url: downloaded ? downloaded.downloadUrl : null,
+    download_response: downloadResponse,
+    download_failure: downloadFailure,
     file_sha256: digest,
     reference_sha256: null,
     reference_sha256_status: digest
@@ -659,6 +675,8 @@ async function main(options = {}) {
     metadata_file_references: metadataFileReferences,
     catalog_discovery_attempts: catalogAttempts,
     catalog_file_candidates: getCsvFileCandidates(fileRecords),
+    download_response: downloadResponse,
+    download_failure: downloadFailure,
     catalog_page_diagnostics: catalogSnapshots.map((snapshot) => ({
       url: snapshot.url,
       catalog_attempt: snapshot.catalog_attempt || null,
@@ -677,7 +695,8 @@ async function main(options = {}) {
     })),
     analysis_gate: {
       catalog_match_found: Boolean(fileRecord),
-      download_url_verified: Boolean(downloaded && downloaded.downloadUrl),
+      download_url_verified: Boolean(downloaded && downloaded.downloadUrl && downloaded.finalResponseUrl),
+      redirect_destination_recorded: Boolean(downloadResponse && downloadResponse.final_url),
       raw_bytes_preserved: rawBytesSaved,
       file_sha256_calculated: Boolean(digest),
       byte_length: downloaded ? downloaded.bytes.length : null,
