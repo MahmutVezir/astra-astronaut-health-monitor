@@ -119,9 +119,7 @@ function getRemoteFileTokens(remoteUrl) {
 function fileTokenMatches(token, expectedFileName) {
   if (typeof token !== "string") return false;
   const normalized = decodeSafely(token).replace(/\\/g, "/").split(/[?#]/, 1)[0];
-  return normalized === expectedFileName ||
-    normalized.endsWith("/" + expectedFileName) ||
-    normalized.endsWith(expectedFileName);
+  return normalized === expectedFileName || normalized.endsWith("/" + expectedFileName);
 }
 
 function matchesStudyFile(record, expectedFileName) {
@@ -229,8 +227,7 @@ async function listStudyFiles(studyId, options = {}) {
 
     const expectedCount = countsByStudy.size > 0 ? Math.max(...countsByStudy.values()) : null;
     const pageTotalRequiresMore = knownPageTotal !== null && page + 1 < knownPageTotal;
-    const totalHitsRequiresMore = knownPageTotal === null &&
-      knownTotalHits !== null &&
+    const totalHitsRequiresMore = knownTotalHits !== null &&
       (page + 1) * pageSize < knownTotalHits;
     const fileCountRequiresMore = expectedCount !== null && collected.length < expectedCount;
     const pageFilled = records.length >= pageSize;
@@ -252,7 +249,8 @@ async function listStudyFiles(studyId, options = {}) {
       " unique files, but study metadata declares file_count=" + expectedCount +
       ". Pages requested=" + (page + 1) +
       "; page_total=" + (knownPageTotal ?? "not reported") +
-      "; total_hits=" + (knownTotalHits ?? "not reported") + "."
+      "; total_hits=" + (knownTotalHits ?? "not reported") +
+      "; CSV filenames=" + (getCsvFileCandidates(collected).join(", ") || "none") + "."
     );
   }
   if (!stoppedByApi && page >= maxPages) {
