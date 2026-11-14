@@ -4,7 +4,7 @@ const { parseCsv } = require("../src/core/csv.js");
 const { sha256, verifySha256 } = require("../src/core/integrity.js");
 const { evaluateEvidence } = require("../src/core/evidence-engine.js");
 const { validateTraceRecord, createTraceRecord } = require("../src/core/trace-contract.js");
-const { runOsd575Pilot } = require("../src/core/osd575-pilot.js");
+const { analyzeOsd575FileBytes, runOsd575Pilot } = require("../src/core/osd575-pilot.js");
 
 const COLUMNS = {
   participant: "participant_id",
@@ -457,6 +457,46 @@ test("OSD-575 catalog requests the metadata-verified version and follows every p
     selectStudyFile(records, "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv").file_name,
     "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv"
   );
+});
+
+test("OSDR catalog client supports NASA-documented bare versioned and unversioned endpoints", async () => {
+  const { listStudyFiles } = require("../src/core/osdr-client.js");
+  const expected = {
+    file_name: "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+    remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv"
+  };
+
+  for (const testCase of [
+    { studyVersion: "3", key: "OSD-575.3", suffix: "/files/575.3" },
+    { studyVersion: null, key: "OSD-575", suffix: "/files/575" }
+  ]) {
+    const urls = [];
+    const records = await listStudyFiles("OSD-575", {
+      studyVersion: testCase.studyVersion,
+      trailingSlash: false,
+      bareFirstPage: true,
+      fetchImpl: async (url) => {
+        urls.push(String(url));
+        return {
+          ok: true,
+          json: async () => ({
+            hits: 1,
+            input: testCase.studyVersion ? "575.3" : "575",
+            page_number: 0,
+            page_size: 25,
+            page_total: 1,
+            total_hits: 1,
+            studies: { [testCase.key]: { file_count: 1, study_files: [expected] } }
+          })
+        };
+      }
+    });
+
+    assert.equal(urls.length, 1);
+    assert.ok(urls[0].endsWith(testCase.suffix));
+    assert.equal(new URL(urls[0]).search, "");
+    assert.deepEqual(records, [expected]);
+  }
 });
 
 test("catalog file selection matches the exact target at the end of remote_url file query values", () => {
