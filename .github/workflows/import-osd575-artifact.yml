@@ -152,6 +152,14 @@ jobs:
               "raw_assay_data": "Not Available"
           }
           (output / "source-audit.json").write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+          # Preserve the raw NASA API envelopes and the exact workflow audit reports.
+          shutil.copyfile(root / "metadata-response.json", output / "raw-metadata-response.json")
+          shutil.copyfile(root / "file-catalog-response.json", output / "raw-file-catalog-response.json")
+          audit_dir = output / "live-audit"
+          audit_dir.mkdir(parents=True, exist_ok=True)
+          shutil.copyfile(root / "manifest.json", audit_dir / "manifest.json")
+          shutil.copyfile(root / "pilot-report.json", audit_dir / "pilot-report.json")
           print("Imported exact source CSV:", len(raw), "bytes; SHA-256:", actual_sha)
           print("NASA ISA join:", len(records), "samples; all sample identifiers matched.")
           print("Normalization audit: PASS across nine analytes.")
