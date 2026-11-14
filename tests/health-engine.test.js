@@ -5,6 +5,7 @@ const health = require("../health-engine.js");
 test("returns NO_DATA for blank values", function () {
   assert.equal(health.evaluateSignal("heartRate", "").status, "NO_DATA");
   assert.equal(health.evaluateSignal("spo2", null).status, "NO_DATA");
+  assert.equal(health.evaluateSignal("sleep", "   ").status, "NO_DATA");
 });
 
 test("accepts inclusive reference band boundaries", function () {
@@ -12,7 +13,7 @@ test("accepts inclusive reference band boundaries", function () {
   assert.equal(health.evaluateSignal("heartRate", 85).status, "WITHIN");
 });
 
-test("flags values outside the illustrative personal band for review", function () {
+test("flags values outside the illustrative reference band for review", function () {
   assert.equal(health.evaluateSignal("heartRate", 59).status, "REVIEW");
   assert.equal(health.evaluateSignal("spo2", 94.5).status, "REVIEW");
 });
@@ -50,4 +51,23 @@ test("supports a user-configured reference band", function () {
 test("rejects an invalid configured reference band", function () {
   const bands = { heartRate: { lower: 100, upper: 80 } };
   assert.equal(health.evaluateSignal("heartRate", 75, bands).status, "INVALID");
+});
+
+test("rejects blank and null configured bounds instead of coercing them to zero", function () {
+  assert.equal(health.evaluateSignal("sleep", 7, { sleep: { lower: "", upper: 9 } }).status, "INVALID");
+  assert.equal(health.evaluateSignal("sleep", 7, { sleep: { lower: null, upper: 9 } }).status, "INVALID");
+  assert.equal(health.evaluateSignal("sleep", 7, { sleep: null }).status, "INVALID");
+});
+
+test("rejects non-numeric configured bounds", function () {
+  assert.equal(health.evaluateSignal("sleep", 7, { sleep: { lower: true, upper: 9 } }).status, "INVALID");
+});
+
+test("assessment reports invalid reference settings instead of silently using defaults", function () {
+  const result = health.assess(
+    { heartRate: 72, spo2: 98, temperature: 36.7, sleep: 7 },
+    { sleep: { lower: "", upper: 9 } }
+  );
+  assert.equal(result.status, "INVALID");
+  assert.equal(result.invalid, 1);
 });
