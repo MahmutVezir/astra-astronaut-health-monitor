@@ -91,10 +91,10 @@
         <div class="panel">
           <form id="signals-form">
             <div class="form-grid">
-              <label class="field"><span>Heart rate <small>BPM</small></span><input id="heart-rate" name="heartRate" type="number" inputmode="decimal" min="30" max="220" step="1" placeholder="e.g. 72"><em>Demo band: 60–85 BPM</em></label>
-              <label class="field"><span>Blood oxygen <small>SpO₂ %</small></span><input id="spo2" name="spo2" type="number" inputmode="decimal" min="50" max="100" step="0.1" placeholder="e.g. 98.1"><em>Demo band: 96–100%</em></label>
-              <label class="field"><span>Body temperature <small>°C</small></span><input id="temperature" name="temperature" type="number" inputmode="decimal" min="30" max="45" step="0.1" placeholder="e.g. 36.7"><em>Demo band: 36.2–37.2 °C</em></label>
-              <label class="field"><span>Sleep duration <small>HOURS</small></span><input id="sleep" name="sleep" type="number" inputmode="decimal" min="0" max="24" step="0.1" placeholder="e.g. 7.6"><em>Demo band: 6.5–9.0 hours</em></label>
+              <label class="field"><span>Heart rate <small>BPM</small></span><input id="heart-rate" name="heartRate" type="number" inputmode="decimal" min="30" max="220" step="1" placeholder="e.g. 72"><em>Current configured band is shown on the dashboard</em></label>
+              <label class="field"><span>Blood oxygen <small>SpO₂ %</small></span><input id="spo2" name="spo2" type="number" inputmode="decimal" min="50" max="100" step="0.1" placeholder="e.g. 98.1"><em>Current configured band is shown on the dashboard</em></label>
+              <label class="field"><span>Body temperature <small>°C</small></span><input id="temperature" name="temperature" type="number" inputmode="decimal" min="30" max="45" step="0.1" placeholder="e.g. 36.7"><em>Current configured band is shown on the dashboard</em></label>
+              <label class="field"><span>Sleep duration <small>HOURS</small></span><input id="sleep" name="sleep" type="number" inputmode="decimal" min="0" max="24" step="0.1" placeholder="e.g. 7.6"><em>Current configured band is shown on the dashboard</em></label>
             </div>
             <div class="form-footer"><p class="fine-print">Blank fields remain “No data”. Inputs are checked for basic format and plausible range only; those checks are not medical thresholds.</p><button class="button button-primary" type="submit">Save readings & assess</button></div>
             <p class="form-message" id="signals-message" role="status"></p>
