@@ -133,7 +133,7 @@ jobs:
               "sample_count": len(records),
               "records": records
           }
-          (output / "isa-sample-map.json").write_text(json.dumps(sample_map, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+          (output / "isa-sample-map.json").write_text(json.dumps(sample_map, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           audit = {
               "workflow_run_id": int(__import__("os").environ["SOURCE_RUN_ID"]),
               "workflow_run_url": "https://github.com/" + __import__("os").environ["GITHUB_REPOSITORY"] + "/actions/runs/" + __import__("os").environ["SOURCE_RUN_ID"],
@@ -151,7 +151,7 @@ jobs:
               "scientific_decision": "LIMITED_EVIDENCE",
               "raw_assay_data": "Not Available"
           }
-          (output / "source-audit.json").write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+          (output / "source-audit.json").write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print("Imported exact source CSV:", len(raw), "bytes; SHA-256:", actual_sha)
           print("NASA ISA join:", len(records), "samples; all sample identifiers matched.")
           print("Normalization audit: PASS across nine analytes.")
