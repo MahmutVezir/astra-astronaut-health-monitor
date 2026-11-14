@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 
-const { fetchStudyMetadata, listStudyFiles, selectStudyFile, downloadStudyFile } = require("../src/core/osdr-client.js");
+const { fetchStudyMetadata, listStudyFiles, selectStudyFile, getCsvFileCandidates, downloadStudyFile } = require("../src/core/osdr-client.js");
 const { parseCsv } = require("../src/core/csv.js");
 const { runOsd575Pilot } = require("../src/core/osd575-pilot.js");
 
@@ -14,7 +14,7 @@ const STUDY_PAGE_URL = "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575";
 const FILE_NAME = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
 const OUTPUT_DIR = path.join(process.cwd(), "data", "osdr", DATASET_ID);
 const METADATA_URL = "https://osdr.nasa.gov/osdr/data/osd/meta/575";
-const CATALOG_URL = "https://osdr.nasa.gov/osdr/data/osd/files/575";
+const CATALOG_URL = "https://osdr.nasa.gov/osdr/data/osd/files/575.3";
 
 async function fetchWithTimeout(url, options = {}) {
   return fetch(url, {
@@ -247,12 +247,32 @@ async function main() {
   await writeJson("study-metadata-summary.json", studyMetadata);
 
   console.log("[OSD-575] Fetching the OSDR file catalog...");
-  const fileRecords = await listStudyFiles(DATASET_ID, { fetchImpl: catalogFetch });
+  const fileRecords = await listStudyFiles(DATASET_ID, {
+    fetchImpl: catalogFetch,
+    studyVersion: studyMetadata.dataset_version
+  });
   await writeJson("file-catalog-response.json", catalogSnapshots);
 
   const fileRecord = selectStudyFile(fileRecords, FILE_NAME);
   if (!fileRecord) {
-    throw new Error("The exact transformed CSV was not present in the live OSDR file catalog; no alternative file was selected.");
+    const csvCandidates = getCsvFileCandidates(fileRecords);
+    const pageDiagnostics = catalogSnapshots.map((snapshot) => ({
+      url: snapshot.url,
+      status: snapshot.status,
+      page_number: snapshot.body && snapshot.body.page_number,
+      page_size: snapshot.body && snapshot.body.page_size,
+      page_total: snapshot.body && snapshot.body.page_total,
+      hits: snapshot.body && snapshot.body.hits,
+      total_hits: snapshot.body && snapshot.body.total_hits,
+      returned_studies: snapshot.body && snapshot.body.studies
+        ? Object.keys(snapshot.body.studies)
+        : []
+    }));
+    throw new Error(
+      "The exact transformed CSV " + FILE_NAME + " was not present in the versioned OSDR file catalog. " +
+      "CSV filenames returned: " + (csvCandidates.length ? csvCandidates.join(", ") : "none") +
+      ". Catalog page diagnostics: " + JSON.stringify(pageDiagnostics)
+    );
   }
 
   const download = await downloadStudyFile(fileRecord, fetchWithTimeout);
@@ -275,7 +295,7 @@ async function main() {
   const replayFetch = async (url) => {
     const address = String(url);
     if (address.includes("/meta/575")) return jsonResponse(true, 200, metadata, METADATA_URL);
-    if (address.includes("/files/575/")) {
+    if (address.includes("/files/575")) {
       return jsonResponse(true, 200, {
         studies: { "OSD-575": { study_files: [fileRecord] } }
       }, CATALOG_URL);
@@ -293,6 +313,7 @@ async function main() {
   const trace = await runOsd575Pilot({
     fetchImpl: replayFetch,
     columnMap,
+    studyVersion: studyMetadata.dataset_version,
     rawDataAvailable: studyMetadata.raw_data_file_status !== "Not Available"
   });
 
