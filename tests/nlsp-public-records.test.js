@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-  makeSearchUrl, makeDetailUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle,
+  makeSearchUrl, makeDetailUrl, makeFileDownloadUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle,
   parseCsvTable, parseClockDurationMinutes, parseMonthDayYear, summarizeActigraphyCsv
 } = require("../scripts/audit-nlsp-public-records.js");
 
@@ -107,4 +107,12 @@ test("BRSMACT schema audit reports actual participants, phases, date order, miss
   assert.equal(result.sleep_efficiency.minimum_percent, 75);
   assert.equal(result.sleep_efficiency.maximum_percent, 95.8);
   assert.equal(result.duplicate_subject_date_pairs, 1);
+});
+
+
+test("file download URLs use the observed NLSP same-origin download route", () => {
+  const url = new URL(makeFileDownloadUrl("file/id with spaces"));
+  assert.equal(url.origin, "https://nlsp.nasa.gov");
+  assert.equal(url.pathname, "/api/v1/files/file%2Fid%20with%20spaces/download");
+  assert.throws(() => makeFileDownloadUrl(" "));
 });
