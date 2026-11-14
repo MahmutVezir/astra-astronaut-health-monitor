@@ -117,6 +117,8 @@ test("Research Mode renders NASA OSD-575 participant charts only after the commi
   assert.ok(requests.some((url) => url.endsWith("source-audit.json")));
   assert.equal(status.textContent, "SHA-256 · MAP · NORMALIZATION PASS");
   assert.equal(dom.get("research-data-state").textContent, "DATA + ANALYSIS VERIFIED");
+  assert.equal(dom.get("research-metadata-status").textContent, "Verified · 28/28 ISA matches");
+  assert.equal(dom.get("research-run-status").textContent, "Run ID 43616651617");
   assert.equal(dom.get("research-evidence-rows").textContent, "28 / 28");
   assert.equal(dom.get("research-evidence-matches").textContent, "28 / 28");
   assert.equal(dom.get("research-evidence-people").textContent, "4 (n=4)");
