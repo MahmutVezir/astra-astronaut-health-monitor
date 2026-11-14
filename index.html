@@ -52,7 +52,7 @@
 
       <section class="view active" id="view-research">
         <div class="section-heading">
-          <div><p class="eyebrow">NASA OPEN SCIENCE DATA REPOSITORY · OSD-575</p><h2>Research evidence workspace</h2><p class="section-copy">Study metadata is verified. The transformed assay CSV has not been retrieved, so this view intentionally contains no biomarker measurements or derived trends.</p></div>
+          <div><p class="eyebrow">NASA OPEN SCIENCE DATA REPOSITORY · OSD-575</p><h2>Research evidence workspace</h2><p class="section-copy">The exact transformed serum-assay CSV and NASA ISA sample map are now preserved with a source hash and audit record. ASTRA displays biomarker trends only after browser-side integrity, sample-join and normalization checks pass.</p></div>
           <span class="research-decision" id="research-decision">INSUFFICIENT EVIDENCE</span>
         </div>
 
@@ -80,12 +80,12 @@
             <div class="panel-heading"><div><p class="eyebrow">LATEST DATA-ACCESS AUDIT</p><h3>Source-file availability</h3></div><span class="state-label state-limited" id="research-data-state">NOT RETRIEVED</span></div>
             <div class="research-audit-rows">
               <div><span>NASA metadata</span><strong id="research-metadata-status">Verified</strong></div>
-              <div><span>Versioned file catalog</span><strong id="research-catalog-status">HTTP 200 · 0 records</strong></div>
-              <div><span>Transformed CSV</span><strong id="research-file-status">Not downloaded</strong></div>
+              <div><span>Versioned file catalog</span><strong id="research-catalog-status">HTTP 200 · exact file verified</strong></div>
+              <div><span>Transformed CSV</span><strong id="research-file-status">Downloaded · 6,207 bytes</strong></div>
               <div><span>File SHA-256</span><strong id="research-hash-status">Not calculated</strong></div>
-              <div><span>Audit run</span><strong id="research-run-status">#4 · 14 Nov 2026</strong></div>
+              <div><span>Audit run</span><strong id="research-run-status">Run #9 · 14 Nov 2026</strong></div>
             </div>
-            <p class="research-audit-note" id="research-audit-note">The metadata names the HDCVD9 transformed CSV, but the file catalog returned no matching file record or download URL. No measurements were analyzed.</p>
+            <p class="research-audit-note" id="research-audit-note">The exact public HDCVD9 transformed CSV is preserved with its project-maintained SHA-256 pin. The latest live audit matched all 28 samples to NASA ISA metadata and passed nine-analyte baseline normalization; interpretation remains limited by four independent participants and unavailable raw assay data.</p>
             <a href="https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43596179113" target="_blank" rel="noopener noreferrer">Open latest audit artifact ↗</a>
           </article>
         </div>
@@ -97,7 +97,7 @@
               <h3 id="research-evidence-title">Crew biomarker profiles</h3>
               <p class="section-copy">Participant-level descriptive views from the original transformed serum file. Measurements are shown only after source hash, sample mapping and normalization checks pass.</p>
             </div>
-            <span class="state-label state-limited" id="research-evidence-status">POST-MAP AUDIT PENDING</span>
+            <span class="state-label state-limited" id="research-evidence-status">VERIFYING SOURCE PACKAGE</span>
           </div>
 
           <div class="research-evidence-metrics">
