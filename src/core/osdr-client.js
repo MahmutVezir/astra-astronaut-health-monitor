@@ -196,6 +196,9 @@ async function listStudyFiles(studyId, options = {}) {
   }
 
   const study = parseStudyIdentifier(studyId, options.studyVersion ?? options.version ?? null);
+  const trailingSlash = options.trailingSlash !== false;
+  const bareFirstPage = options.bareFirstPage === true;
+  const allFiles = options.allFiles !== false;
   const collected = [];
   const seen = new Set();
   const countsByStudy = new Map();
@@ -205,8 +208,12 @@ async function listStudyFiles(studyId, options = {}) {
   let stoppedByApi = false;
 
   while (page < maxPages) {
-    const url = OSDR_API_ROOT + "/files/" + study.accession +
-      "/?page=" + page + "&size=" + pageSize + "&all_files=true";
+    const path = OSDR_API_ROOT + "/files/" + study.accession +
+      (trailingSlash ? "/" : "");
+    const useBareRequest = bareFirstPage && page === 0;
+    const url = useBareRequest
+      ? path
+      : path + "?page=" + page + "&size=" + pageSize + "&all_files=" + String(allFiles);
     const payload = await readJson(url, fetchImpl);
     const records = extractFileRecords(payload, study.studyKeys);
 
