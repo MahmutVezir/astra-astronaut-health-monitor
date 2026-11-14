@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check out research dashboard branch
+      - name: Check out main
         uses: actions/checkout@v4
         with:
           ref: main
@@ -168,7 +168,7 @@ jobs:
           SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
-      - name: Commit verified source data to the dashboard branch
+      - name: Commit verified source data to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -179,3 +179,35 @@ jobs:
           fi
           git commit -m "Import verified NASA OSD-575 HDCVD9 source data"
           git push origin HEAD:main
+
+  deploy-pages:
+    name: Deploy ASTRA after verified NASA import
+    needs: import-verified-source
+    if: ${{ needs.import-verified-source.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out main with imported NASA data
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: astra-pages-import-${{ github.run_attempt }}
+          path: .
+      - name: Allow Pages artifact metadata to settle
+        run: sleep 10
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: astra-pages-import-${{ github.run_attempt }}
