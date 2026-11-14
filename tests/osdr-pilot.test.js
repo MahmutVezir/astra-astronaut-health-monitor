@@ -293,6 +293,10 @@ test("OSDR download accepts only the exact file redirect in NASA's official publ
   }));
   assert.deepEqual(result.bytes, bytes);
   assert.equal(result.downloadUrl, "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + fileName);
+  assert.equal(result.finalResponseUrl, "https://nasa-osdr.s3.us-west-2.amazonaws.com/OSD-575/version-3/ALSDA/" + fileName);
+  assert.equal(result.finalResponseHost, "nasa-osdr.s3.us-west-2.amazonaws.com");
+  assert.equal(result.finalResponsePath, "/OSD-575/version-3/ALSDA/" + fileName);
+  assert.equal(result.redirected, true);
   await assert.rejects(
     () => downloadStudyFile(record, async () => ({
       ok: true,
@@ -301,7 +305,16 @@ test("OSDR download accepts only the exact file redirect in NASA's official publ
       headers: { get: () => null },
       arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
     })),
-    /outside verified NASA HTTPS endpoints/
+    (error) => {
+      assert.match(error.message, /outside verified NASA HTTPS endpoints/);
+      assert.deepEqual(error.redirect, {
+        protocol: "https:",
+        host: "example.com",
+        path: "/" + fileName,
+        filename: fileName
+      });
+      return true;
+    }
   );
 });
 
@@ -848,6 +861,10 @@ test("when the exact transformed CSV has a real catalog remote_url, the fetch au
 
     assert.equal(result.manifest.file_sha256, expectedDigest);
     assert.equal(result.manifest.raw_bytes_preserved, true);
+    assert.equal(result.manifest.download_response.final_host, "osdr.nasa.gov");
+    assert.equal(result.manifest.download_response.final_path, "/geode-py/ws/studies/OSD-575/download");
+    assert.equal(result.manifest.download_response.redirected, false);
+    assert.equal(result.pilotReport.download_response.final_url, "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download");
     assert.equal(result.pilotReport.file_sha256, expectedDigest);
     assert.ok(result.pilotReport.trace_contract);
     assert.equal(result.pilotReport.trace_contract.file_sha256, expectedDigest);

@@ -175,17 +175,32 @@ function validateOsdrDownloadResponseUrl(responseUrl, expectedFileName = null) {
   const isNasaHost = url.hostname === "osdr.nasa.gov" || url.hostname.endsWith(".nasa.gov");
   const isOfficialPublicBucket = url.hostname === OSDR_PUBLIC_BUCKET_HOST;
   if (url.protocol !== "https:" || !(isNasaHost || isOfficialPublicBucket)) {
-    throw new Error(
+    const error = new Error(
       "Refusing a download redirect outside verified NASA HTTPS endpoints (protocol=" +
-      url.protocol + ", host=" + url.hostname + ")"
+      url.protocol + ", host=" + url.hostname + ", path=" + url.pathname + ")"
     );
+    error.redirect = {
+      protocol: url.protocol,
+      host: url.hostname,
+      path: url.pathname,
+      filename: decodeSafely(url.pathname.split("/").pop() || "")
+    };
+    throw error;
   }
   if (isOfficialPublicBucket && expectedFileName) {
     const finalName = decodeSafely(url.pathname.split("/").pop() || "");
     if (finalName !== expectedFileName) {
-      throw new Error(
-        "The NASA OSDR public-bucket redirect did not resolve to the exact catalog filename"
+      const error = new Error(
+        "The NASA OSDR public-bucket redirect did not resolve to the exact catalog filename (host=" +
+        url.hostname + ", path=" + url.pathname + ")"
       );
+      error.redirect = {
+        protocol: url.protocol,
+        host: url.hostname,
+        path: url.pathname,
+        filename: finalName
+      };
+      throw error;
     }
   }
   return url.href;
@@ -304,7 +319,10 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
     const status = response && Number.isInteger(response.status) ? response.status : "unknown";
     throw new Error("OSDR file download failed with HTTP " + status);
   }
-  if (response.url) validateOsdrDownloadResponseUrl(response.url, getFileName(fileRecord));
+  const finalResponseUrl = response.url
+    ? validateOsdrDownloadResponseUrl(response.url, getFileName(fileRecord))
+    : downloadUrl;
+  const finalResponse = new URL(finalResponseUrl);
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length === 0) throw new Error("OSDR returned an empty file");
 
@@ -319,6 +337,10 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
   return {
     bytes,
     downloadUrl,
+    finalResponseUrl: finalResponse.origin + finalResponse.pathname,
+    finalResponseHost: finalResponse.hostname,
+    finalResponsePath: finalResponse.pathname,
+    redirected: finalResponseUrl !== downloadUrl,
     httpStatus: response.status,
     contentType: response.headers && response.headers.get ? response.headers.get("content-type") : null
   };
