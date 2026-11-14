@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype · main commit `6e33f8a2` (validation commit below)  
+**Build:** 0.1 prototype · main commit `eab2fe78` (validation commit below)  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -36,14 +36,27 @@ Run `npm test` with Node.js 18+.
 - [ ] Download the source CSV from the page; recalculate its SHA-256 and compare with the documented project pin.
 - [ ] Confirm all demo HR/SpO₂/temperature/sleep inputs remain in Demo & Manual Mode and are never presented as NASA OSD-575 measurements.
 
+
+## NASA NLSP DSO-470 discovery — 14 November 2026
+
+- [x] Official NLSP index shell fetched successfully (HTTP 200).
+- [x] Same-origin application bundle and nested search/detail/file-explorer modules inspected.
+- [x] Live run [43615678402](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678402) inspected 40 nested and 37 second-level bundles from 15 parent modules.
+- [x] Discovery artifact preserved: `nlsp-dso470-discovery-43615678402`, 1,441,155 bytes, SHA-256 `53e0f0c7c45802b016c6b5e2bb91faf3475ee67f37a8f7114e7287249983122e`.
+- [x] The audit explicitly recorded zero measurement files downloaded; no sample values were ingested.
+- [ ] Locate the exact DSO-470 experiment-specific NLSP record and source-provided file inventory.
+- [ ] Confirm file access/reuse terms, exact source URL, bytes, SHA-256, schema, units, cohort and sampling cadence.
+- [ ] Only after those gates pass, implement a separate DSO-470 data loader and tests.
+
 ## Current automated validation evidence — 14 November 2026
 
-- Commit: `6e33f8a2376543a553385755ee71738665b9c030`
-- GitHub Actions run: [43613561533](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43613561533)
+- Commit: `eab2fe786f92609027e5986aeea8312f4cac1e30`
+- GitHub Actions run: [43615678290](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678290)
 - JavaScript syntax checks: passed.
-- Automated test suite: **59 passed, 0 failed, 0 skipped**.
-- End-to-end Research Mode integration: passed against the committed NASA files; the test verifies source fetching, SHA-256, 28/28 sample matching, nine-analyte normalization, four participant trajectories, the descriptive table, and fibrinogen flag behavior.
+- Automated test suite: **72 passed, 0 failed, 0 skipped**.
+- End-to-end Research Mode integration: passed against the committed NASA OSD-575 files; source hash, 28/28 sample mapping, nine-analyte normalization, participant charts/table, and fibrinogen flag behavior were verified.
 - GitHub Pages deployment: successful.
+- NLSP DSO-470 discovery: [run 43615678402](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678402) succeeded; discovery artifact preserved; zero measurement files downloaded.
 - NASA live acquisition: [run 43612460864](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
 - Verified source import: [run 43612482985](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612482985).
 

@@ -144,9 +144,9 @@
         environment: "Shuttle flights · STS-29, STS-34 and STS-42",
         domain: "In-flight cardiovascular / cerebral blood-flow physiology",
         measures: ["Heart rate", "Diastolic blood pressure", "Cerebral artery blood-flow velocity"],
-        evidenceStatus: "PUBLIC_INDEX_CANDIDATE_DETAIL_QA_PENDING",
-        statusLabel: "Public index candidate · detail QA pending",
-        accessNote: "The NLSP experiment index marks the data as complete and publicly available and lists heart rate and diastolic blood pressure. The exact study record and downloadable file listing still require verification before ingestion.",
+        evidenceStatus: "INDEX_AND_APP_AUDITED_NO_DATA_FILE_ENDPOINT_VERIFIED",
+        statusLabel: "Index and app audited · no file verified",
+        accessNote: "The public NLSP index shell returned HTTP 200 but exposed no DSO-470 experiment link in its HTML. The live first-party application audit (GitHub Actions run 43615678402) inspected the main bundle, 40 nested bundles, and 37 second-level bundles from 15 parent modules. The observed HTTP requests covered authentication, navigation templates, and the /lookups filter service; no exact DSO-470 record endpoint or measurement-file download request was identified. Zero measurement files were downloaded. DSO-470 remains an unintegrated candidate; require an exact experiment record, explicit file inventory, reuse terms, and byte-level QA before ingestion.",
         role: "Highest-priority in-flight cardiovascular data candidate",
         url: "https://nlsp.nasa.gov/explore"
       }
