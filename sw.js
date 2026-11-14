@@ -14,7 +14,8 @@ const APP_SHELL = [
   "./data/osdr/OSD-575/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
   "./data/osdr/OSD-575/isa-sample-map.json",
   "./data/osdr/OSD-575/source-audit.json",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./icons/astra.svg"
 ];
 
 self.addEventListener("install", function (event) {
