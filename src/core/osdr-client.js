@@ -67,7 +67,7 @@ function extractFileRecords(payload, studyKeys = []) {
     if (visited.has(key)) continue;
     visited.add(key);
     const records = studies[key] && studies[key].study_files;
-    if (Array.isArray(records)) return records;
+    if (Array.isArray(records) && records.length > 0) return records;
   }
 
   const candidates = [payload.study_files, payload.files, payload.results, payload.data];
