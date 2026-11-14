@@ -6,7 +6,8 @@ const crypto = require("node:crypto");
 
 const { fetchStudyMetadata, listStudyFiles, selectStudyFile, getCsvFileCandidates, downloadStudyFile } = require("../src/core/osdr-client.js");
 const { parseCsv } = require("../src/core/csv.js");
-const { runOsd575Pilot } = require("../src/core/osd575-pilot.js");
+const { OSD575, runOsd575Pilot } = require("../src/core/osd575-pilot.js");
+const { createTraceRecord } = require("../src/core/trace-contract.js");
 
 const DATASET_ID = "OSD-575";
 const DATASET_VERSION = "3"; // Expected value; the recorded version is read from the NASA JSON response.
@@ -170,6 +171,126 @@ function extractStudyMetadata(payload) {
   };
 }
 
+
+function extractMetadataFileReferences(payload, expectedFileName = FILE_NAME) {
+  const study = payload && payload.study && payload.study[DATASET_ID];
+  const occurrences = [];
+  const seen = new Set();
+
+  function explicitDownloadUrls(value) {
+    const urls = new Set();
+    function visit(item) {
+      if (!item || typeof item !== "object") return;
+      if (Array.isArray(item)) {
+        item.forEach(visit);
+        return;
+      }
+      for (const [key, child] of Object.entries(item)) {
+        if (typeof child === "string" &&
+            /^(remote_url|download_url|downloadurl)$/i.test(key) &&
+            child.trim()) {
+          urls.add(child.trim());
+        } else if (typeof child === "string" &&
+                   /^url$/i.test(key) &&
+                   /^https:\/\/[^/]*nasa\.gov\//i.test(child.trim())) {
+          urls.add(child.trim());
+        } else if (child && typeof child === "object") {
+          visit(child);
+        }
+      }
+    }
+    visit(value);
+    return [...urls];
+  }
+
+  function addOccurrence(fileName, sourcePath, sourceKind, sourceObject) {
+    if (typeof fileName !== "string" || fileName.trim() !== expectedFileName) return;
+    const key = sourcePath + "|" + fileName;
+    if (seen.has(key)) return;
+    seen.add(key);
+    occurrences.push({
+      file_name: fileName,
+      source_path: sourcePath,
+      source_kind: sourceKind,
+      download_urls: explicitDownloadUrls(sourceObject)
+    });
+  }
+
+  if (!study || typeof study !== "object") {
+    return { file_name: expectedFileName, occurrences, download_urls: [] };
+  }
+
+  const assayTables = Object.entries(
+    study.additionalInformation && study.additionalInformation.assays || {}
+  );
+  for (const [assayKey, table] of assayTables) {
+    if (!table || !Array.isArray(table.header) || !Array.isArray(table.raw)) continue;
+    if (!/hdcvd9/i.test(assayKey)) continue;
+    const transformedField = table.header.find((item) =>
+      item && /transformed files/i.test(item.title || "")
+    )?.field;
+    if (!transformedField) continue;
+
+    table.raw.forEach((row, index) => {
+      if (!row || typeof row !== "object") return;
+      addOccurrence(
+        row[transformedField],
+        "study." + DATASET_ID + ".additionalInformation.assays[" +
+          JSON.stringify(assayKey) + "].raw[" + index + "]." + transformedField,
+        "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        row
+      );
+    });
+  }
+
+  const studies = Array.isArray(study.studies) ? study.studies : [];
+  studies.forEach((studyRecord, studyIndex) => {
+    const assays = studyRecord && Array.isArray(studyRecord.assays) ? studyRecord.assays : [];
+    assays.forEach((assay, assayIndex) => {
+      const processes = assay && Array.isArray(assay.processSequence) ? assay.processSequence : [];
+      processes.forEach((process, processIndex) => {
+        const parameterValues = process && Array.isArray(process.parameterValues)
+          ? process.parameterValues
+          : [];
+        parameterValues.forEach((parameter, parameterIndex) => {
+          addOccurrence(
+            parameter && parameter.value,
+            "study." + DATASET_ID + ".studies[" + studyIndex + "].assays[" +
+              assayIndex + "].processSequence[" + processIndex +
+              "].parameterValues[" + parameterIndex + "].value",
+            "ISA_PROCESS_PARAMETER_VALUE",
+            process
+          );
+        });
+      });
+
+      const dataFiles = assay && Array.isArray(assay.dataFiles) ? assay.dataFiles : [];
+      dataFiles.forEach((record, fileIndex) => {
+        if (!record || typeof record !== "object") return;
+        addOccurrence(
+          record.name || record.file_name || record.filename,
+          "study." + DATASET_ID + ".studies[" + studyIndex + "].assays[" +
+            assayIndex + "].dataFiles[" + fileIndex + "].name",
+          "ISA_ASSAY_DATA_FILES",
+          record
+        );
+      });
+    });
+  });
+
+  const downloadUrls = [...new Set(occurrences.flatMap((item) => item.download_urls))];
+  return { file_name: expectedFileName, occurrences, download_urls: downloadUrls };
+}
+
+function createAuditTrace(decision, code, message, fileSha256 = null) {
+  return createTraceRecord({
+    ...OSD575,
+    file_sha256: fileSha256,
+    decision,
+    decision_reasons: [{ code, message }]
+  });
+}
+
 function normalizeHeader(value) {
   return String(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
@@ -227,40 +348,241 @@ async function fetchJsonCaptured(url, fetchImpl, snapshots) {
   return jsonResponse(true, response.status, body, response.url || url);
 }
 
-async function writeJson(fileName, value) {
-  await fs.writeFile(path.join(OUTPUT_DIR, fileName), JSON.stringify(value, null, 2) + "\n", "utf8");
+async function writeJson(outputDir, fileName, value) {
+  await fs.writeFile(path.join(outputDir, fileName), JSON.stringify(value, null, 2) + "\n", "utf8");
 }
 
-async function main() {
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+async function main(options = {}) {
+  const outputDir = options.outputDir || OUTPUT_DIR;
+  const fetchImpl = options.fetchImpl || fetchWithTimeout;
+  const logger = options.logger || console;
+  await fs.mkdir(outputDir, { recursive: true });
 
   const metadataSnapshots = [];
   const catalogSnapshots = [];
-  const metadataFetch = (url) => fetchJsonCaptured(url, fetchWithTimeout, metadataSnapshots);
-  const catalogFetch = (url) => fetchJsonCaptured(url, fetchWithTimeout, catalogSnapshots);
+  const metadataFetch = (url) => fetchJsonCaptured(url, fetchImpl, metadataSnapshots);
+  const catalogFetch = (url) => fetchJsonCaptured(url, fetchImpl, catalogSnapshots);
 
-  console.log("[OSD-575] Fetching live NASA JSON metadata...");
-  const metadata = await fetchStudyMetadata(DATASET_ID, metadataFetch);
-  await writeJson("metadata-response.json", metadataSnapshots);
+  logger.log("[OSD-575] Fetching live NASA JSON metadata...");
+  let metadata = null;
+  let metadataFetchError = null;
+  try {
+    metadata = await fetchStudyMetadata(DATASET_ID, metadataFetch);
+  } catch (error) {
+    metadataFetchError = error;
+  }
+  await writeJson(outputDir, "metadata-response.json", metadataSnapshots);
 
-  const studyMetadata = extractStudyMetadata(metadata);
-  await writeJson("study-metadata-summary.json", studyMetadata);
+  let studyMetadata = null;
+  let metadataValidationError = null;
+  let metadataFileReferences = {
+    file_name: FILE_NAME,
+    occurrences: [],
+    download_urls: []
+  };
+  if (metadata) {
+    try {
+      studyMetadata = extractStudyMetadata(metadata);
+      metadataFileReferences = extractMetadataFileReferences(metadata);
+      await writeJson(outputDir, "study-metadata-summary.json", studyMetadata);
+    } catch (error) {
+      metadataValidationError = error;
+    }
+  }
 
-  console.log("[OSD-575] Fetching the OSDR file catalog...");
-  let fileRecords;
+  logger.log("[OSD-575] Fetching the OSDR file catalog...");
+  let fileRecords = [];
+  let catalogError = null;
   try {
     fileRecords = await listStudyFiles(DATASET_ID, {
       fetchImpl: catalogFetch,
-      studyVersion: studyMetadata.dataset_version
+      studyVersion: studyMetadata ? studyMetadata.dataset_version : DATASET_VERSION
     });
+  } catch (error) {
+    catalogError = error;
   } finally {
-    await writeJson("file-catalog-response.json", catalogSnapshots);
+    await writeJson(outputDir, "file-catalog-response.json", catalogSnapshots);
   }
 
-  const fileRecord = selectStudyFile(fileRecords, FILE_NAME);
-  if (!fileRecord) {
-    const csvCandidates = getCsvFileCandidates(fileRecords);
-    const pageDiagnostics = catalogSnapshots.map((snapshot) => ({
+  const fileRecord = !catalogError && !metadataValidationError
+    ? selectStudyFile(fileRecords, FILE_NAME)
+    : null;
+  const catalogDownloadUrl = fileRecord ? getRemoteUrl(fileRecord) : null;
+
+  let downloaded = null;
+  let digest = null;
+  let trace = null;
+  let parseError = null;
+  let parsed = null;
+  let columnMap = null;
+  let observed = null;
+
+  if (metadataValidationError) {
+    trace = createAuditTrace(
+      "INVALID_DATA",
+      "OSDR_METADATA_SCHEMA_INVALID",
+      "The OSDR metadata response was captured but failed the OSD-575 version/structure/assay validation: " +
+        metadataValidationError.message
+    );
+  } else if (metadataFetchError) {
+    const invalidJson = /invalid JSON/i.test(metadataFetchError.message);
+    trace = createAuditTrace(
+      invalidJson ? "INVALID_DATA" : "INSUFFICIENT_EVIDENCE",
+      invalidJson ? "OSDR_METADATA_INVALID_JSON" : "OSDR_METADATA_UNAVAILABLE",
+      "The OSDR metadata response could not be used: " + metadataFetchError.message
+    );
+  } else if (catalogError) {
+    const invalidCatalog = /invalid JSON|file_count=|pagination exceeded/i.test(catalogError.message);
+    trace = createAuditTrace(
+      invalidCatalog ? "INVALID_DATA" : "INSUFFICIENT_EVIDENCE",
+      invalidCatalog ? "OSDR_FILE_CATALOG_INVALID_OR_INCOMPLETE" : "OSDR_FILE_CATALOG_UNAVAILABLE",
+      "The OSDR file catalog could not be verified: " + catalogError.message
+    );
+  } else if (!fileRecord) {
+    const hasMetadataReference = metadataFileReferences.occurrences.length > 0;
+    trace = createAuditTrace(
+      "INSUFFICIENT_EVIDENCE",
+      hasMetadataReference
+        ? "METADATA_FILE_REFERENCE_WITHOUT_CATALOG_DOWNLOAD_RECORD"
+        : "REQUESTED_FILE_NOT_IN_CATALOG",
+      hasMetadataReference
+        ? "NASA meta/575 identifies the exact transformed CSV in " +
+          metadataFileReferences.occurrences.map((item) => item.source_path).join("; ") +
+          ", but the captured files/575.3 response contains no matching file record or download URL. " +
+          "No download URL was guessed and no substitute file was selected."
+        : "The exact transformed CSV was not found in the captured NASA metadata or file-catalog records. No substitute file was selected."
+    );
+  } else if (!catalogDownloadUrl) {
+    trace = createAuditTrace(
+      "INSUFFICIENT_EVIDENCE",
+      "CATALOG_FILE_RECORD_HAS_NO_DOWNLOAD_URL",
+      "The catalog contains a matching filename record but exposes no remote_url/download_url field. No URL was constructed or guessed."
+    );
+  } else {
+    try {
+      downloaded = await downloadStudyFile(fileRecord, fetchImpl);
+      digest = sha256(downloaded.bytes);
+      const csvPath = path.join(outputDir, FILE_NAME);
+      // Save the exact response bytes before parsing; no text decoding/re-encoding is used for the stored source file.
+      await fs.writeFile(csvPath, downloaded.bytes);
+
+      try {
+        parsed = parseCsv(downloaded.bytes.toString("utf8"));
+      } catch (error) {
+        parseError = error.message;
+      }
+      columnMap = parsed ? inferColumnMap(parsed.headers, parsed.rows) : null;
+
+      const replayFetch = async (url) => {
+        const address = String(url);
+        if (address.includes("/meta/575")) {
+          return jsonResponse(true, 200, metadata, METADATA_URL);
+        }
+        if (address.includes("/files/")) {
+          const parsedUrl = new URL(address);
+          const page = Number(parsedUrl.searchParams.get("page") || 0);
+          const snapshot = catalogSnapshots.find((item) => {
+            const itemPage = item.body && Number.isInteger(item.body.page_number)
+              ? item.body.page_number
+              : Number(new URL(item.url).searchParams.get("page") || 0);
+            return itemPage === page;
+          });
+          return jsonResponse(
+            snapshot ? snapshot.status : 200,
+            snapshot ? snapshot.status : 200,
+            snapshot ? snapshot.body : { studies: {} },
+            snapshot ? snapshot.url : address
+          );
+        }
+
+        const arrayBuffer = downloaded.bytes.buffer.slice(
+          downloaded.bytes.byteOffset,
+          downloaded.bytes.byteOffset + downloaded.bytes.byteLength
+        );
+        return {
+          ok: true,
+          status: downloaded.httpStatus || 200,
+          url: downloaded.downloadUrl,
+          headers: {
+            get: (name) => name.toLowerCase() === "content-length"
+              ? String(downloaded.bytes.length)
+              : downloaded.contentType
+          },
+          arrayBuffer: async () => arrayBuffer
+        };
+      };
+
+      trace = await runOsd575Pilot({
+        fetchImpl: replayFetch,
+        columnMap,
+        studyVersion: studyMetadata.dataset_version,
+        rawDataAvailable: studyMetadata.raw_data_file_status !== "Not Available"
+      });
+
+      observed = parsed ? {
+        header_count: parsed.headers.length,
+        row_count: parsed.rows.length,
+        participant_count: columnMap
+          ? new Set(parsed.rows.map((row) => row[columnMap.participant]).filter(Boolean)).size
+          : null,
+        sample_count: columnMap
+          ? new Set(parsed.rows.map((row) => row[columnMap.sample]).filter(Boolean)).size
+          : null,
+        timepoints: columnMap
+          ? [...new Set(parsed.rows.map((row) => row[columnMap.timepoint]).filter(Boolean))].sort()
+          : [],
+        measurement_columns: columnMap ? columnMap.measurement : []
+      } : null;
+    } catch (error) {
+      trace = createAuditTrace(
+        "INSUFFICIENT_EVIDENCE",
+        "OSDR_FILE_DOWNLOAD_UNAVAILABLE",
+        "The exact catalog file was selected, but its bytes could not be downloaded and verified: " + error.message
+      );
+    }
+  }
+
+  const decision = trace.decision;
+  const manifest = {
+    ...(studyMetadata || {
+      dataset_id: DATASET_ID,
+      dataset_version: DATASET_VERSION
+    }),
+    source_metadata_api: METADATA_URL,
+    source_file_catalog_api: catalogSnapshots[0] ? catalogSnapshots[0].url : CATALOG_URL,
+    source_study_page: STUDY_PAGE_URL,
+    file_name: FILE_NAME,
+    metadata_file_references: metadataFileReferences,
+    file_catalog_record_found: Boolean(fileRecord),
+    file_download_url: downloaded ? downloaded.downloadUrl : null,
+    file_sha256: digest,
+    reference_sha256: null,
+    reference_sha256_status: digest
+      ? "not_previously_frozen; actual downloaded bytes are hashed, not compared to an invented reference digest"
+      : "not_calculated; no verified file bytes were downloaded",
+    byte_length: downloaded ? downloaded.bytes.length : null,
+    raw_bytes_preserved: Boolean(downloaded),
+    csv_relative_path: downloaded ? path.relative(process.cwd(), path.join(outputDir, FILE_NAME)) : null,
+    metadata_api_retrieved_at: new Date().toISOString(),
+    pilot_decision: decision,
+    metadata_fetch_error: metadataFetchError ? metadataFetchError.message : null,
+    metadata_validation_error: metadataValidationError ? metadataValidationError.message : null,
+    catalog_error: catalogError ? catalogError.message : null
+  };
+
+  const pilotReport = {
+    dataset_id: DATASET_ID,
+    dataset_version: studyMetadata ? studyMetadata.dataset_version : DATASET_VERSION,
+    source_file: FILE_NAME,
+    data_provenance_class: studyMetadata ? studyMetadata.transformed_data_class : "not_verified",
+    file_sha256: digest,
+    file_bytes: downloaded ? downloaded.bytes.length : null,
+    csv_parse_error: parseError,
+    column_map: columnMap,
+    observed,
+    metadata_file_references: metadataFileReferences,
+    catalog_file_candidates: getCsvFileCandidates(fileRecords),
+    catalog_page_diagnostics: catalogSnapshots.map((snapshot) => ({
       url: snapshot.url,
       status: snapshot.status,
       page_number: snapshot.body && snapshot.body.page_number,
@@ -270,127 +592,41 @@ async function main() {
       total_hits: snapshot.body && snapshot.body.total_hits,
       returned_studies: snapshot.body && snapshot.body.studies
         ? Object.keys(snapshot.body.studies)
+        : [],
+      top_level_json_fields: snapshot.body && typeof snapshot.body === "object"
+        ? Object.keys(snapshot.body)
         : []
-    }));
-    throw new Error(
-      "The exact transformed CSV " + FILE_NAME + " was not present in the versioned OSDR file catalog. " +
-      "CSV filenames returned: " + (csvCandidates.length ? csvCandidates.join(", ") : "none") +
-      ". Catalog page diagnostics: " + JSON.stringify(pageDiagnostics)
-    );
-  }
-
-  const download = await downloadStudyFile(fileRecord, fetchWithTimeout);
-  const bytes = download.bytes;
-  const digest = sha256(bytes);
-  const csvPath = path.join(OUTPUT_DIR, FILE_NAME);
-
-  // Save the exact response bytes before parsing. No text decoding/re-encoding is used for the raw file.
-  await fs.writeFile(csvPath, bytes);
-
-  let parsed = null;
-  let parseError = null;
-  try {
-    parsed = parseCsv(bytes.toString("utf8"));
-  } catch (error) {
-    parseError = error.message;
-  }
-
-  const columnMap = parsed ? inferColumnMap(parsed.headers, parsed.rows) : null;
-  const replayFetch = async (url) => {
-    const address = String(url);
-    if (address.includes("/meta/575")) return jsonResponse(true, 200, metadata, METADATA_URL);
-    if (address.includes("/files/575")) {
-      return jsonResponse(true, 200, {
-        studies: { "OSD-575": { study_files: [fileRecord] } }
-      }, CATALOG_URL);
-    }
-    const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    return {
-      ok: true,
-      status: 200,
-      url: download.downloadUrl,
-      headers: { get: (name) => name.toLowerCase() === "content-length" ? String(bytes.length) : download.contentType },
-      arrayBuffer: async () => arrayBuffer
-    };
-  };
-
-  const trace = await runOsd575Pilot({
-    fetchImpl: replayFetch,
-    columnMap,
-    studyVersion: studyMetadata.dataset_version,
-    rawDataAvailable: studyMetadata.raw_data_file_status !== "Not Available"
-  });
-
-  const observed = parsed ? {
-    header_count: parsed.headers.length,
-    row_count: parsed.rows.length,
-    participant_count: columnMap
-      ? new Set(parsed.rows.map((row) => row[columnMap.participant]).filter(Boolean)).size
-      : null,
-    sample_count: columnMap
-      ? new Set(parsed.rows.map((row) => row[columnMap.sample]).filter(Boolean)).size
-      : null,
-    timepoints: columnMap
-      ? [...new Set(parsed.rows.map((row) => row[columnMap.timepoint]).filter(Boolean))].sort()
-      : [],
-    measurement_columns: columnMap ? columnMap.measurement : []
-  } : null;
-
-  const manifest = {
-    ...studyMetadata,
-    source_metadata_api: METADATA_URL,
-    source_file_catalog_api: CATALOG_URL,
-    source_study_page: STUDY_PAGE_URL,
-    file_name: FILE_NAME,
-    file_download_url: download.downloadUrl,
-    file_sha256: digest,
-    reference_sha256: null,
-    reference_sha256_status: "not_previously_frozen; actual downloaded bytes are hashed, not compared to an invented reference digest",
-    byte_length: bytes.length,
-    raw_bytes_preserved: true,
-    csv_relative_path: path.relative(process.cwd(), csvPath),
-    metadata_api_retrieved_at: new Date().toISOString(),
-    pilot_decision: trace.decision
-  };
-
-  const pilotReport = {
-    dataset_id: DATASET_ID,
-    dataset_version: studyMetadata.dataset_version,
-    source_file: FILE_NAME,
-    data_provenance_class: studyMetadata.transformed_data_class,
-    file_sha256: digest,
-    file_bytes: bytes.length,
-    csv_parse_error: parseError,
-    column_map: columnMap,
-    observed,
+    })),
     trace_contract: trace,
-    license_note: studyMetadata.license_api_status === "NOT_EXPOSED_BY_LEGACY_METADATA_API"
+    license_note: studyMetadata &&
+      studyMetadata.license_api_status === "NOT_EXPOSED_BY_LEGACY_METADATA_API"
       ? "The legacy OSDR metadata JSON did not expose a license field. The CC0-1.0 value in this report is from a previously verified official NASA study record, not from this JSON response."
       : null
   };
 
-  await writeJson("manifest.json", manifest);
-  await writeJson("pilot-report.json", pilotReport);
+  await writeJson(outputDir, "manifest.json", manifest);
+  await writeJson(outputDir, "pilot-report.json", pilotReport);
 
-  console.log("[OSD-575] NASA metadata:", JSON.stringify(studyMetadata, null, 2));
-  console.log("[OSD-575] Actual file SHA-256:", digest);
-  console.log("[OSD-575] Byte length:", bytes.length);
-  console.log("[OSD-575] CSV header count:", observed ? observed.header_count : "parse failed");
-  console.log("[OSD-575] Column mapping:", JSON.stringify(columnMap));
-  console.log("[OSD-575] Observed rows and identifiers:", JSON.stringify(observed));
-  console.log("[OSD-575] trace-contract result:");
-  console.log(JSON.stringify(trace, null, 2));
-  console.log("[OSD-575] Files saved under:", OUTPUT_DIR);
-
-  if (studyMetadata.license_api_status === "NOT_EXPOSED_BY_LEGACY_METADATA_API") {
-    console.warn("[OSD-575] LICENSE NOTE: CC0-1.0 is not present in the legacy metadata API response; see manifest license_api_status.");
+  logger.log("[OSD-575] Audit decision:", decision);
+  logger.log("[OSD-575] Metadata filename references:", JSON.stringify(metadataFileReferences));
+  logger.log("[OSD-575] Catalog CSV candidates:", JSON.stringify(pilotReport.catalog_file_candidates));
+  if (digest) {
+    logger.log("[OSD-575] Actual file SHA-256:", digest);
+    logger.log("[OSD-575] Byte length:", downloaded.bytes.length);
+    logger.log("[OSD-575] Column mapping:", JSON.stringify(columnMap));
+    logger.log("[OSD-575] Observed rows and identifiers:", JSON.stringify(observed));
+  } else {
+    logger.warn("[OSD-575] No verified CSV download was possible. Raw API responses and the decision record were written to:", outputDir);
   }
+  logger.log("[OSD-575] trace-contract result:");
+  logger.log(JSON.stringify(trace, null, 2));
+  logger.log("[OSD-575] Audit files saved under:", outputDir);
 
-  if (parseError) {
-    console.error("[OSD-575] CSV parse failed:", parseError);
-    process.exitCode = 2;
-  }
+  // An abstention or invalid-data result is a completed scientific audit, not a runner crash.
+  // The decision is explicit in pilot-report.json and the raw responses remain in the artifact.
+  return { decision, manifest, pilotReport };
 }
+
 
 if (require.main === module) {
   main().catch((error) => {
@@ -403,5 +639,8 @@ module.exports = {
   sha256,
   inferColumnMap,
   findApiLicense,
-  extractStudyMetadata
+  extractStudyMetadata,
+  extractMetadataFileReferences,
+  createAuditTrace,
+  main
 };
