@@ -36,9 +36,9 @@
         { label: "R+194", phase: "Post-flight" }
       ],
       acquisitionAudit: {
-        runNumber: 9,
-        runId: 43612460864,
-        auditedAt: "2026-11-14T15:52:10Z",
+        runNumber: 10,
+        runId: 43616651617,
+        auditedAt: "2026-11-14T16:37:57Z",
         decision: "LIMITED_EVIDENCE",
         metadataVerified: true,
         transformedFileReferencedInMetadata: true,
@@ -54,7 +54,7 @@
         fileSha256: "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c",
         byteLength: 6207,
         analysisCompleted: true,
-        note: "Live run #9 (GitHub Actions run 43612460864) downloaded the exact public HDCVD9 transformed CSV (6,207 bytes), verified the project-maintained SHA-256 pin, joined all 28 CSV sample names one-to-one to the NASA ISA sample table, and passed baseline normalization checks for nine analytes. The cohort contains four independent participants and seven collection timepoints. The scientific decision remains LIMITED_EVIDENCE because raw assay data are unavailable and the participant count is small; fibrinogen remains flagged for assay-suitability review."
+        note: "Latest successful live audit run #10 (GitHub Actions run 43616651617, 2026-11-14T16:37:57Z) re-downloaded the exact public HDCVD9 transformed CSV (6,207 bytes), matched the project-maintained SHA-256 pin, joined all 28 CSV sample names one-to-one to the NASA ISA sample table, and passed baseline normalization checks for nine analytes. The result matches the previously imported byte sequence. The cohort contains four independent participants and seven collection timepoints. The scientific decision remains LIMITED_EVIDENCE because raw assay data are unavailable and the participant count is small; fibrinogen remains flagged for assay-suitability review."
       },
       source: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
     },
@@ -68,7 +68,7 @@
         measures: ["HDCVD9 multiplex assay", "Transformed serum measurements"],
         evidenceStatus: "VERIFIED_FILE_METADATA_AND_NORMALIZATION",
         statusLabel: "File, map + normalization verified",
-        accessNote: "Live audit run #9 (GitHub Actions run 43612460864) retrieved and preserved the exact 6,207-byte HDCVD9 transformed CSV. The project-maintained SHA-256 pin matches; all 28 sample names join one-to-one to NASA ISA metadata for four participants across seven collection timepoints; and all nine concentration/percentage pairs pass the baseline-normalization audit. Results remain LIMITED_EVIDENCE: these are transformed serum assay measurements, not continuous vital-sign telemetry, and raw assay data are unavailable. Fibrinogen is retained for traceability but flagged because the vendor's serum suitability statement conflicts with the column label.",
+        accessNote: "Latest successful live audit run #10 (GitHub Actions run 43616651617) rechecked the exact 6,207-byte HDCVD9 transformed CSV. The project-maintained SHA-256 pin matches; all 28 sample names join one-to-one to NASA ISA metadata for four participants across seven collection timepoints; and all nine concentration/percentage pairs pass the baseline-normalization audit. Results remain LIMITED_EVIDENCE: these are transformed serum assay measurements, not continuous vital-sign telemetry, and raw assay data are unavailable. Fibrinogen is retained for traceability but flagged because the vendor\'s serum suitability statement conflicts with the column label.",
         role: "Primary spaceflight research source",
         url: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
       },
