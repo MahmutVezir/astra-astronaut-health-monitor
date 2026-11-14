@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   getStudyRecord,
+  isNumericVersion,
   findExplicitLicense,
   summarizeFiles
 } = require("../scripts/audit-osd53.js");
@@ -15,6 +16,14 @@ test("requires the exact OSD-53 identifier in NASA metadata", () => {
   } } };
   assert.equal(getStudyRecord(payload).record.identifier, "OSD-53");
   assert.throws(() => getStudyRecord({ study: {} }), /does not contain study/);
+});
+
+test("accepts only numeric OSDR version strings", () => {
+  assert.equal(isNumericVersion("3"), true);
+  assert.equal(isNumericVersion("12"), true);
+  assert.equal(isNumericVersion("3-beta"), false);
+  assert.equal(isNumericVersion(""), false);
+  assert.equal(isNumericVersion(null), false);
 });
 
 test("does not invent a license when metadata omits one", () => {
