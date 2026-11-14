@@ -295,6 +295,52 @@ test("catalog download URLs stay on NASA HTTPS and redirects allow only the offi
     ),
     /exact catalog filename/
   );
+
+  const osd53Metadata = "OSD-53_metadata_OSD-53-ISA.zip";
+  const osd53Additional = "GLDS-53_microarray_E-GEOD-47126.additional.zip";
+  const osd53Processed = "GLDS-53_microarray_E-GEOD-47126.processed.zip";
+  assert.equal(
+    validateOsdrDownloadResponseUrl(
+      "https://genelab-shared-repo-prod.s3.amazonaws.com/osd-data/OSD-53/metadata/" + osd53Metadata,
+      osd53Metadata
+    ),
+    "https://genelab-shared-repo-prod.s3.amazonaws.com/osd-data/OSD-53/metadata/" + osd53Metadata
+  );
+  assert.equal(
+    validateOsdrDownloadResponseUrl(
+      "https://genelab-repo-prod.s3.amazonaws.com/genelab-data/GLDS-53/microarray/" + osd53Additional,
+      osd53Additional
+    ),
+    "https://genelab-repo-prod.s3.amazonaws.com/genelab-data/GLDS-53/microarray/" + osd53Additional
+  );
+  assert.equal(
+    validateOsdrDownloadResponseUrl(
+      "https://genelab-repo-prod.s3.amazonaws.com/genelab-data/GLDS-53/microarray/" + osd53Processed,
+      osd53Processed
+    ),
+    "https://genelab-repo-prod.s3.amazonaws.com/genelab-data/GLDS-53/microarray/" + osd53Processed
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl(
+      "https://genelab-repo-prod.s3.amazonaws.com/genelab-data/OTHER/microarray/" + osd53Additional,
+      osd53Additional
+    ),
+    /OSD-53 bucket redirect did not match/
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl(
+      "https://genelab-shared-repo-prod.s3.amazonaws.com/osd-data/OSD-53/metadata/" + osd53Processed,
+      osd53Processed
+    ),
+    /OSD-53 bucket redirect did not match/
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl(
+      "https://genelab-repo-prod.s3.amazonaws.com/genelab-data/GLDS-53/microarray/" + osd53Additional,
+      osd53Processed
+    ),
+    /OSD-53 bucket redirect did not match/
+  );
 });
 
 test("OSDR download accepts the observed ALSDA bucket only for the exact HDCVD9 object", async () => {
