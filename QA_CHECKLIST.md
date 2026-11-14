@@ -17,6 +17,23 @@ Run `npm test` with Node.js 18+.
 - Custom reference bands are respected and invalid lower/upper pairs are rejected.
 - Static integration tests verify that app.js element IDs exist in index.html and all referenced offline-shell assets exist.
 
+## NASA OSD-575 Research Mode gates
+
+- [x] Live catalog lookup found the exact OSD-575 v3 HDCVD9 transformed file.
+- [x] Download returned HTTP 200 from the catalog-provided URL via the observed ALSDA redirect.
+- [x] Original download is 6,207 bytes and independently hashes to the project pin recorded in README.
+- [x] CSV is 28 × 19 with 28 unique sample identifiers and nine concentration/percentage pairs.
+- [x] The downloaded sample names were independently compared with the 28 NASA ISA metadata sample identifiers.
+- [x] The nine percentage columns were independently recalculated against the all-crew pre-flight mean (12 samples); maximum absolute difference is below 5 × 10^-8.
+- [ ] Run the live acquisition workflow again after the metadata-backed analysis changes; require full sample mapping and all nine normalization checks to pass in pilot-report.json.
+- [ ] Verify the artifact importer commits the exact original CSV bytes, isa-sample-map.json, and source-audit.json to the research dashboard branch.
+- [ ] Confirm tests/osd575-source-data.test.js runs (not skips) and passes against the imported source.
+- [ ] Open Research Mode in a real browser; confirm the data status, participant count, sample-join count, normalization status, marker selector, four crew trajectories, and descriptive table are visible.
+- [ ] Select each marker; confirm units and participant trajectories change consistently.
+- [ ] Confirm fibrinogen displays a persistent interpretation warning and is not included in biological conclusions.
+- [ ] Download the source CSV from the page; recalculate its SHA-256 and compare with the documented project pin.
+- [ ] Confirm all demo HR/SpO₂/temperature/sleep inputs remain in Demo & Manual Mode and are never presented as NASA OSD-575 measurements.
+
 ## Browser functional tests
 
 | ID | Test | Steps | Expected result | Actual result |
