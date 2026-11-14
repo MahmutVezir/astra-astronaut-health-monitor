@@ -50,21 +50,24 @@ class OSD53ArchiveInspectionTests(unittest.TestCase):
         self.assertEqual(report["metadata_preview"][0]["Factor Value[Time]"], "L-30")
         self.assertEqual(report["metadata_preview"][0]["Characteristics[Study Subject]"], "Astronaut A")
 
-    def test_detects_two_row_differential_expression_headers(self):
+    def test_detects_three_row_differential_expression_headers(self):
         raw = (
-            "\t\tAstronaut A\tAstronaut A\tAverage\tAverage\t\t\t\n"
-            "\t\tPREFLIGHT\tPOSTFLIGHT\tPREFLIGHT\tPOSTFLIGHT\tRatio\tLog2 Ratio\tp-value\n"
-            "ID_REF\t\t1.0\t1.5\t1.0\t1.5\t1.5\t0.58\t0.01\n"
-            "probe1\tK00650\t0.9\t1.2\t0.9\t1.2\t1.3\t0.38\t0.03\n"
+            "\\t\\tAstronaut A\\tAstronaut A\\tAverage\\tAverage\\t\\t\\t\\n"
+            "\\t\\tPREFLIGHT\\tPOSTFLIGHT\\tPREFLIGHT\\tPOSTFLIGHT\\tRatio\\tLog2 Ratio\\tp-value\\n"
+            "ID_REF\\t\\t\\t\\t\\t\\t\\t\\t\\n"
+            "C277\\tK00650\\t1.0\\t1.5\\t1.0\\t1.5\\t1.5\\t0.58\\t0.01\\n"
+            "421\\tM31630\\t0.9\\t1.2\\t0.9\\t1.2\\t1.3\\t0.38\\t0.03\\n"
         ).encode("utf-8")
         report = parse_delimited_text("GSE47126_Fold_change_data.txt", raw)
         self.assertEqual(report["row_count"], 2)
         self.assertEqual(report["column_count"], 9)
+        self.assertEqual(report["headers"][0], "ID_REF")
         self.assertEqual(report["headers"][2], "Astronaut A | PREFLIGHT")
         self.assertEqual(report["headers"][3], "Astronaut A | POSTFLIGHT")
+        self.assertEqual(report["headers"][7], "Log2 Ratio")
         self.assertTrue(report["is_differential_expression_results_candidate"])
         self.assertFalse(report["is_expression_matrix_candidate"])
-        self.assertEqual(report["header_preview_lines"][1].split("\t")[2], "PREFLIGHT")
+        self.assertEqual(report["header_preview_lines"][1].split("\\t")[2], "PREFLIGHT")
 
     def test_validates_zip_crc_and_member_structure(self):
         report = inspect_zip_bytes("candidate.zip", make_zip())
