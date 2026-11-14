@@ -106,7 +106,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
             value = row[source_index].strip()
             if value:
                 source_ids.append(value)
-        if row_count <= 10:
+        if row_count <= 20:
             metadata_preview.append({
                 name: row[index].strip()
                 for name, index in metadata_indices.items()
