@@ -275,6 +275,10 @@ async function run() {
       top_level_keys: item.top_level_keys || [],
       record_keys: item.record_keys || [],
       related_keys: item.related_keys || [],
+      related_dataset_count: item.related_dataset_count || 0,
+      related_data_file_count: item.related_data_file_count || 0,
+      related_datasets: item.related_datasets || [],
+      related_data_files: item.related_data_files || [],
       file_access_hints: item.file_access_hints || []
     })),
     detailed_record_count: detailResults.length,
