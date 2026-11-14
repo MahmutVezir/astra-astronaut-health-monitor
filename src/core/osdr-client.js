@@ -5,6 +5,20 @@ const OSDR_API_ROOT = OSDR_ORIGIN + "/osdr/data/osd";
 const OSDR_PUBLIC_BUCKET_HOST = "nasa-osdr.s3.us-west-2.amazonaws.com";
 const OSDR_ALSDA_BUCKET_HOST = "genelab-alsda-repo-prod.s3.amazonaws.com";
 const OSDR_ALSDA_HDCVD9_PATH = "/alsda-data/LSDS-8/Multiplex/";
+const OSDR_APPROVED_OSD53_BUCKET_OBJECTS = Object.freeze({
+  "OSD-53_metadata_OSD-53-ISA.zip": {
+    host: "genelab-shared-repo-prod.s3.amazonaws.com",
+    path: "/osd-data/OSD-53/metadata/OSD-53_metadata_OSD-53-ISA.zip"
+  },
+  "GLDS-53_microarray_E-GEOD-47126.additional.zip": {
+    host: "genelab-repo-prod.s3.amazonaws.com",
+    path: "/genelab-data/GLDS-53/microarray/GLDS-53_microarray_E-GEOD-47126.additional.zip"
+  },
+  "GLDS-53_microarray_E-GEOD-47126.processed.zip": {
+    host: "genelab-repo-prod.s3.amazonaws.com",
+    path: "/genelab-data/GLDS-53/microarray/GLDS-53_microarray_E-GEOD-47126.processed.zip"
+  }
+});
 
 function parseStudyIdentifier(studyId, requestedVersion = null) {
   const match = String(studyId).match(/^OSD-(\d+)(?:\.(\d+))?$/);
@@ -177,7 +191,9 @@ function validateOsdrDownloadResponseUrl(responseUrl, expectedFileName = null) {
   const isNasaHost = url.hostname === "osdr.nasa.gov" || url.hostname.endsWith(".nasa.gov");
   const isOfficialPublicBucket = url.hostname === OSDR_PUBLIC_BUCKET_HOST;
   const isObservedAlsdaBucket = url.hostname === OSDR_ALSDA_BUCKET_HOST;
-  if (url.protocol !== "https:" || !(isNasaHost || isOfficialPublicBucket || isObservedAlsdaBucket)) {
+  const isObservedOsd53Bucket = Object.values(OSDR_APPROVED_OSD53_BUCKET_OBJECTS)
+    .some((item) => item.host === url.hostname);
+  if (url.protocol !== "https:" || !(isNasaHost || isOfficialPublicBucket || isObservedAlsdaBucket || isObservedOsd53Bucket)) {
     const error = new Error(
       "Refusing a download redirect outside verified NASA HTTPS endpoints (protocol=" +
       url.protocol + ", host=" + url.hostname + ", path=" + url.pathname + ")"
@@ -192,6 +208,24 @@ function validateOsdrDownloadResponseUrl(responseUrl, expectedFileName = null) {
   }
   if (isObservedAlsdaBucket && !expectedFileName) {
     throw new Error("The observed ALSDA bucket redirect requires an exact catalog filename");
+  }
+  if (isObservedOsd53Bucket) {
+    const approvedObject = expectedFileName
+      ? OSDR_APPROVED_OSD53_BUCKET_OBJECTS[expectedFileName]
+      : null;
+    if (!approvedObject || url.hostname !== approvedObject.host || url.pathname !== approvedObject.path) {
+      const error = new Error(
+        "The OSDR OSD-53 bucket redirect did not match an explicitly approved filename, host and object path (host=" +
+        url.hostname + ", path=" + url.pathname + ")"
+      );
+      error.redirect = {
+        protocol: url.protocol,
+        host: url.hostname,
+        path: url.pathname,
+        filename: decodeSafely(url.pathname.split("/").pop() || "")
+      };
+      throw error;
+    }
   }
   if ((isOfficialPublicBucket || isObservedAlsdaBucket) && expectedFileName) {
     const finalName = decodeSafely(url.pathname.split("/").pop() || "");
