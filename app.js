@@ -168,6 +168,30 @@
     }
   }
 
+  function renderResearchSources() {
+    const target = $("research-source-grid");
+    const research = window.AstraResearch;
+    if (!target || !research || !Array.isArray(research.sources)) return;
+
+    target.innerHTML = research.sources.map(function (source) {
+      const measures = Array.isArray(source.measures) ? source.measures : [];
+      return '<article class="research-source-card">' +
+        '<div class="research-source-top"><span class="research-source-id">' + esc(source.id) +
+        '</span><span class="research-source-status">' + esc(source.statusLabel) + '</span></div>' +
+        '<h4>' + esc(source.name) + '</h4>' +
+        '<p class="research-source-role">' + esc(source.role) + '</p>' +
+        '<div class="research-source-meta"><span>' + esc(source.provider) + '</span><span>' +
+        esc(source.environment) + '</span></div>' +
+        '<p class="research-source-domain">' + esc(source.domain) + '</p>' +
+        '<div class="research-source-measures">' + measures.map(function (measure) {
+          return '<span>' + esc(measure) + '</span>';
+        }).join("") + '</div>' +
+        '<p class="research-source-note">' + esc(source.accessNote) + '</p>' +
+        '<a href="' + esc(source.url) + '" target="_blank" rel="noopener noreferrer">Open source record ↗</a>' +
+        '</article>';
+    }).join("");
+  }
+
   function renderLog() {
     const list = $("log-list");
     $("empty-log").hidden = state.log.length > 0;
@@ -203,6 +227,7 @@
     renderInputs();
     renderResearchMode();
     renderResearchTimeline();
+    renderResearchSources();
     $("last-updated").textContent = state.updatedAt ? "Updated " + new Date(state.updatedAt).toLocaleString() : "Demo readings loaded";
   }
 
