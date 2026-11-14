@@ -18,7 +18,7 @@
       </a>
       <div class="topbar-right">
         <span class="demo-pill"><span class="pulse-dot"></span> SIMULATED DATA · NO LIVE SENSORS</span>
-        <span class="mission-chip">MISSION DAY <strong id="mission-day">042</strong></span>
+        <span class="mission-chip">SIM DAY <strong id="mission-day">042</strong></span>
       </div>
     </header>
 
@@ -51,7 +51,7 @@
 
       <section class="view active" id="view-overview">
         <div class="section-heading">
-          <div><p class="eyebrow">LIVE VIEW · LOCAL DEMONSTRATION</p><h2>Crew health overview</h2></div>
+          <div><p class="eyebrow">CREW HEALTH · LOCAL DEMONSTRATION</p><h2>Crew health overview</h2></div>
           <span class="timestamp" id="last-updated">No readings saved yet</span>
         </div>
         <div class="signal-grid" id="signal-cards" aria-live="polite"></div>
@@ -126,7 +126,7 @@
       <section class="view" id="view-sources" hidden>
         <div class="section-heading"><div><p class="eyebrow">TRACEABLE SCIENCE</p><h2>Sources & limitations</h2><p class="section-copy">NASA research informs the context. It is not misrepresented as a live sensor feed.</p></div></div>
         <div class="source-grid">
-          <article class="panel source-card featured-source"><span class="source-tag">NASA OPEN SCIENCE DATA REPOSITORY</span><h3>Inspiration4 — OSD-575</h3><p>NASA OSDR study metadata describes blood-serum metabolic-panel and immune/cardiac cytokine assays from the Inspiration4 mission. Samples were collected before and after the flight; the study is not a continuous heart-rate or oxygen-saturation stream.</p><div class="source-facts"><span><strong>Mission</strong>3 days · September 2021</span><span><strong>Samples</strong>28 listed samples</span><span><strong>License</strong>CC0-1.0</span></div><a href="https://osdr.nasa.gov/bio/repo/data/studies/OSD-575" target="_blank" rel="noopener noreferrer">Open NASA OSDR study ↗</a></article>
+          <article class="panel source-card featured-source"><span class="source-tag">NASA OPEN SCIENCE DATA REPOSITORY</span><h3>Inspiration4 — OSD-575</h3><p>NASA OSDR study metadata describes blood-serum metabolic-panel and immune/cardiac cytokine assays from the Inspiration4 mission. Samples were collected before and after the flight; the study is not a continuous heart-rate or oxygen-saturation stream.</p><div class="source-facts"><span><strong>Mission</strong>3 days · September 2021</span><span><strong>Samples</strong>28 samples listed</span><span><strong>License</strong>CC0-1.0</span></div><div class="research-timeline" id="osd-timeline" aria-label="OSD-575 sample collection timeline"></div><a href="https://osdr.nasa.gov/bio/repo/data/studies/OSD-575" target="_blank" rel="noopener noreferrer">Open NASA OSDR study ↗</a></article>
           <article class="panel source-card"><span class="source-tag">NASA HUMAN RESEARCH PROGRAM</span><h3>Human spaceflight hazards</h3><p>NASA identifies radiation, isolation and confinement, distance from Earth, altered gravity, and hostile or closed environments as major human-spaceflight hazards.</p><a href="https://www.nasa.gov/hrp/hazards/" target="_blank" rel="noopener noreferrer">Read NASA HRP overview ↗</a></article>
           <article class="panel source-card"><span class="source-tag">NASA STANDARD MEASURES</span><h3>Multisystem monitoring context</h3><p>NASA's Standard Measures research includes activity and light exposure from a wrist sensor, sleep reports, immune and nutrition-related samples, cognition, and sensorimotor tests.</p><a href="https://www.nasa.gov/reference/standard-measures/" target="_blank" rel="noopener noreferrer">Read NASA Standard Measures ↗</a></article>
           <article class="panel source-card"><span class="source-tag">CHALLENGE BRIEF</span><h3>Why a crew health tool?</h3><p>The challenge asks for software that gathers health indicators and enables astronauts to evaluate and act on their health status during long-duration missions.</p><a href="https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/" target="_blank" rel="noopener noreferrer">Read official challenge ↗</a></article>
@@ -137,6 +137,7 @@
       <footer class="footer"><span>ASTRA · Independent student prototype</span><span>Not an official NASA product · Not for clinical use</span></footer>
     </main>
   </div>
+  <script src="research-data.js"></script>
   <script src="health-engine.js"></script>
   <script src="app.js"></script>
 </body>
