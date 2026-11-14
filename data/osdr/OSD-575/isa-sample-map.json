@@ -1,0 +1,154 @@
+{
+  "dataset_id": "OSD-575",
+  "dataset_version": "3",
+  "source": "NASA OSDR meta/575 ISA sample table",
+  "source_url": "https://osdr.nasa.gov/osdr/data/osd/meta/575",
+  "extraction_fields": {
+    "participant": "Source Name",
+    "sample": "Sample Name",
+    "timepoint": "Factor Value: Time"
+  },
+  "sample_count": 28,
+  "records": [
+    {
+      "source_name": "C001",
+      "sample_name": "C001_serum_L-3",
+      "time_label": "Launch minus 3"
+    },
+    {
+      "source_name": "C001",
+      "sample_name": "C001_serum_L-44",
+      "time_label": "Launch minus 44"
+    },
+    {
+      "source_name": "C001",
+      "sample_name": "C001_serum_L-92",
+      "time_label": "Launch minus 92"
+    },
+    {
+      "source_name": "C001",
+      "sample_name": "C001_serum_R+1",
+      "time_label": "Return plus 1"
+    },
+    {
+      "source_name": "C001",
+      "sample_name": "C001_serum_R+194",
+      "time_label": "Return plus 194"
+    },
+    {
+      "source_name": "C001",
+      "sample_name": "C001_serum_R+45",
+      "time_label": "Return plus 45"
+    },
+    {
+      "source_name": "C001",
+      "sample_name": "C001_serum_R+82",
+      "time_label": "Return plus 82"
+    },
+    {
+      "source_name": "C002",
+      "sample_name": "C002_serum_L-3",
+      "time_label": "Launch minus 3"
+    },
+    {
+      "source_name": "C002",
+      "sample_name": "C002_serum_L-44",
+      "time_label": "Launch minus 44"
+    },
+    {
+      "source_name": "C002",
+      "sample_name": "C002_serum_L-92",
+      "time_label": "Launch minus 92"
+    },
+    {
+      "source_name": "C002",
+      "sample_name": "C002_serum_R+1",
+      "time_label": "Return plus 1"
+    },
+    {
+      "source_name": "C002",
+      "sample_name": "C002_serum_R+194",
+      "time_label": "Return plus 194"
+    },
+    {
+      "source_name": "C002",
+      "sample_name": "C002_serum_R+45",
+      "time_label": "Return plus 45"
+    },
+    {
+      "source_name": "C002",
+      "sample_name": "C002_serum_R+82",
+      "time_label": "Return plus 82"
+    },
+    {
+      "source_name": "C003",
+      "sample_name": "C003_serum_L-3",
+      "time_label": "Launch minus 3"
+    },
+    {
+      "source_name": "C003",
+      "sample_name": "C003_serum_L-44",
+      "time_label": "Launch minus 44"
+    },
+    {
+      "source_name": "C003",
+      "sample_name": "C003_serum_L-92",
+      "time_label": "Launch minus 92"
+    },
+    {
+      "source_name": "C003",
+      "sample_name": "C003_serum_R+1",
+      "time_label": "Return plus 1"
+    },
+    {
+      "source_name": "C003",
+      "sample_name": "C003_serum_R+194",
+      "time_label": "Return plus 194"
+    },
+    {
+      "source_name": "C003",
+      "sample_name": "C003_serum_R+45",
+      "time_label": "Return plus 45"
+    },
+    {
+      "source_name": "C003",
+      "sample_name": "C003_serum_R+82",
+      "time_label": "Return plus 82"
+    },
+    {
+      "source_name": "C004",
+      "sample_name": "C004_serum_L-3",
+      "time_label": "Launch minus 3"
+    },
+    {
+      "source_name": "C004",
+      "sample_name": "C004_serum_L-44",
+      "time_label": "Launch minus 44"
+    },
+    {
+      "source_name": "C004",
+      "sample_name": "C004_serum_L-92",
+      "time_label": "Launch minus 92"
+    },
+    {
+      "source_name": "C004",
+      "sample_name": "C004_serum_R+1",
+      "time_label": "Return plus 1"
+    },
+    {
+      "source_name": "C004",
+      "sample_name": "C004_serum_R+194",
+      "time_label": "Return plus 194"
+    },
+    {
+      "source_name": "C004",
+      "sample_name": "C004_serum_R+45",
+      "time_label": "Return plus 45"
+    },
+    {
+      "source_name": "C004",
+      "sample_name": "C004_serum_R+82",
+      "time_label": "Return plus 82"
+    }
+  ]
+}

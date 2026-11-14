@@ -1,0 +1,285 @@
+{
+  "dataset_id": "OSD-575",
+  "dataset_version": "3",
+  "study_identifier": "OSD-575",
+  "study_title": "SpaceX Inspiration4 Blood Serum Metabolic Panel and Immune/Cardiac Cytokine Arrays (Comprehensive Metabolic Panel and Multiplex)",
+  "public_release_date": "14-May-2024",
+  "participant_count": 4,
+  "participant_ids": [
+    "C001",
+    "C002",
+    "C003",
+    "C004"
+  ],
+  "sample_count": 28,
+  "timepoints": [
+    "Launch minus 3",
+    "Launch minus 44",
+    "Launch minus 92",
+    "Return plus 1",
+    "Return plus 194",
+    "Return plus 45",
+    "Return plus 82"
+  ],
+  "assay_metadata_file": "a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt",
+  "transformed_file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+  "transformed_data_class": "ALSDA Transformed Data",
+  "transformed_data_verified": true,
+  "raw_data_file_status": "Not Available",
+  "license": "CC0-1.0",
+  "license_api_value": null,
+  "license_api_status": "NOT_EXPOSED_BY_LEGACY_METADATA_API",
+  "license_source": "CC0-1.0 was previously verified from the official NASA OSDR study record; it is not present in this legacy JSON response.",
+  "source_metadata_api": "https://osdr.nasa.gov/osdr/data/osd/meta/575",
+  "source_file_catalog_api": "https://osdr.nasa.gov/osdr/data/osd/files/575.3/?page=0&size=25&all_files=true",
+  "source_file_catalog_apis": [
+    "https://osdr.nasa.gov/osdr/data/osd/files/575.3/?page=0&size=25&all_files=true",
+    "https://osdr.nasa.gov/osdr/data/osd/files/575.3"
+  ],
+  "catalog_discovery_attempts": [
+    {
+      "label": "VERSIONED_PAGINATED_TRAILING_SLASH",
+      "requests": [
+        "https://osdr.nasa.gov/osdr/data/osd/files/575.3/?page=0&size=25&all_files=true"
+      ],
+      "response_count": 1,
+      "returned_record_count": 0,
+      "csv_filenames": [],
+      "exact_target_found": false,
+      "error": null
+    },
+    {
+      "label": "VERSIONED_DOCUMENTED_BARE_ENDPOINT",
+      "requests": [
+        "https://osdr.nasa.gov/osdr/data/osd/files/575.3"
+      ],
+      "response_count": 1,
+      "returned_record_count": 9,
+      "csv_filenames": [
+        "LSDS-8_Comprehensive_Metabolic_Panel_CMP_TRANSFORMED.csv",
+        "LSDS-8_Comprehensive_Metabolic_Panel_CMP.upload_SUBMITTED.csv",
+        "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "LSDS-8_Multiplex_serum_immune_EvePanel_TRANSFORMED.csv",
+        "LSDS-8_Multiplex_serum.cardiovascular.EvePanel_SUBMITTED.csv",
+        "LSDS-8_Multiplex_serum.immune.AlamarPanel_TRANSFORMED.csv",
+        "LSDS-8_Multiplex_serum.immune.EvePanel_SUBMITTED.csv"
+      ],
+      "exact_target_found": true,
+      "error": null
+    }
+  ],
+  "catalog_access_state": "FILE_DOWNLOADED_AND_HASHED",
+  "source_study_page": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575",
+  "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+  "metadata_file_references": {
+    "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+    "occurrences": [
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[0].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[1].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[2].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[3].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[4].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[5].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[6].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[7].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[8].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[9].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[10].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[11].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[12].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[13].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[14].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[15].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[16].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[17].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[18].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[19].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[20].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[21].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[22].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[23].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[24].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[25].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[26].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.additionalInformation.assays[\"a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt\"].raw[27].a100014parametervaluetransformedfiles",
+        "source_kind": "ISA_ASSAY_TABLE_TRANSFORMED_FILES",
+        "download_urls": []
+      },
+      {
+        "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        "source_path": "study.OSD-575.studies[0].assays[0].processSequence[2].parameterValues[1].value",
+        "source_kind": "ISA_PROCESS_PARAMETER_VALUE",
+        "download_urls": []
+      }
+    ],
+    "download_urls": []
+  },
+  "file_catalog_record_found": true,
+  "file_catalog_record_source": "VERSIONED_DOCUMENTED_BARE_ENDPOINT",
+  "file_catalog_record": {
+    "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+    "remote_url": "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+    "file_size": 6207,
+    "category": "Immunoassay",
+    "restricted": false
+  },
+  "file_download_url": "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download?source=datamanager&file=LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+  "download_response": {
+    "final_url": "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+    "final_host": "genelab-alsda-repo-prod.s3.amazonaws.com",
+    "final_path": "/alsda-data/LSDS-8/Multiplex/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+    "redirected": true,
+    "http_status": 200,
+    "content_type": "text/csv"
+  },
+  "download_failure": null,
+  "file_sha256": "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c",
+  "reference_sha256": "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c",
+  "reference_sha256_status": "MATCHED_REVIEWED_REFERENCE_SHA256",
+  "reference_sha256_source": "Reviewed reproducibility pin established from the first exact OSDR catalog download (run 43608345184); this is a project-maintained pin, not a NASA-published checksum.",
+  "byte_length": 6207,
+  "raw_bytes_preserved": true,
+  "csv_relative_path": "data/osdr/OSD-575/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+  "metadata_api_retrieved_at": "2026-11-14T15:52:06.754Z",
+  "pilot_decision": "LIMITED_EVIDENCE",
+  "metadata_fetch_error": null,
+  "metadata_validation_error": null,
+  "catalog_error": null
+}

@@ -1,0 +1,120 @@
+{
+  "workflow_run_id": 43612460864,
+  "workflow_run_url": "https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864",
+  "dataset_id": "OSD-575",
+  "dataset_version": "3",
+  "file_name": "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+  "file_bytes": 6207,
+  "sha256": "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c",
+  "sha256_is_project_maintained_pin_not_nasa_signature": true,
+  "metadata_sample_join": "PASS",
+  "mapped_participants": 4,
+  "mapped_samples": 28,
+  "mapped_timepoints": 7,
+  "normalization_audit": {
+    "status": "PASS",
+    "formula": "100 × row concentration / mean concentration across all crew pre-flight samples",
+    "baseline_timepoints": [
+      "L-92",
+      "L-44",
+      "L-3"
+    ],
+    "baseline_sample_count": 12,
+    "analyte_count": 9,
+    "tolerance": 1e-06,
+    "analytes": [
+      {
+        "concentration_column": "a2_macroglobulin_concentration_nanogram_per_milliliter",
+        "percent_column": "a2_macroglobulin_percent",
+        "baseline_mean_concentration": 1458890.1175,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 4.045064372348861e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      },
+      {
+        "concentration_column": "agp_concentration_nanogram_per_milliliter",
+        "percent_column": "agp_percent",
+        "baseline_mean_concentration": 2148658.3333333335,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 4.120633434467891e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      },
+      {
+        "concentration_column": "crp_concentration_picogram_per_milliliter",
+        "percent_column": "crp_percent",
+        "baseline_mean_concentration": 17712500,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 4.1213837675968534e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      },
+      {
+        "concentration_column": "fetuin_a36_concentration_nanogram_per_milliliter",
+        "percent_column": "fetuin_a36_percent",
+        "baseline_mean_concentration": 244949.2775,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 4.847800028073834e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      },
+      {
+        "concentration_column": "fibrinogen_concentration_nanogram_per_milliliter",
+        "percent_column": "fibrinogen_percent",
+        "baseline_mean_concentration": 4221.565833333333,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 3.679213023133343e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      },
+      {
+        "concentration_column": "haptoglobin_concentration_nanogram_per_milliliter",
+        "percent_column": "haptoglobin_percent",
+        "baseline_mean_concentration": 5820826.359166667,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 4.5170253315518494e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      },
+      {
+        "concentration_column": "l_selectin_concentration_picogram_per_milliliter",
+        "percent_column": "l_selectin_percent",
+        "baseline_mean_concentration": 968948.0191666667,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 4.573578848976467e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      },
+      {
+        "concentration_column": "pf4_concentration_nanogram_per_milliliter",
+        "percent_column": "pf4_percent",
+        "baseline_mean_concentration": 11522.1075,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 4.975404976903519e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      },
+      {
+        "concentration_column": "sap_concentration_picogram_per_milliliter",
+        "percent_column": "sap_percent",
+        "baseline_mean_concentration": 9159341.666666666,
+        "baseline_sample_count": 12,
+        "rows_checked": 28,
+        "max_absolute_error": 4.6518522367478e-08,
+        "tolerance": 1e-06,
+        "status": "PASS"
+      }
+    ]
+  },
+  "scientific_decision": "LIMITED_EVIDENCE",
+  "raw_assay_data": "Not Available"
+}
