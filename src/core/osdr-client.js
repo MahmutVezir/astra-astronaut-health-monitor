@@ -190,6 +190,9 @@ function validateOsdrDownloadResponseUrl(responseUrl, expectedFileName = null) {
     };
     throw error;
   }
+  if (isObservedAlsdaBucket && !expectedFileName) {
+    throw new Error("The observed ALSDA bucket redirect requires an exact catalog filename");
+  }
   if ((isOfficialPublicBucket || isObservedAlsdaBucket) && expectedFileName) {
     const finalName = decodeSafely(url.pathname.split("/").pop() || "");
     const expectedPath = isObservedAlsdaBucket
@@ -340,7 +343,10 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
       /^\d+$/.test(contentLength) && Number(contentLength) !== bytes.length) {
     throw new Error("Downloaded byte count mismatch: header=" + contentLength + ", actual=" + bytes.length);
   }
-  const catalogFileSize = Number(fileRecord && fileRecord.file_size);
+  const rawCatalogFileSize = fileRecord && fileRecord.file_size;
+  const catalogFileSize = rawCatalogFileSize === null || rawCatalogFileSize === undefined
+    ? null
+    : Number(rawCatalogFileSize);
   if (Number.isInteger(catalogFileSize) && catalogFileSize >= 0 &&
       catalogFileSize !== bytes.length) {
     throw new Error(
