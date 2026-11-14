@@ -151,7 +151,7 @@ async function run() {
       sha256: sha256(item.bytes)
     }))
   };
-  await fs.writeFile(path.join(OUTPUT_DIR, "summary.json"), JSON.stringify(summary, null, 2) + "\\n");
+  await fs.writeFile(path.join(OUTPUT_DIR, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
   console.log(JSON.stringify(summary, null, 2));
 }
 
