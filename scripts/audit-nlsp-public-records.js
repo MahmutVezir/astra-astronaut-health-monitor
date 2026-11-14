@@ -609,7 +609,7 @@ async function run() {
           keys: child && typeof child === "object" ? Object.keys(child).slice(0, 60) : [],
           values: child && typeof child === "object" ? Object.fromEntries(
             Object.entries(child).filter(([key, value]) =>
-              /(file|download|remote|url|md5|guid|access|license|restrict|size|public)/i.test(key) ||
+              /(file|download|remote|url|md5|guid|access|license|restrict|size|public|lock|catalog|owner|availability|rights|terms)/i.test(key) ||
               ["key", "meta", "date", "type", "ext"].includes(key)
             ).filter(([, value]) =>
               typeof value === "string" || typeof value === "number" || typeof value === "boolean"
@@ -676,9 +676,37 @@ async function run() {
   );
   const verifiedBRSMACTFiles = bresmactDownloads.filter((item) => item.verified);
   const verifiedMeasurementFiles = verifiedBRSMACTFiles.filter((item) => item.measurement_file_downloaded);
+  const schemaPassFiles = verifiedMeasurementFiles.filter((item) => {
+    const schema = item.schema_analysis;
+    if (!schema || !Array.isArray(schema.headers) || !schema.headers.length) return false;
+    const headers = new Set(schema.headers.map((value) => String(value).toLowerCase()));
+    return schema.row_count > 0 &&
+      schema.participant_count > 0 &&
+      schema.parseable_date_values_count > 0 &&
+      headers.has("subject") &&
+      headers.has("date") &&
+      headers.has("test_phase");
+  });
+  const primaryBRSMACTFile = schemaPassFiles
+    .filter((item) => item.schema_analysis.duplicate_subject_date_pairs === 0)
+    .sort((a, b) => b.schema_analysis.participant_count - a.schema_analysis.participant_count ||
+      b.schema_analysis.row_count - a.schema_analysis.row_count)[0] || null;
+  const bresmactDetailMetadata = bresmactDetail?.record_metadata || {};
+  const reuseTermsFields = Object.fromEntries(Object.entries(bresmactDetailMetadata).filter(([key]) =>
+    /(license|rights|reuse|terms|copyright)/i.test(key)
+  ));
+  const reuseTermsStatus = Object.keys(reuseTermsFields).length > 0
+    ? "REUSE_TERMS_FIELDS_PRESENT_REQUIRES_REVIEW"
+    : "NO_EXPLICIT_REUSE_TERMS_FIELD_RETURNED";
   let decision = "NO_VERIFIED_MATCHING_RECORD";
   if (successfulSearches.length === 0) decision = "API_SEARCH_UNAVAILABLE_OR_REQUIRES_AUTH";
-  else if (verifiedMeasurementFiles.length > 0) decision = "BRSMACT_MEASUREMENT_FILES_DOWNLOADED_AND_HASH_VERIFIED_REQUIRES_SCHEMA_AND_TERMS_QA";
+  else if (primaryBRSMACTFile && reuseTermsStatus === "NO_EXPLICIT_REUSE_TERMS_FIELD_RETURNED") {
+    decision = "BRSMACT_PRIMARY_CSV_HASH_AND_SCHEMA_QA_PASSED_REUSE_TERMS_NOT_EXPLICITLY_RETURNED";
+  } else if (primaryBRSMACTFile) {
+    decision = "BRSMACT_PRIMARY_CSV_HASH_AND_SCHEMA_QA_PASSED_REUSE_TERMS_REQUIRE_REVIEW";
+  } else if (verifiedMeasurementFiles.length > 0) {
+    decision = "BRSMACT_FILES_HASH_VERIFIED_SCHEMA_QA_INCOMPLETE";
+  }
   else if (returnedRecords.length > 0 && hasExplicitFileEvidence) decision = "RECORDS_AND_FILE_METADATA_FOUND_REQUIRES_FILE_LEVEL_QA";
   else if (returnedRecords.length > 0) decision = "RECORDS_FOUND_FILE_INVENTORY_REVIEW_REQUIRED";
   else decision = "API_SEARCH_RETURNED_NO_MATCHING_RECORDS";
@@ -720,8 +748,19 @@ async function run() {
     supporting_files_downloaded: verifiedBRSMACTFiles.length - verifiedMeasurementFiles.length,
     file_inventory_downloaded: verifiedBRSMACTFiles.length,
     file_bytes_downloaded: verifiedBRSMACTFiles.reduce((sum, item) => sum + (item.actual_file_size || 0), 0),
+    schema_pass_file_count: schemaPassFiles.length,
+    primary_analysis_candidate: primaryBRSMACTFile ? {
+      original_file_name: primaryBRSMACTFile.original_file_name,
+      participant_count: primaryBRSMACTFile.schema_analysis.participant_count,
+      row_count: primaryBRSMACTFile.schema_analysis.row_count,
+      duplicate_subject_date_pairs: primaryBRSMACTFile.schema_analysis.duplicate_subject_date_pairs,
+      earliest_date_iso: primaryBRSMACTFile.schema_analysis.earliest_date_iso,
+      latest_date_iso: primaryBRSMACTFile.schema_analysis.latest_date_iso
+    } : null,
+    reuse_terms_status: reuseTermsStatus,
+    reuse_terms_fields: reuseTermsFields,
     decision,
-    limitation: "This audit retrieves public record metadata only. A file is not considered acquired or usable until an exact file record and source-provided download reference are verified, reuse terms are recorded, and original bytes pass file-level integrity and schema QA."
+    limitation: "BRSMACT files are downloaded from the public NLSP file endpoint and verified against source catalog byte length and MD5 values. Schema checks are descriptive; reuse terms were not explicitly returned in the inspected dataset record and require separate review. BRSMACT is a ground-based bed-rest analogue, not in-flight astronaut telemetry."
   };
   await fs.writeFile(path.join(OUTPUT_DIR, "report.json"), JSON.stringify(report, null, 2) + "\n", "utf8");
   console.log(JSON.stringify({
@@ -754,6 +793,7 @@ async function run() {
       json_valid: item.request.json_valid ?? false,
       record_id: item.record_id ?? null,
       record_title: item.record_title ?? null,
+      record_metadata: item.record_metadata || {},
       top_level_keys: item.top_level_keys || [],
       record_keys: item.record_keys || [],
       related_keys: item.related_keys || [],
@@ -765,7 +805,14 @@ async function run() {
     })),
     detailed_record_count: detailResults.length,
     explicit_file_hint_count: detailHints.filter((item) => /(file|download|remote.?url|attachment)/i.test(item.key)).length,
-    measurement_files_downloaded: 0,
+    measurement_files_downloaded: verifiedMeasurementFiles.length,
+    supporting_files_downloaded: verifiedBRSMACTFiles.length - verifiedMeasurementFiles.length,
+    file_inventory_downloaded: verifiedBRSMACTFiles.length,
+    file_bytes_downloaded: verifiedBRSMACTFiles.reduce((sum, item) => sum + (item.actual_file_size || 0), 0),
+    schema_pass_file_count: schemaPassFiles.length,
+    primary_analysis_candidate: report.primary_analysis_candidate,
+    reuse_terms_status: reuseTermsStatus,
+    reuse_terms_fields: reuseTermsFields,
     decision: report.decision
   }, null, 2));
 }
