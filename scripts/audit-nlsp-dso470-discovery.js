@@ -75,8 +75,15 @@ function extractEvidenceSnippets(source, limit = 30) {
 }
 
 function extractApiHints(source, limit = 60) {
-  const pattern = /https?:\/\/[^"'\x60\\\s<>]+|\/(?:api|graphql|search\/data\/details|_next\/data)\/[^"'\x60\\\s<>]*/gi;
-  return [...new Set(Array.from(String(source).matchAll(pattern), (match) => match[0]))].slice(0, limit);
+  const value = String(source);
+  const patterns = [
+    /https?:\/\/[^"'\x60\\\s<>;,]+/gi,
+    /\/(?:api\/[^"'\x60\\\s<>;,]+|graphql(?:\/[^"'\x60\\\s<>;,]*)?|search\/data\/details\/[^"'\x60\\\s<>;,]+|_next\/data\/[^"'\x60\\\s<>;,]+)/gi
+  ];
+  const matches = patterns.flatMap((pattern) =>
+    Array.from(value.matchAll(pattern), (match) => match[0])
+  );
+  return [...new Set(matches)].slice(0, limit);
 }
 
 function resolveSameOriginUrl(candidate, baseUrl) {
