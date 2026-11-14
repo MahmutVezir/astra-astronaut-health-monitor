@@ -191,20 +191,24 @@ def inspect_directory(directory: Path, summary_path: Path) -> dict:
 
     for item in downloads:
         temporary_path = item.get("temporary_path")
+        file_name = item.get("file_name", "unknown")
         if item.get("status") != "DOWNLOADED_AND_SIZE_VERIFIED" or not temporary_path:
-            missing.append(item.get("file_name", "unknown"))
+            missing.append(file_name)
             continue
-        path = Path(temporary_path)
-        if not path.is_file():
-            missing.append(item.get("file_name", "unknown"))
+        archive_path = Path(temporary_path)
+        if not archive_path.is_file():
+            missing.append(file_name)
             continue
-        raw = path.read_bytes()
-        file_reports.append(inspect_zip_bytes(item["file_name"], raw))
+        try:
+            raw = archive_path.read_bytes()
+            file_reports.append(inspect_zip_bytes(file_name, raw))
+        except Exception as error:
+            missing.append(file_name + ": " + str(error))
 
     expected = summary.get("expected_file_count", 0)
     completed = len(file_reports)
     inspection = {
-        "status": "PASS" if completed == expected and not missing else "INCOMPLETE",
+        "status": "PASS" if expected > 0 and completed == expected and not missing else "INCOMPLETE",
         "expected_archive_count": expected,
         "inspected_archive_count": completed,
         "missing_or_unavailable_files": missing,
@@ -213,11 +217,12 @@ def inspect_directory(directory: Path, summary_path: Path) -> dict:
         "extracted_files_persisted": False,
     }
     summary["archive_inspection"] = inspection
-    summary["decision"] = (
-        "DEFER_INTEGRATION_PENDING_LICENSE_REVIEW"
-        if inspection["status"] == "PASS" and summary.get("license") is None
-        else summary.get("decision")
-    )
+    if inspection["status"] != "PASS":
+        summary["decision"] = "DEFER_ARCHIVE_CONTENT_QA_INCOMPLETE"
+    elif summary.get("license") is None:
+        summary["decision"] = "DEFER_INTEGRATION_PENDING_LICENSE_REVIEW"
+    else:
+        summary["decision"] = "DEFER_SCIENTIFIC_SCHEMA_AND_SAMPLE_MAPPING_QA"
     summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     for item in downloads:
@@ -239,7 +244,7 @@ def main() -> int:
     try:
         result = inspect_directory(directory, summary_path)
         print(json.dumps(result, indent=2, ensure_ascii=False))
-        return 0 if result["status"] == "PASS" else 0
+        return 0 if result["status"] == "PASS" else 2
     except Exception as error:
         print(f"OSD-53 archive inspection failed: {error}", file=sys.stderr)
         return 1
