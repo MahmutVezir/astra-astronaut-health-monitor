@@ -206,6 +206,37 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
     }
 
 
+def inspect_xls_bytes(member_name: str, raw: bytes) -> dict:
+    try:
+        import xlrd
+    except ImportError as error:
+        raise RuntimeError("xlrd==2.0.1 is required to inspect legacy .xls files") from error
+
+    workbook = xlrd.open_workbook(file_contents=raw, on_demand=True)
+    sheets = []
+    for sheet in workbook.sheets():
+        preview_rows = []
+        for row_index in range(min(sheet.nrows, 8)):
+            preview_rows.append([
+                sheet.cell_value(row_index, column_index)
+                for column_index in range(min(sheet.ncols, 24))
+            ])
+        sheets.append({
+            "sheet_name": sheet.name,
+            "row_count": sheet.nrows,
+            "column_count": sheet.ncols,
+            "preview_first_8_rows_first_24_columns": preview_rows,
+        })
+    workbook.release_resources()
+    return {
+        "member": member_name,
+        "format": "legacy_excel_xls",
+        "byte_length": len(raw),
+        "sheet_count": len(sheets),
+        "sheets": sheets,
+    }
+
+
 def inspect_zip_bytes(file_name: str, raw: bytes) -> dict:
     if not zipfile.is_zipfile(io.BytesIO(raw)):
         raise ValueError(f"{file_name} is not a valid ZIP archive")
@@ -237,7 +268,9 @@ def inspect_zip_bytes(file_name: str, raw: bytes) -> dict:
             })
 
             suffix = Path(info.filename).suffix.lower()
-            if suffix in TABLE_EXTENSIONS and info.file_size:
+            if suffix == ".xls" and info.file_size:
+                tables.append(inspect_xls_bytes(info.filename, archive.read(info)))
+            elif suffix in TABLE_EXTENSIONS and info.file_size:
                 parsed = parse_delimited_text(info.filename, archive.read(info))
                 if parsed is not None:
                     tables.append(parsed)
