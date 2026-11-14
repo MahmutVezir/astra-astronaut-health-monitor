@@ -75,16 +75,29 @@ function extractEvidenceSnippets(source, limit = 30) {
 }
 
 function extractAssetReferences(source, limit = 250) {
-  const pattern = /["'\x60](assets\/[A-Za-z0-9_.-]+\.js(?:\?[^"'\x60\s]*)?)["'\x60]/g;
-  return [...new Set(Array.from(String(source).matchAll(pattern), (match) => match[1]))].slice(0, limit);
+  const patterns = [
+    /["'\x60](assets\/[A-Za-z0-9_.-]+\.js(?:\?[^"'\x60\s]*)?)["'\x60]/g,
+    /["'\x60](\.\.?\/[A-Za-z0-9_./-]+\.js(?:\?[^"'\x60\s]*)?)["'\x60]/g
+  ];
+  const references = patterns.flatMap((pattern) =>
+    Array.from(String(source).matchAll(pattern), (match) => match[1])
+  );
+  return [...new Set(references)].slice(0, limit);
 }
 
-function extractApiEndpointReferences(source, limit = 120) {
+function resolveAssetReference(reference, parentUrl, indexUrl) {
+  const value = String(reference || "");
+  const base = value.startsWith("assets/") ? indexUrl : parentUrl;
+  return resolveSameOriginUrl(value, base);
+}
+
+function extractApiEndpointReferences(source, limit = 160) {
   const text = String(source);
   const patterns = [
     /["'\x60](\/api\/v1\/[A-Za-z0-9_./?&=:$-]{1,180})["'\x60]/g,
     /["'\x60](\/search\/data\/[A-Za-z0-9_./?&=:$-]{1,180})["'\x60]/g,
-    /\/api\/v1\/[A-Za-z0-9_./?&=:$-]{1,180}/g
+    /\/api\/v1\/[A-Za-z0-9_./?&=:$-]{1,180}/g,
+    /\.(?:get|post|put|delete|patch)\s*\(\s*["'\x60]([^"'\x60]{1,180})["'\x60]/gi
   ];
   const values = patterns.flatMap((pattern) =>
     Array.from(text.matchAll(pattern), (match) => match[1] || match[0])
@@ -99,6 +112,8 @@ function extractApiContexts(source, limit = 40) {
     /nlsp-comm\.dev\.ndc\.nasa\.gov/gi,
     /baseURL/gi,
     /axios\.create/gi,
+    /\.(?:get|post|put|delete|patch)\s*\(/gi,
+    /\.request\s*\(/gi,
     /fetch\s*\(/gi
   ];
   const text = String(source);
@@ -315,19 +330,74 @@ async function run() {
     }
   }));
   const allAssetResults = [...assetResults, ...nestedAssetResults];
+  const recursiveParents = nestedAssetResults.filter((asset) =>
+    /SearchDataPage|ResearchDetailsPage|DatasetFileExplorer|ExplorePage|ExploreContainer|FilterSection|DataRequest/i.test(asset.url || "")
+  );
+  const tertiaryAssetUrls = [...new Set(recursiveParents.flatMap((parent) =>
+    (parent.asset_references || [])
+      .map((reference) => resolveAssetReference(reference, parent.url, index.response.url))
+      .filter(Boolean)
+  ))]
+    .filter((url) => !nestedAssetUrls.includes(url))
+    .sort((left, right) => {
+      const priority = ["api", "search", "experiment", "dataset", "file", "detail", "hook", "store", "explore"];
+      const score = (value) => {
+        const name = value.split("/").pop().toLowerCase();
+        const index = priority.findIndex((token) => name.includes(token));
+        return index < 0 ? priority.length : index;
+      };
+      return score(left) - score(right) || left.localeCompare(right);
+    })
+    .slice(0, 35);
+  const tertiaryAssetResults = await Promise.all(tertiaryAssetUrls.map(async (url, indexNumber) => {
+    try {
+      const result = await fetchBytes(url, MAX_SCRIPT_BYTES);
+      const contentType = result.response.headers.get("content-type");
+      if (!result.response.ok || result.tooLarge) {
+        return {
+          url,
+          http_status: result.response.status,
+          content_type: contentType,
+          byte_length: result.bytes.byteLength,
+          error: result.tooLarge ? "ASSET_EXCEEDED_5_MIB_LIMIT" : "ASSET_HTTP_ERROR"
+        };
+      }
+      const fileName = "tertiary-app-asset-" + String(indexNumber + 1).padStart(2, "0") + ".js";
+      await fs.writeFile(path.join(OUTPUT_DIR, fileName), result.bytes);
+      const source = result.bytes.toString("utf8");
+      return {
+        url,
+        file_name: fileName,
+        http_status: result.response.status,
+        content_type: contentType,
+        byte_length: result.bytes.byteLength,
+        sha256: sha256(result.bytes),
+        evidence_snippets: extractEvidenceSnippets(source, 20),
+        api_hints: extractApiHints(source),
+        code_references: extractCodeReferences(source),
+        network_contexts: extractNetworkContexts(source),
+        api_contexts: extractApiContexts(source),
+        api_endpoint_references: extractApiEndpointReferences(source),
+        asset_references: extractAssetReferences(source)
+      };
+    } catch (error) {
+      return { url, error: error && error.message ? error.message : String(error) };
+    }
+  }));
+  const allDiscoveryAssets = [...allAssetResults, ...tertiaryAssetResults];
 
   const anchors = extractAnchorLinks(indexHtml);
   const candidateLinks = anchors.filter((link) =>
     /DSO[\s-]?470|Space Adaptation Syndrome|cerebral.{0,80}blood|heart rate|diastolic/i.test(link.text + " " + link.href)
   );
   const indexSnippets = extractEvidenceSnippets(indexHtml);
-  const scriptSnippets = allAssetResults.flatMap((asset) =>
+  const scriptSnippets = allDiscoveryAssets.flatMap((asset) =>
     (asset.evidence_snippets || []).map((item) => ({ asset: asset.file_name, ...item }))
   );
   const apiHints = [...new Set([
     ...extractApiHints(indexHtml),
-    ...allAssetResults.flatMap((asset) => asset.api_hints || [])
-  ])].slice(0, 100);
+    ...allDiscoveryAssets.flatMap((asset) => asset.api_hints || [])
+  ])].slice(0, 140);
 
   const summary = {
     audit_type: "PUBLIC_NLSP_INDEX_AND_SAME_ORIGIN_ASSET_DISCOVERY",
@@ -338,6 +408,8 @@ async function run() {
     same_origin_scripts_inspected: assetResults.length,
     nested_app_bundles_found: nestedAssetUrls.length,
     nested_app_bundles_inspected: nestedAssetResults.filter((asset) => asset.http_status === 200 && !asset.error).length,
+    second_level_app_bundles_found: tertiaryAssetUrls.length,
+    second_level_app_bundles_inspected: tertiaryAssetResults.filter((asset) => asset.http_status === 200 && !asset.error).length,
     candidate_links: candidateLinks,
     index_evidence_snippets: indexSnippets,
     script_evidence_snippets: scriptSnippets,
@@ -385,5 +457,6 @@ module.exports = {
   extractApiContexts,
   extractApiEndpointReferences,
   extractAssetReferences,
-  resolveSameOriginUrl
+  resolveSameOriginUrl,
+  resolveAssetReference
 };

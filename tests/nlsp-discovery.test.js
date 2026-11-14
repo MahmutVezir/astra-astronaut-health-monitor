@@ -12,7 +12,8 @@ const {
   extractApiContexts,
   extractApiEndpointReferences,
   extractAssetReferences,
-  resolveSameOriginUrl
+  resolveSameOriginUrl,
+  resolveAssetReference
 } = require("../scripts/audit-nlsp-dso470-discovery.js");
 
 test("extracts application scripts from the observed NLSP HTML", () => {
@@ -55,6 +56,21 @@ test("extracts application data-service strings and request contexts for review"
   const contexts = extractNetworkContexts(source);
   assert.ok(contexts.some((item) => /workspace-dev\.insight\.nasa\.gov/.test(item.snippet)));
   assert.ok(contexts.some((item) => /fetch\(/.test(item.snippet)));
+});
+
+test("resolves first-party relative modules against their parent JavaScript bundle", () => {
+  assert.equal(
+    resolveAssetReference("./SearchApi.js", "https://nlsp.nasa.gov/assets/SearchDataPage.js", "https://nlsp.nasa.gov/explore"),
+    "https://nlsp.nasa.gov/assets/SearchApi.js"
+  );
+  assert.equal(
+    resolveAssetReference("assets/searchStore.js", "https://nlsp.nasa.gov/assets/SearchDataPage.js", "https://nlsp.nasa.gov/explore"),
+    "https://nlsp.nasa.gov/assets/searchStore.js"
+  );
+  assert.equal(
+    resolveAssetReference("https://tracker.invalid/evil.js", "https://nlsp.nasa.gov/assets/SearchDataPage.js", "https://nlsp.nasa.gov/explore"),
+    null
+  );
 });
 
 test("extracts lazy-loaded NLSP feature bundles referenced by the main application", () => {
