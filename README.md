@@ -18,7 +18,8 @@ ASTRA is an offline-first astronaut health-monitoring prototype with clearly sep
 - Participant-level descriptive biomarker trends across seven reported collection timepoints; browser-side checks re-verify the local CSV bytes, schema, sample map, and normalization before any measurements are rendered.
 - A clear LIMITED_EVIDENCE decision: four independent participants, 28 repeated samples, raw assay data unavailable, and fibrinogen flagged for assay-suitability review.
 - Separate Demo & Manual Mode for simulated or user-entered signals; it is not presented as a live NASA feed.
-- Service-worker installation pre-caches the app shell, Research Mode loader, verified OSD-575 CSV, ISA sample map, and audit record. Offline Research Mode is available after a successful online installation; external links and new uncached resources still require connectivity.
+- The PWA manifest declares the app identity and scalable ASTRA SVG icon; the icon is also the browser favicon.
+- Service-worker installation pre-caches the app shell, Research Mode loader, verified OSD-575 CSV, ISA sample map, audit record, and app icon. Offline Research Mode is available after a successful online installation; external links and new uncached resources still require connectivity.
 
 ## Run the application
 
@@ -105,7 +106,8 @@ ChatGPT (OpenAI) was used during the hackathon to help draft and review applicat
 - `research-data-loader.js` — browser-side SHA-256, NASA ISA sample-join, CSV-schema, and normalization gates before Research Mode renders biomarker values
 - `data/osdr/OSD-575/` — exact downloaded NASA source CSV, NASA ISA sample map, and post-download audit record (imported only after the live artifact passes strict validation)
 - `scripts/fetch-osd575.js` and `src/core/osd575-pilot.js` — live OSDR acquisition, immutable byte preservation, metadata-backed analysis, and evidence decision
-- `sw.js` and `manifest.webmanifest` — app-shell cache and install metadata
+- `sw.js` and `manifest.webmanifest` — app-shell cache and PWA metadata
+- `icons/astra.svg` — scalable ASTRA application icon and favicon
 - `tests/health-engine.test.js`, `tests/osdr-pilot.test.js`, `tests/research-data-loader.test.js`, `tests/osd575-source-data.test.js`, and `tests/research-dashboard-integration.test.js` — deterministic logic, acquisition, integrity, mapping, normalization, and an end-to-end test that renders the committed NASA source in Research Mode (missing source files fail closed)
 
 ASTRA is an independent student project created for the NASA Space Apps Challenge. It is not an official NASA product and is not endorsed by NASA.
