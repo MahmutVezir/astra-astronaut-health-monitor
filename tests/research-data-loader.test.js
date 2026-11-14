@@ -222,6 +222,6 @@ test("browser loader refuses a post-download audit that has not passed normaliza
       fetchImpl,
       cryptoImpl: webcrypto
     }),
-    /does not verify the exact source, metadata join, normalization/
+    /does not verify the exact source, 28-sample metadata join/
   );
 });
