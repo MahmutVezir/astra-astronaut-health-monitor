@@ -67,7 +67,12 @@
       const parsed = JSON.parse(stored);
       if (parsed && parsed.readings && parsed.wellbeing && Array.isArray(parsed.log)) {
         state = {
-          readings: Object.assign({}, SCENARIOS.nominal, parsed.readings),
+          readings: Object.keys(window.AstraHealth.SIGNALS).reduce(function (out, key) {
+            out[key] = Object.prototype.hasOwnProperty.call(parsed.readings, key)
+              ? parsed.readings[key]
+              : null;
+            return out;
+          }, {}),
           bands: mergeBands(parsed.bands),
           wellbeing: Object.assign({}, DEFAULT_WELLBEING, parsed.wellbeing),
           log: parsed.log.slice(0, 100),
@@ -140,7 +145,21 @@
     const study = window.AstraResearch && window.AstraResearch.inspiration4;
     if (!study) return;
     const audit = researchEvidence ? researchEvidence.audit : (study.acquisitionAudit || {});
-    const sourceAuditPassed = audit.decision === "LIMITED_EVIDENCE" && audit.analysisCompleted === true;
+    const expectedSampleCount = Number(study.evidenceData && study.evidenceData.expectedRows) || 28;
+    const metadataVerified = researchEvidence
+      ? researchEvidence.datasetId === study.studyId &&
+        String(researchEvidence.datasetVersion) === String(study.datasetVersion) &&
+        audit.metadata_sample_join === "PASS" &&
+        researchEvidence.matchedSampleCount === expectedSampleCount &&
+        researchEvidence.metadataSampleCount === expectedSampleCount
+      : audit.metadataVerified === true;
+    const sourceAuditPassed = researchEvidence
+      ? audit.dataset_id === study.studyId &&
+        String(audit.dataset_version) === String(study.datasetVersion) &&
+        audit.metadata_sample_join === "PASS" &&
+        audit.normalization_audit?.status === "PASS" &&
+        audit.scientific_decision === "LIMITED_EVIDENCE"
+      : audit.decision === "LIMITED_EVIDENCE" && audit.analysisCompleted === true;
     const setText = function (id, value) {
       const target = $(id);
       if (target) target.textContent = value === null || value === undefined || value === ""
@@ -154,7 +173,15 @@
     setText("research-timepoint-count", study.timepoints.length);
     setText("research-assay", study.assay || "Not reported");
     setText("research-decision", researchEvidence || sourceAuditPassed ? "LIMITED EVIDENCE" : "DATA QA PENDING");
-    setText("research-metadata-status", audit.metadataVerified ? "Verified" : "Not verified");
+    setText("research-metadata-status", metadataVerified
+      ? "Verified · " + expectedSampleCount + "/" + expectedSampleCount + " ISA matches"
+      : researchEvidenceError
+        ? "Browser verification failed"
+        : researchEvidence
+          ? "Verification incomplete"
+          : audit.metadataVerified === true
+            ? "Server audit verified · browser check pending"
+            : "Not verified");
     setText("research-catalog-status", researchEvidence
       ? "HTTP 200 · exact HDCVD9 record matched"
       : audit.catalogFileFound
@@ -169,7 +196,7 @@
       ? sourceHash.slice(0, 12) + "…" + sourceHash.slice(-8)
       : "Not calculated");
     setText("research-run-status", researchEvidence
-      ? "Run ID " + audit.workflow_run_id
+      ? "Run ID " + (audit.workflow_run_id || "not recorded")
       : audit.runNumber
         ? "Run #" + audit.runNumber + " · post-download audit passed"
         : "No completed source audit");
@@ -451,9 +478,11 @@
     }
     const modeIndicator = $("mode-indicator");
     if (modeIndicator) {
-      modeIndicator.textContent = name === "research"
-        ? (researchEvidence ? "NASA RESEARCH MODE · VERIFIED SOURCE DATA" : "NASA RESEARCH MODE · DATA QA PENDING")
-        : "DEMO / MANUAL INPUT · NO LIVE SENSORS";
+      if (name === "research") {
+        renderResearchMode();
+      } else {
+        modeIndicator.textContent = "DEMO / MANUAL INPUT · NO LIVE SENSORS";
+      }
     }
   }
 
@@ -563,7 +592,11 @@
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    if (typeof window.setTimeout === "function") {
+      window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    } else {
+      URL.revokeObjectURL(url);
+    }
   }
 
   function addLog(type, message) {
