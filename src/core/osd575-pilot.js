@@ -55,7 +55,10 @@ async function runOsd575Pilot(options = {}) {
 
   let fileRecords;
   try {
-    fileRecords = await listStudyFiles(OSD575.dataset_id, { fetchImpl });
+    fileRecords = await listStudyFiles(OSD575.dataset_id, {
+      fetchImpl,
+      studyVersion: options.studyVersion || OSD575.dataset_version
+    });
   } catch (error) {
     return buildRecord(null, "INSUFFICIENT_EVIDENCE", [{
       code: "OSDR_FILE_CATALOG_UNAVAILABLE",

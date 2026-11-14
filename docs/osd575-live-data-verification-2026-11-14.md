@@ -85,3 +85,26 @@ The manual GitHub Actions run 43592311262 reached the NASA legacy metadata endpo
 This captured API response is now the schema basis for extractStudyMetadata(). The revised script no longer requests or parses the SPA HTML page. It validates the version and HDCVD9 transformation metadata from the JSON response, then proceeds to the file catalog and exact remote download.
 
 The CSV itself remains unobserved until the revised manual workflow completes successfully. No file SHA-256 for the HDCVD9 CSV is available yet.
+
+## Follow-up: version-aware file catalog diagnosis and fix
+
+The next manual GitHub Actions run (43593461341) successfully retrieved the OSD-575 metadata JSON but returned no file records from the unversioned request:
+
+- Request: https://osdr.nasa.gov/osdr/data/osd/files/575/?page=0&size=25&all_files=true
+- HTTP status: 200
+- Response fields: hits=0, total_hits=1, page_number=0, page_size=25, page_total=1, studies={}
+- No study_files array or remote_url was returned.
+
+The study metadata API had already verified OSD-575 version 3. NASA's Data File API documents version-specific accessions using a decimal suffix (for example, OSD-153 version 2 as 153.2). The file API request now uses the metadata-verified versioned accession 575.3 rather than the unversioned 575.
+
+The catalog client now:
+
+- follows every page reported by page_total;
+- uses total_hits as an additional pagination lower bound when present;
+- checks the study_files count against the returned study file_count and fails on an incomplete listing;
+- deduplicates records across pages;
+- accepts the versioned study key OSD-575.3 and the unversioned OSD-575 response key;
+- matches the exact requested filename using file_name aliases or the filename/path suffix carried by remote_url (including its file query parameter);
+- reports every returned CSV candidate and page metadata when the exact target is absent.
+
+The manual workflow must still be run after this code change to establish whether versioned endpoint 575.3 returns the HDCVD9 file. No live CSV SHA-256 is claimed until those bytes are downloaded.

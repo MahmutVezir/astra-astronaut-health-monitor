@@ -1,12 +1,36 @@
 "use strict";
 
 const OSDR_ORIGIN = "https://osdr.nasa.gov";
-const OSDR_API_ROOT = `${OSDR_ORIGIN}/osdr/data/osd`;
+const OSDR_API_ROOT = OSDR_ORIGIN + "/osdr/data/osd";
+
+function parseStudyIdentifier(studyId, requestedVersion = null) {
+  const match = String(studyId).match(/^OSD-(\d+)(?:\.(\d+))?$/);
+  if (!match) throw new TypeError("studyId must use the OSD-<number>[.<version>] format");
+
+  const embeddedVersion = match[2] || null;
+  const version = requestedVersion === null || requestedVersion === undefined
+    ? embeddedVersion
+    : String(requestedVersion);
+
+  if (embeddedVersion && version && embeddedVersion !== version) {
+    throw new Error("Conflicting OSDR study versions: " + embeddedVersion + " and " + version);
+  }
+  if (version !== null && !/^\d+$/.test(version)) {
+    throw new TypeError("studyVersion must be a non-negative integer string");
+  }
+
+  return {
+    number: match[1],
+    version,
+    accession: version ? match[1] + "." + version : match[1],
+    studyKeys: version
+      ? ["OSD-" + match[1] + "." + version, "OSD-" + match[1]]
+      : ["OSD-" + match[1]]
+  };
+}
 
 function normalizeStudyNumber(studyId) {
-  const match = String(studyId).match(/^OSD-(\d+)$/);
-  if (!match) throw new TypeError("studyId must use the OSD-<number> format");
-  return match[1];
+  return parseStudyIdentifier(studyId).number;
 }
 
 async function readJson(url, fetchImpl) {
@@ -15,22 +39,38 @@ async function readJson(url, fetchImpl) {
   });
   if (!response || !response.ok) {
     const status = response && Number.isInteger(response.status) ? response.status : "unknown";
-    throw new Error(`OSDR API request failed with HTTP ${status}: ${url}`);
+    throw new Error("OSDR API request failed with HTTP " + status + ": " + url);
   }
   return response.json();
 }
 
-function extractFileRecords(payload, studyId) {
+function getStudyEntries(payload) {
+  if (!payload || typeof payload !== "object" || !payload.studies ||
+      typeof payload.studies !== "object" || Array.isArray(payload.studies)) {
+    return [];
+  }
+  return Object.entries(payload.studies).filter(([, value]) =>
+    value && typeof value === "object"
+  );
+}
+
+function extractFileRecords(payload, studyKeys = []) {
   if (!payload || typeof payload !== "object") return [];
 
-  const study = payload.studies && studyId ? payload.studies[studyId] : null;
-  const candidates = [
-    study && study.study_files,
-    payload.study_files,
-    payload.files,
-    payload.results,
-    payload.data
-  ];
+  const studies = payload.studies && typeof payload.studies === "object"
+    ? payload.studies
+    : {};
+  const orderedKeys = [...studyKeys, ...Object.keys(studies)];
+  const visited = new Set();
+
+  for (const key of orderedKeys) {
+    if (visited.has(key)) continue;
+    visited.add(key);
+    const records = studies[key] && studies[key].study_files;
+    if (Array.isArray(records) && records.length > 0) return records;
+  }
+
+  const candidates = [payload.study_files, payload.files, payload.results, payload.data];
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) return candidate;
   }
@@ -38,13 +78,80 @@ function extractFileRecords(payload, studyId) {
 }
 
 function getFileName(record) {
-  return record && (
-    record.file_name || record.filename || record.fileName || record.name || record.original_filename
-  );
+  if (!record || typeof record !== "object") return null;
+  return record.file_name || record.filename || record.fileName ||
+    record.name || record.original_filename || null;
 }
 
 function getRemoteUrl(record) {
-  return record && (record.remote_url || record.download_url || record.downloadUrl || record.url);
+  if (!record || typeof record !== "object") return null;
+  return record.remote_url || record.download_url || record.downloadUrl || record.url || null;
+}
+
+function decodeSafely(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch (_) {
+    return value;
+  }
+}
+
+function getRemoteFileTokens(remoteUrl) {
+  if (typeof remoteUrl !== "string" || remoteUrl.trim() === "") return [];
+  let parsed;
+  try {
+    parsed = new URL(remoteUrl, OSDR_ORIGIN);
+  } catch (_) {
+    return [decodeSafely(remoteUrl)];
+  }
+
+  const tokens = [];
+  for (const parameter of ["file", "filename", "file_name", "name"]) {
+    const value = parsed.searchParams.get(parameter);
+    if (value) tokens.push(decodeSafely(value));
+  }
+  if (parsed.pathname && !/\/download\/?$/i.test(parsed.pathname)) {
+    tokens.push(decodeSafely(parsed.pathname));
+  }
+  return tokens;
+}
+
+function fileTokenMatches(token, expectedFileName) {
+  if (typeof token !== "string") return false;
+  const normalized = decodeSafely(token).replace(/\\/g, "/").split(/[?#]/, 1)[0];
+  return normalized === expectedFileName || normalized.endsWith("/" + expectedFileName);
+}
+
+function matchesStudyFile(record, expectedFileName) {
+  if (!record || typeof record !== "object") return false;
+  if (fileTokenMatches(getFileName(record), expectedFileName)) return true;
+  return getRemoteFileTokens(getRemoteUrl(record))
+    .some((token) => fileTokenMatches(token, expectedFileName));
+}
+
+function selectStudyFile(records, fileName) {
+  if (!Array.isArray(records) || typeof fileName !== "string" || fileName.trim() === "") {
+    throw new TypeError("records and an exact fileName are required");
+  }
+  return records.find((record) => matchesStudyFile(record, fileName)) || null;
+}
+
+function getCsvFileCandidates(records) {
+  if (!Array.isArray(records)) return [];
+  const candidates = new Set();
+  for (const record of records) {
+    const fileName = getFileName(record);
+    if (typeof fileName === "string" && /\.csv$/i.test(fileName.split(/[?#]/, 1)[0])) {
+      candidates.add(fileName);
+    }
+
+    for (const token of getRemoteFileTokens(getRemoteUrl(record))) {
+      const normalized = token.replace(/\\/g, "/").split(/[?#]/, 1)[0];
+      const basename = normalized.slice(normalized.lastIndexOf("/") + 1);
+      if (/\.csv$/i.test(basename)) candidates.add(basename);
+    }
+  }
+  return [...candidates].sort((a, b) => a.localeCompare(b));
 }
 
 function resolveOsdrDownloadUrl(remoteUrl) {
@@ -61,49 +168,100 @@ function resolveOsdrDownloadUrl(remoteUrl) {
 
 async function fetchStudyMetadata(studyId, fetchImpl = globalThis.fetch) {
   if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required");
-  const number = normalizeStudyNumber(studyId);
-  return readJson(`${OSDR_API_ROOT}/meta/${number}`, fetchImpl);
+  const parsed = parseStudyIdentifier(studyId);
+  return readJson(OSDR_API_ROOT + "/meta/" + parsed.number, fetchImpl);
+}
+
+function numericCount(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 ? number : null;
+}
+
+function expectedFileCounts(payload) {
+  return getStudyEntries(payload)
+    .map(([key, study]) => ({ key, count: numericCount(study.file_count) }))
+    .filter((item) => item.count !== null);
 }
 
 async function listStudyFiles(studyId, options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const pageSize = options.pageSize || 25;
-  const maxPages = options.maxPages || 20;
+  const maxPages = options.maxPages || 100;
   if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required");
   if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 25) {
     throw new RangeError("OSDR file catalog pageSize must be between 1 and 25");
   }
+  if (!Number.isInteger(maxPages) || maxPages < 1) {
+    throw new RangeError("maxPages must be a positive integer");
+  }
 
-  const number = normalizeStudyNumber(studyId);
+  const study = parseStudyIdentifier(studyId, options.studyVersion ?? options.version ?? null);
   const collected = [];
   const seen = new Set();
+  const countsByStudy = new Map();
+  let knownPageTotal = null;
+  let knownTotalHits = null;
+  let page = 0;
+  let stoppedByApi = false;
 
-  for (let page = 0; page < maxPages; page += 1) {
-    const url = `${OSDR_API_ROOT}/files/${number}/?page=${page}&size=${pageSize}&all_files=true`;
+  while (page < maxPages) {
+    const url = OSDR_API_ROOT + "/files/" + study.accession +
+      "/?page=" + page + "&size=" + pageSize + "&all_files=true";
     const payload = await readJson(url, fetchImpl);
-    const records = extractFileRecords(payload, `OSD-${number}`);
-    let added = 0;
+    const records = extractFileRecords(payload, study.studyKeys);
+
+    const pageTotal = numericCount(payload && payload.page_total);
+    const totalHits = numericCount(payload && payload.total_hits);
+    if (pageTotal !== null && pageTotal > 0) knownPageTotal = Math.max(knownPageTotal || 0, pageTotal);
+    if (totalHits !== null) knownTotalHits = Math.max(knownTotalHits || 0, totalHits);
+
+    for (const item of expectedFileCounts(payload)) countsByStudy.set(item.key, item.count);
 
     for (const record of records) {
-      const key = `${getFileName(record) || ""}|${getRemoteUrl(record) || ""}`;
+      const key = (getFileName(record) || "") + "|" + (getRemoteUrl(record) || "");
       if (!seen.has(key)) {
         seen.add(key);
         collected.push(record);
-        added += 1;
       }
     }
 
-    if (records.length < pageSize || added === 0) break;
+    const expectedCount = countsByStudy.size > 0 ? Math.max(...countsByStudy.values()) : null;
+    const pageTotalRequiresMore = knownPageTotal !== null && page + 1 < knownPageTotal;
+    const totalHitsRequiresMore = knownTotalHits !== null &&
+      (page + 1) * pageSize < knownTotalHits;
+    const fileCountRequiresMore = expectedCount !== null && collected.length < expectedCount;
+    const pageFilled = records.length >= pageSize;
+
+    const hasMore = pageTotalRequiresMore || totalHitsRequiresMore ||
+      fileCountRequiresMore || (knownPageTotal === null && knownTotalHits === null && pageFilled);
+
+    if (!hasMore) {
+      stoppedByApi = true;
+      break;
+    }
+    page += 1;
+  }
+
+  const expectedCount = countsByStudy.size > 0 ? Math.max(...countsByStudy.values()) : null;
+  if (expectedCount !== null && collected.length < expectedCount) {
+    throw new Error(
+      "OSDR file catalog for " + study.accession + " returned " + collected.length +
+      " unique files, but study metadata declares file_count=" + expectedCount +
+      ". Pages requested=" + (page + 1) +
+      "; page_total=" + (knownPageTotal ?? "not reported") +
+      "; total_hits=" + (knownTotalHits ?? "not reported") +
+      "; CSV filenames=" + (getCsvFileCandidates(collected).join(", ") || "none") + "."
+    );
+  }
+  if (!stoppedByApi && page >= maxPages) {
+    throw new Error(
+      "OSDR file catalog pagination exceeded maxPages=" + maxPages + " for " + study.accession +
+      "; page_total=" + (knownPageTotal ?? "not reported") +
+      "; total_hits=" + (knownTotalHits ?? "not reported") + "."
+    );
   }
 
   return collected;
-}
-
-function selectStudyFile(records, fileName) {
-  if (!Array.isArray(records) || typeof fileName !== "string" || fileName.trim() === "") {
-    throw new TypeError("records and an exact fileName are required");
-  }
-  return records.find((record) => getFileName(record) === fileName) || null;
 }
 
 async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
@@ -112,11 +270,9 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
   const response = await fetchImpl(downloadUrl);
   if (!response || !response.ok) {
     const status = response && Number.isInteger(response.status) ? response.status : "unknown";
-    throw new Error(`OSDR file download failed with HTTP ${status}`);
+    throw new Error("OSDR file download failed with HTTP " + status);
   }
-  if (response.url) {
-    resolveOsdrDownloadUrl(response.url);
-  }
+  if (response.url) resolveOsdrDownloadUrl(response.url);
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length === 0) throw new Error("OSDR returned an empty file");
 
@@ -125,7 +281,7 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
     : null;
   if (contentLength !== null && contentLength !== undefined &&
       /^\d+$/.test(contentLength) && Number(contentLength) !== bytes.length) {
-    throw new Error(`Downloaded byte count mismatch: header=${contentLength}, actual=${bytes.length}`);
+    throw new Error("Downloaded byte count mismatch: header=" + contentLength + ", actual=" + bytes.length);
   }
 
   return {
@@ -138,9 +294,14 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
 
 module.exports = {
   OSDR_ORIGIN,
+  normalizeStudyNumber,
+  parseStudyIdentifier,
   fetchStudyMetadata,
   listStudyFiles,
   selectStudyFile,
-  downloadStudyFile,
-  resolveOsdrDownloadUrl
+  getCsvFileCandidates,
+  getFileName,
+  getRemoteUrl,
+  resolveOsdrDownloadUrl,
+  downloadStudyFile
 };
