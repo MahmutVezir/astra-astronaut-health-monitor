@@ -344,6 +344,19 @@ function parseClockDurationMinutes(value) {
   return hours * 60 + minutes + seconds / 60;
 }
 
+function parseMonthDayYear(value) {
+  const match = String(value || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  const year = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2200) return null;
+  const timestamp = Date.UTC(year, month - 1, day);
+  const check = new Date(timestamp);
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) return null;
+  return { timestamp, iso: check.toISOString().slice(0, 10), source: String(value).trim() };
+}
+
 function summarizeActigraphyCsv(input) {
   const parsed = parseCsvTable(input);
   const lowerHeaders = parsed.headers.map((value) => value.toLowerCase());
@@ -372,9 +385,16 @@ function summarizeActigraphyCsv(input) {
     } : { source_field: field, valid_count: 0 };
   };
   const efficiencyValues = efficiencyField
-    ? parsed.rows.map((row) => Number(String(row[efficiencyField] || "").replace(/%$/, "").trim())).filter(Number.isFinite)
+    ? parsed.rows.map((row) => {
+        const raw = String(row[efficiencyField] ?? "").trim().replace(/%$/, "");
+        if (!raw || /^na$/i.test(raw) || /^n\/a$/i.test(raw)) return null;
+        const value = Number(raw);
+        return Number.isFinite(value) ? value : null;
+      }).filter((value) => value !== null)
     : [];
   const dateValues = distinct(dateField);
+  const parsedDates = dateValues.map(parseMonthDayYear).filter(Boolean).sort((a, b) => a.timestamp - b.timestamp);
+  const unparsedDateValues = dateValues.filter((value) => parseMonthDayYear(value) === null);
   const phaseCounts = {};
   if (phaseField) {
     parsed.rows.forEach((row) => {
@@ -383,7 +403,11 @@ function summarizeActigraphyCsv(input) {
     });
   }
   const subjectDateKeys = subjectField && dateField
-    ? parsed.rows.map((row) => String(row[subjectField] || "").trim() + "|" + String(row[dateField] || "").trim())
+    ? parsed.rows.map((row) => ({
+        subject: String(row[subjectField] || "").trim(),
+        date: String(row[dateField] || "").trim()
+      })).filter((item) => item.subject && item.date)
+      .map((item) => item.subject + "|" + item.date)
     : [];
   return {
     row_count: parsed.rows.length,
@@ -394,8 +418,12 @@ function summarizeActigraphyCsv(input) {
     phase_counts: phaseCounts,
     date_field: dateField,
     observed_date_values_count: dateValues.length,
-    earliest_date_string: dateValues[0] || null,
-    latest_date_string: dateValues[dateValues.length - 1] || null,
+    parseable_date_values_count: parsedDates.length,
+    unparsed_date_values: unparsedDateValues,
+    earliest_date_string: parsedDates[0]?.source || null,
+    latest_date_string: parsedDates.at(-1)?.source || null,
+    earliest_date_iso: parsedDates[0]?.iso || null,
+    latest_date_iso: parsedDates.at(-1)?.iso || null,
     br_day_field: dayField,
     br_day_values: distinct(dayField).slice(0, 100),
     missing_counts: Object.fromEntries(parsed.headers.map((header) => [header, countMissing(header)])),
@@ -408,7 +436,7 @@ function summarizeActigraphyCsv(input) {
       minimum_percent: Math.min(...efficiencyValues),
       maximum_percent: Math.max(...efficiencyValues)
     } : efficiencyField ? { source_field: efficiencyField, valid_count: 0 } : null,
-    duplicate_subject_date_pairs: subjectDateKeys.length - new Set(subjectDateKeys.filter((value) => !value.startsWith("|") && !value.endsWith("|"))).size
+    duplicate_subject_date_pairs: subjectDateKeys.length - new Set(subjectDateKeys).size
   };
 }
 
@@ -613,6 +641,12 @@ async function run() {
         request: fetched.result,
         record_id: getRecordId(record) || item.id,
         record_title: getRecordTitle(record) || item.title,
+        record_metadata: record && typeof record === "object" ? Object.fromEntries(
+          Object.entries(record).filter(([key, value]) =>
+            /(availability|locked|processinglevel|datasource|datasetdescription|license|rights|terms|access|owner|location|mission_id|experiment_id|__title|__description|dataset_catalog)/i.test(key) &&
+            (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+          ).map(([key, value]) => [key, typeof value === "string" ? value.slice(0, 3000) : value])
+        ) : {},
         top_level_keys: payload && typeof payload === "object" ? Object.keys(payload).slice(0, 80) : [],
         record_keys: record && typeof record === "object" ? Object.keys(record).slice(0, 120) : [],
         related_keys: related && typeof related === "object" ? Object.keys(related).slice(0, 80) : [],
@@ -682,8 +716,10 @@ async function run() {
     dataset_file_explorer_api_path_literals: datasetFileExplorer.apiPathLiterals || [],
     dataset_file_explorer_key_assignments: datasetFileExplorer.keyAssignments || [],
     dataset_file_explorer_api_client: datasetFileExplorer.apiClient || null,
-    measurement_files_downloaded: 0,
-    file_bytes_downloaded: 0,
+    measurement_files_downloaded: verifiedMeasurementFiles.length,
+    supporting_files_downloaded: verifiedBRSMACTFiles.length - verifiedMeasurementFiles.length,
+    file_inventory_downloaded: verifiedBRSMACTFiles.length,
+    file_bytes_downloaded: verifiedBRSMACTFiles.reduce((sum, item) => sum + (item.actual_file_size || 0), 0),
     decision,
     limitation: "This audit retrieves public record metadata only. A file is not considered acquired or usable until an exact file record and source-provided download reference are verified, reuse terms are recorded, and original bytes pass file-level integrity and schema QA."
   };
@@ -739,4 +775,4 @@ if (require.main === module) {
     process.exitCode = 1;
   });
 }
-module.exports = { makeSearchUrl, makeDetailUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle };
+module.exports = { makeSearchUrl, makeDetailUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle, parseCsvTable, parseClockDurationMinutes, parseMonthDayYear, summarizeActigraphyCsv };
