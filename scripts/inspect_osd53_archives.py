@@ -65,7 +65,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
     metadata_indices = {
         name: index for index, name in enumerate(headers)
         if re.search(
-            r"(sample name|sample id|geo accession|organism|spaceflight|factor value\\[time\\]|study subject)",
+            r"(sample name|sample id|geo accession|organism|spaceflight|factor value\[time\]|study subject)",
             name,
             re.I,
         )
