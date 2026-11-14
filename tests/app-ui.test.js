@@ -27,23 +27,40 @@ function createDom() {
     remove() {},
     classList: { toggle() {} }
   });
+  const viewNames = ["research", "overview", "signals", "wellbeing", "log", "sources"];
+  const tabs = viewNames.map(function (name) {
+    const tab = makeElement("tab-" + name);
+    tab.dataset.view = name;
+    return tab;
+  });
+  const views = viewNames.map(function (name) {
+    const view = makeElement("view-" + name);
+    view.id = "view-" + name;
+    return view;
+  });
   return {
     get(id) {
       if (!elements.has(id)) elements.set(id, makeElement(id));
       return elements.get(id);
     },
+    tabs,
+    views,
     document: {
       getElementById(id) {
         if (!elements.has(id)) elements.set(id, makeElement(id));
         return elements.get(id);
       },
-      querySelectorAll() { return []; },
+      querySelectorAll(selector) {
+        if (selector === ".tab") return tabs;
+        if (selector === ".view") return views;
+        return [];
+      },
       createElement() {
         const element = makeElement("dynamic");
         createdElements.push(element);
         return element;
       },
-      body: { appendChild() {} }
+      body: { appendChild() {}, classList: { toggle() {} } }
     },
     createdElements
   };
@@ -314,4 +331,43 @@ test("partial saved demo records keep absent readings missing instead of restori
   assert.equal(dom.get("sleep").value, "");
   assert.equal(dom.get("overall-status").textContent, "DATA INCOMPLETE");
   assert.match(dom.get("assessment-list").innerHTML, /No reading was entered/);
+});
+
+
+test("the header mode indicator stays in Demo & Manual Mode while other views re-render", function () {
+  const dom = createDom();
+  const researchWindow = {};
+  vm.runInNewContext(read("research-data.js"), { window: researchWindow, globalThis: researchWindow });
+  const storage = new Map();
+  const localStorage = {
+    getItem(key) { return storage.get(key) || null; },
+    setItem(key, value) { storage.set(key, value); }
+  };
+  vm.runInNewContext(read("app.js"), {
+    document: dom.document,
+    window: { AstraHealth: health, AstraResearch: researchWindow.AstraResearch, addEventListener() {} },
+    localStorage,
+    Blob,
+    URL,
+    navigator: {},
+    location: { protocol: "file:" }
+  });
+
+  const mode = dom.get("mode-indicator");
+  assert.match(mode.textContent, /NASA RESEARCH MODE/);
+  dom.tabs.find(function (tab) { return tab.dataset.view === "overview"; }).click();
+  assert.equal(mode.textContent, "DEMO / MANUAL INPUT · NO LIVE SENSORS");
+
+  dom.get("demo-scenario").value = "shift";
+  dom.get("load-scenario").click();
+  assert.equal(mode.textContent, "DEMO / MANUAL INPUT · NO LIVE SENSORS");
+  assert.equal(dom.get("overall-status").textContent, "REVIEW READINGS");
+
+  dom.tabs.find(function (tab) { return tab.dataset.view === "wellbeing"; }).click();
+  dom.get("stress").value = "5";
+  dom.get("wellbeing-form").handlers.submit({ preventDefault() {} });
+  assert.equal(mode.textContent, "DEMO / MANUAL INPUT · NO LIVE SENSORS");
+
+  dom.tabs.find(function (tab) { return tab.dataset.view === "research"; }).click();
+  assert.match(mode.textContent, /NASA RESEARCH MODE/);
 });
