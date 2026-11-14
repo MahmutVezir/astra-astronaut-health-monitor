@@ -315,3 +315,88 @@ test("live fetch mapping recognizes OSDR sample identifiers and only numeric mea
     measurement: ["IL-6"]
   });
 });
+
+
+test("OSD-575 study version, assay, participant and timepoint metadata come from the NASA JSON structure", () => {
+  const { extractStudyMetadata } = require("../scripts/fetch-osd575.js");
+  const fileName = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
+  const payload = {
+    study: {
+      "OSD-575": {
+        version: 3,
+        studies: [{
+          identifier: "OSD-575",
+          title: "SpaceX Inspiration4 Blood Serum Metabolic Panel and Immune/Cardiac Cytokine Arrays",
+          publicReleaseDate: "2024-05-14"
+        }],
+        additionalInformation: {
+          samples: {
+            "s_OSD-575-txt": {
+              header: [
+                { title: "Source Name", field: "source" },
+                { title: "Sample Name", field: "sample" },
+                { title: "Factor Value: Time", field: "time" }
+              ],
+              raw: [
+                { source: "C001", sample: "C001_serum_L-3", time: "Launch minus 3" },
+                { source: "C001", sample: "C001_serum_R+194", time: "Return plus 194" },
+                { source: "C002", sample: "C002_serum_L-3", time: "Launch minus 3" }
+              ]
+            }
+          },
+          assays: {
+            "a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt": {
+              header: [
+                { title: "Raw Data File", field: "rawFile" },
+                { title: "Protocol REF", field: "protocolA" },
+                { title: "Protocol REF", field: "protocolB" },
+                { title: "Parameter Value:  Transformed Files", field: "transformed" }
+              ],
+              raw: [{
+                rawFile: "Not Available",
+                protocolA: "Assay Information",
+                protocolB: "ALSDA Transformed Data",
+                transformed: fileName
+              }]
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const result = extractStudyMetadata(payload);
+  assert.equal(result.dataset_version, "3");
+  assert.equal(result.study_identifier, "OSD-575");
+  assert.match(result.study_title, /Inspiration4/);
+  assert.equal(result.participant_count, 2);
+  assert.equal(result.sample_count, 3);
+  assert.ok(result.timepoints.includes("Return plus 194"));
+  assert.equal(result.transformed_data_class, "ALSDA Transformed Data");
+  assert.equal(result.transformed_data_verified, true);
+  assert.equal(result.raw_data_file_status, "Not Available");
+  assert.equal(result.license, "CC0-1.0");
+  assert.equal(result.license_api_value, null);
+  assert.equal(result.license_api_status, "NOT_EXPOSED_BY_LEGACY_METADATA_API");
+});
+
+test("OSD-575 metadata API license is used only when a license field is actually present", () => {
+  const { findApiLicense } = require("../scripts/fetch-osd575.js");
+  assert.equal(findApiLicense({ license: "CC0-1.0" }), "CC0-1.0");
+  assert.equal(findApiLicense({ comments: [{ name: "License", value: "CC0-1.0" }] }), "CC0-1.0");
+  assert.equal(findApiLicense({ comments: [], studies: [{ identifier: "OSD-575" }] }), null);
+});
+
+test("OSD-575 metadata API version mismatch is rejected before downloading data", () => {
+  const { extractStudyMetadata } = require("../scripts/fetch-osd575.js");
+  const payload = {
+    study: {
+      "OSD-575": {
+        version: 4,
+        studies: [{ identifier: "OSD-575", title: "Different version" }],
+        additionalInformation: {}
+      }
+    }
+  };
+  assert.throws(() => extractStudyMetadata(payload), /expected version 3/);
+});
