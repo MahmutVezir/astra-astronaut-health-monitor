@@ -45,6 +45,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
     headers = None
 
     group_headers = None
+    condition_headers = None
     for index, line in enumerate(lines[:1000]):
         stripped = line.strip()
         if not stripped or stripped.startswith(("!", "#")):
@@ -56,18 +57,24 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         if len(fields) >= 2:
             header_index = index
             headers = [field.strip().lstrip("\ufeff") for field in fields]
-            if index + 1 < len(lines):
+            if index + 2 < len(lines):
                 try:
-                    next_fields = next(csv.reader([lines[index + 1]], delimiter=delimiter))
+                    condition_fields = next(csv.reader([lines[index + 1]], delimiter=delimiter))
+                    column_fields = next(csv.reader([lines[index + 2]], delimiter=delimiter))
                 except csv.Error:
-                    next_fields = []
-                normalized_next = [field.strip() for field in next_fields]
-                if normalized_next and normalized_next[0].upper() == "ID_REF" and any(
-                    value.upper() in {"PREFLIGHT", "POSTFLIGHT"} for value in normalized_next
+                    condition_fields = []
+                    column_fields = []
+                normalized_conditions = [field.strip() for field in condition_fields]
+                normalized_columns = [field.strip() for field in column_fields]
+                if (
+                    normalized_columns
+                    and normalized_columns[0].upper() == "ID_REF"
+                    and any(value.upper() in {"PREFLIGHT", "POSTFLIGHT"} for value in normalized_conditions)
                 ):
                     group_headers = headers
-                    headers = normalized_next
-                    header_index = index + 1
+                    condition_headers = normalized_conditions
+                    headers = normalized_columns
+                    header_index = index + 2
             break
 
     if header_index is None or headers is None:
@@ -106,10 +113,11 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
     combined_headers = []
     for index, header in enumerate(headers):
         group = group_headers[index].strip() if group_headers and index < len(group_headers) else ""
-        if group and header:
-            combined_headers.append(group + " | " + header)
+        condition = condition_headers[index].strip() if condition_headers and index < len(condition_headers) else ""
+        if group and condition:
+            combined_headers.append(group + " | " + condition)
         else:
-            combined_headers.append(header or "unnamed_column_" + str(index + 1))
+            combined_headers.append(condition or group or header or "unnamed_column_" + str(index + 1))
 
     reader = csv.reader(lines[header_index + 1:], delimiter=delimiter)
     for row in reader:
@@ -152,8 +160,9 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
     is_differential_expression_results = (
         normalized_first == "id_ref"
         and group_headers is not None
-        and any("log2 ratio" in name.lower() for name in headers)
-        and any("p-value" in name.lower() for name in headers)
+        and condition_headers is not None
+        and any("log2 ratio" in name.lower() for name in condition_headers)
+        and any("p-value" in name.lower() for name in condition_headers)
     )
 
     return {
@@ -164,9 +173,10 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         "column_count": len(headers),
         "headers": combined_headers[:80],
         "group_headers": group_headers[:80] if group_headers else None,
+        "condition_headers": condition_headers[:80] if condition_headers else None,
         "header_preview_lines": (
-            lines[header_index - 1:header_index + 1]
-            if group_headers is not None
+            lines[header_index - 2:header_index + 1]
+            if condition_headers is not None
             else lines[header_index:header_index + 2]
         ),
         "metadata_preview": metadata_preview,
