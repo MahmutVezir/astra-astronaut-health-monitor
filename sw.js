@@ -1,4 +1,4 @@
-const CACHE_NAME = "astra-shell-v1";
+const CACHE_NAME = "astra-shell-v2";
 const APP_SHELL = ["./", "./index.html", "./styles.css", "./health-engine.js", "./app.js", "./research-data.js", "./manifest.webmanifest"];
 
 self.addEventListener("install", function (event) {
