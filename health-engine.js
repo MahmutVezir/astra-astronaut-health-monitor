@@ -45,7 +45,7 @@
     let summary = "All available readings are inside the illustrative personal reference bands. This is not a medical clearance.";
     if (invalid > 0) {
       status = "INVALID";
-      summary = invalid + " entry" + (invalid === 1 ? " needs" : "ies need") + " correction before it can be assessed.";
+      summary = invalid + (invalid === 1 ? " entry needs" : " entries need") + " correction before it can be assessed.";
     } else if (missing > 0) {
       status = "LIMITED";
       summary = "Assessment is limited: " + missing + " of " + items.length + " signals have no reading. Missing data is not treated as normal.";
