@@ -234,6 +234,17 @@ async function run() {
       returned_document_count: item.returned_document_count
     })),
     returned_search_records: returnedRecords,
+    detail_records: detailResults.map((item) => ({
+      query_record: item.query_record,
+      http_status: item.request.http_status ?? null,
+      json_valid: item.request.json_valid ?? false,
+      record_id: item.record_id ?? null,
+      record_title: item.record_title ?? null,
+      top_level_keys: item.top_level_keys || [],
+      record_keys: item.record_keys || [],
+      related_keys: item.related_keys || [],
+      file_access_hints: item.file_access_hints || []
+    })),
     detailed_record_count: detailResults.length,
     explicit_file_hint_count: detailHints.filter((item) => /(file|download|remote.?url|attachment)/i.test(item.key)).length,
     measurement_files_downloaded: 0,
