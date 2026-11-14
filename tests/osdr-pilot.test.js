@@ -300,3 +300,18 @@ test("OSD-575 R+194 is retained as a distinct timepoint label", () => {
   assert.ok(OSD575.timepoints.includes("R+194"));
   assert.equal(new Set(OSD575.timepoints).size, OSD575.timepoints.length);
 });
+
+test("live fetch mapping recognizes OSDR sample identifiers and only numeric measurement columns", () => {
+  const { inferColumnMap } = require("../scripts/fetch-osd575.js");
+  const headers = ["Source Name", "Sample Name", "Factor Value: Time", "IL-6", "Protocol REF"];
+  const rows = [
+    { "Source Name": "C001", "Sample Name": "C001_serum_L-3", "Factor Value: Time": "Launch minus 3 day", "IL-6": "1.2", "Protocol REF": "Sample Preparation" },
+    { "Source Name": "C001", "Sample Name": "C001_serum_R+194", "Factor Value: Time": "Return plus 194 day", "IL-6": "NA", "Protocol REF": "Assay Information" }
+  ];
+  assert.deepEqual(inferColumnMap(headers, rows), {
+    participant: "Source Name",
+    sample: "Sample Name",
+    timepoint: "Factor Value: Time",
+    measurement: ["IL-6"]
+  });
+});
