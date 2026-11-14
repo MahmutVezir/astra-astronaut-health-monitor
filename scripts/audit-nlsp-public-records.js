@@ -156,7 +156,7 @@ async function fetchObservedDatasetFileExplorerBundle() {
     }
   }
   const downloadCalls = [];
-  for (const match of source.matchAll(/_e\\(/g)) {
+  for (const match of source.matchAll(/_e\(/g)) {
     const index = match.index;
     downloadCalls.push({
       offset: index,
@@ -165,7 +165,7 @@ async function fetchObservedDatasetFileExplorerBundle() {
     if (downloadCalls.length >= 30) break;
   }
   const requestCalls = [];
-  for (const match of source.matchAll(/Mt\\(\\{method:/g)) {
+  for (const match of source.matchAll(/Mt\(\{method:/g)) {
     const index = match.index;
     requestCalls.push({
       offset: index,
@@ -173,8 +173,8 @@ async function fetchObservedDatasetFileExplorerBundle() {
     });
     if (requestCalls.length >= 30) break;
   }
-  const imports = Array.from(source.matchAll(/from["']([^"']+\\.js)["']/g), (match) => match[1]);
-  const apiPathLiterals = Array.from(source.matchAll(/["'`]((?:\\/api\\/v1|\\/api|\\/explore|\\/data|\\/files)[^"'`]{1,240})["'`]/g), (match) => match[1]);
+  const imports = Array.from(source.matchAll(/from["']([^"']+\.js)["']/g), (match) => match[1]);
+  const apiPathLiterals = Array.from(source.matchAll(/["'`]((?:\/api\/v1|\/api|\/explore|\/data|\/files)[^"'`]{1,240})["'`]/g), (match) => match[1]);
   result.matches = contexts.length;
   result.download_call_count = downloadCalls.length;
   result.request_call_count = requestCalls.length;
