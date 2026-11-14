@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype · main commit `0e47ee5a` (validation commit below)  
+**Build:** 0.1 prototype · main commit `d7668e188bc49431fdf240d354deacc9a2cea3b4`  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -25,7 +25,8 @@ Run `npm test` with Node.js 18+.
 - [x] CSV is 28 × 19 with 28 unique sample identifiers and nine concentration/percentage pairs.
 - [x] The downloaded sample names were independently compared with the 28 NASA ISA metadata sample identifiers.
 - [x] The nine percentage columns were independently recalculated against the all-crew pre-flight mean (12 samples); maximum absolute difference is below 5 × 10^-8.
-- [x] Live acquisition run #9 (GitHub Actions run 43612460864) completed with all 28 sample mappings and all nine normalization checks recorded in pilot-report.json.
+- [x] Initial exact-file acquisition run #9 (GitHub Actions run 43612460864) completed with all 28 sample mappings and all nine normalization checks recorded in pilot-report.json.
+- [x] Latest live re-audit run #10 (GitHub Actions run 43616651617) re-downloaded the exact 6,207-byte source and confirmed the same project-maintained SHA-256, 28/28 join, four participants, seven timepoints, and nine-analyte normalization audit.
 - [x] Verified-source import run 43612482985 committed the exact original CSV bytes, isa-sample-map.json, raw NASA API envelopes, and source-audit.json to main.
 - [x] tests/osd575-source-data.test.js passed against the committed source bundle; missing required files now fail the test rather than being skipped.
 - [x] Automated Research Mode integration test loads the committed NASA CSV, ISA map, and audit record, then verifies the 28/28 join, nine analytes, chart/table rendering, and fibrinogen flag.
@@ -50,15 +51,16 @@ Run `npm test` with Node.js 18+.
 
 ## Current automated validation evidence — 14 November 2026
 
-- Commit: `0e47ee5acaebbcaf0fbf2b3d3c74a841a6b5fa59`
-- GitHub Actions run: [43616190629](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43616190629)
+- Main commit: `d7668e188bc49431fdf240d354deacc9a2cea3b4`.
+- GitHub Actions validation + deployment: [run 43630833614](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43630833614).
 - JavaScript syntax checks: passed.
-- Automated test suite: **72 passed, 0 failed, 0 skipped**.
-- End-to-end Research Mode integration: passed against the committed NASA OSD-575 files; source hash, 28/28 sample mapping, nine-analyte normalization, participant charts/table, and fibrinogen flag behavior were verified.
-- DSO-470 UI source card test: passed with the updated audit status; it does not present unverified files as integrated.
-- GitHub Pages deployment: successful.
+- Automated test suite: **98 passed, 0 failed, 0 skipped**.
+- Research Mode integration: passed against the committed NASA OSD-575 files; source SHA-256, 28/28 sample mapping, nine-analyte normalization, participant charts/table, and fibrinogen warning were verified.
+- Service Worker tests: passed for initial Research Mode precaching, offline navigation fallback, same-origin cache writes, cache-version cleanup limited to ASTRA, and request pass-through.
+- GitHub Pages deployment: successful for this main commit.
 - NLSP DSO-470 discovery: [run 43615678402](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678402) succeeded; discovery artifact preserved; zero measurement files downloaded.
-- NASA live acquisition: [run 43612460864](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
+- Initial NASA OSD-575 acquisition: [run #9 (43612460864)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
+- Latest NASA OSD-575 re-audit: [run #10 (43616651617)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43616651617).
 - Verified source import: [run 43612482985](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612482985).
 
 The team still needs to perform and record the manual real-browser checks below. CI success is not a substitute for that visual QA.
