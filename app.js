@@ -8,9 +8,11 @@
     shift: { heartRate: 101, spo2: 94.5, temperature: 37.5, sleep: 4.3 },
     incomplete: { heartRate: 82, spo2: null, temperature: 36.8, sleep: null }
   };
+  const DEFAULT_BANDS = window.AstraHealth.DEFAULT_BANDS;
   const LABELS = { sleepQuality: "Sleep quality", stress: "Perceived stress", fatigue: "Fatigue", mood: "Mood" };
   let state = {
     readings: Object.assign({}, SCENARIOS.nominal),
+    bands: Object.keys(DEFAULT_BANDS).reduce(function (out, key) { out[key] = Object.assign({}, DEFAULT_BANDS[key]); return out; }, {}),
     wellbeing: Object.assign({}, DEFAULT_WELLBEING),
     log: [],
     updatedAt: null,
@@ -29,7 +31,7 @@
     return Number(value).toFixed(spec.digits) + " " + spec.unit;
   };
   const statusText = function (status) {
-    return ({ WITHIN: "Within demo band", REVIEW: "Review", NO_DATA: "No data", INVALID: "Invalid", LIMITED: "Assessment limited" })[status] || status;
+    return ({ WITHIN: "Within configured band", REVIEW: "Review", NO_DATA: "No data", INVALID: "Invalid", LIMITED: "Assessment limited" })[status] || status;
   };
   const statusClass = function (status) {
     return ({ WITHIN: "good", REVIEW: "review", NO_DATA: "missing", INVALID: "invalid", LIMITED: "limited" })[status] || "neutral";
@@ -43,6 +45,18 @@
     }
   }
 
+  function mergeBands(source) {
+    return Object.keys(DEFAULT_BANDS).reduce(function (out, key) {
+      out[key] = Object.assign({}, DEFAULT_BANDS[key], source && source[key] ? source[key] : {});
+      return out;
+    }, {});
+  }
+
+  function bandFieldId(key, edge) {
+    const slug = key === "heartRate" ? "heart-rate" : key;
+    return "band-" + slug + "-" + edge;
+  }
+
   function loadState() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -51,6 +65,7 @@
       if (parsed && parsed.readings && parsed.wellbeing && Array.isArray(parsed.log)) {
         state = {
           readings: Object.assign({}, SCENARIOS.nominal, parsed.readings),
+          bands: mergeBands(parsed.bands),
           wellbeing: Object.assign({}, DEFAULT_WELLBEING, parsed.wellbeing),
           log: parsed.log.slice(0, 100),
           updatedAt: parsed.updatedAt || null,
@@ -60,6 +75,7 @@
     } catch (error) {
       state = {
         readings: Object.assign({}, SCENARIOS.nominal),
+        bands: mergeBands(null),
         wellbeing: Object.assign({}, DEFAULT_WELLBEING),
         log: [],
         updatedAt: null,
@@ -71,14 +87,14 @@
   function renderCards(assessment) {
     const html = assessment.items.map(function (item) {
       const icon = ({ heartRate: "♡", spo2: "◉", temperature: "⌁", sleep: "☾" })[item.key];
-      return '<article class="signal-card"><div class="card-top"><span class="signal-icon">' + icon + '</span><span class="state-label state-' + statusClass(item.status) + '">' + statusText(item.status) + '</span></div><p class="signal-name">' + esc(item.label) + '</p><strong class="signal-value">' + esc(formatValue(item.key, item.value)) + '</strong><p class="signal-reference">Demo band: ' + esc(window.AstraHealth.SIGNALS[item.key].lower + "–" + window.AstraHealth.SIGNALS[item.key].upper + " " + window.AstraHealth.SIGNALS[item.key].unit) + '</p></article>';
+      return '<article class="signal-card"><div class="card-top"><span class="signal-icon">' + icon + '</span><span class="state-label state-' + statusClass(item.status) + '">' + statusText(item.status) + '</span></div><p class="signal-name">' + esc(item.label) + '</p><strong class="signal-value">' + esc(formatValue(item.key, item.value)) + '</strong><p class="signal-reference">Demo band: ' + esc(state.bands[item.key].lower + "–" + state.bands[item.key].upper + " " + window.AstraHealth.SIGNALS[item.key].unit) + '</p></article>';
     }).join("");
     $("signal-cards").innerHTML = html;
   }
 
   function renderAssessment(assessment) {
     const badge = $("overall-status");
-    badge.textContent = assessment.status === "WITHIN" ? "WITHIN DEMO BAND" : assessment.status === "REVIEW" ? "REVIEW READINGS" : assessment.status === "LIMITED" ? "DATA INCOMPLETE" : "CHECK INPUTS";
+    badge.textContent = assessment.status === "WITHIN" ? "WITHIN CONFIGURED BAND" : assessment.status === "REVIEW" ? "REVIEW READINGS" : assessment.status === "LIMITED" ? "DATA INCOMPLETE" : "CHECK INPUTS";
     badge.className = "status-badge status-" + statusClass(assessment.status);
     $("assessment-summary").textContent = assessment.summary;
     $("assessment-list").innerHTML = assessment.items.map(function (item) {
@@ -127,6 +143,10 @@
     $("spo2").value = state.readings.spo2 === null ? "" : state.readings.spo2;
     $("temperature").value = state.readings.temperature === null ? "" : state.readings.temperature;
     $("sleep").value = state.readings.sleep === null ? "" : state.readings.sleep;
+    Object.keys(window.AstraHealth.SIGNALS).forEach(function (key) {
+      $(bandFieldId(key, "lower")).value = state.bands[key].lower;
+      $(bandFieldId(key, "upper")).value = state.bands[key].upper;
+    });
     Object.keys(LABELS).forEach(function (key) {
       const input = $(key.replace(/[A-Z]/g, function (letter) { return "-" + letter.toLowerCase(); }));
       if (input) {
@@ -137,7 +157,7 @@
   }
 
   function renderAll() {
-    const assessment = window.AstraHealth.assess(state.readings);
+    const assessment = window.AstraHealth.assess(state.readings, state.bands);
     renderCards(assessment);
     renderAssessment(assessment);
     renderTrend();
@@ -203,6 +223,34 @@
     $("signals-message").textContent = "Readings saved locally. " + assessment.summary;
   }
 
+  function saveBands(event) {
+    event.preventDefault();
+    const candidate = {};
+    const errors = [];
+    Object.keys(window.AstraHealth.SIGNALS).forEach(function (key) {
+      const spec = window.AstraHealth.SIGNALS[key];
+      const lowerRaw = $(bandFieldId(key, "lower")).value;
+      const upperRaw = $(bandFieldId(key, "upper")).value;
+      const lower = Number(lowerRaw);
+      const upper = Number(upperRaw);
+      if (lowerRaw === "" || upperRaw === "" || !Number.isFinite(lower) || !Number.isFinite(upper) || lower >= upper || lower < spec.min || upper > spec.max) {
+        errors.push(spec.label);
+      } else {
+        candidate[key] = { lower: lower, upper: upper };
+      }
+    });
+    if (errors.length) {
+      $("baseline-message").textContent = "Check lower/upper order and allowed input ranges for: " + errors.join(", ") + ".";
+      return;
+    }
+    state.bands = candidate;
+    state.updatedAt = new Date().toISOString();
+    addLog("REFERENCE BANDS UPDATED", "The local demo comparison ranges were changed. This is not a medical validation.");
+    saveState();
+    renderAll();
+    $("baseline-message").textContent = "Reference bands saved locally. The dashboard now compares readings with these configured values.";
+  }
+
   function saveWellbeing(event) {
     event.preventDefault();
     Object.keys(LABELS).forEach(function (key) {
@@ -262,6 +310,7 @@
     $("signals-message").textContent = "Demo reset to nominal simulated values.";
   });
   $("signals-form").addEventListener("submit", saveReadings);
+  $("baseline-form").addEventListener("submit", saveBands);
   $("wellbeing-form").addEventListener("submit", saveWellbeing);
   $("export-csv").addEventListener("click", exportCsv);
   $("clear-log").addEventListener("click", function () {
