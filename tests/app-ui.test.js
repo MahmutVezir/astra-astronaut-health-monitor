@@ -371,3 +371,36 @@ test("the header mode indicator stays in Demo & Manual Mode while other views re
   dom.tabs.find(function (tab) { return tab.dataset.view === "research"; }).click();
   assert.match(mode.textContent, /NASA RESEARCH MODE/);
 });
+
+
+test("Research Mode never reports verified data when browser-side source verification fails", async function () {
+  const dom = createDom();
+  const researchWindow = {};
+  vm.runInNewContext(read("research-data.js"), { window: researchWindow, globalThis: researchWindow });
+  const localStorage = { getItem() { return null; }, setItem() {} };
+  const appWindow = {
+    AstraHealth: health,
+    AstraResearch: researchWindow.AstraResearch,
+    AstraResearchLoader: {
+      loadOds575Evidence() { return Promise.reject(new Error("SHA-256 verification failed")); }
+    },
+    addEventListener() {}
+  };
+  vm.runInNewContext(read("app.js"), {
+    document: dom.document,
+    window: appWindow,
+    localStorage,
+    Blob,
+    URL,
+    navigator: {},
+    location: { protocol: "file:" }
+  });
+  await new Promise(function (resolve) { setImmediate(resolve); });
+
+  assert.equal(dom.get("research-data-state").textContent, "BROWSER VERIFICATION FAILED");
+  assert.equal(dom.get("research-metadata-status").textContent, "Browser verification failed");
+  assert.equal(dom.get("research-evidence-status").textContent, "SOURCE VERIFICATION FAILED");
+  assert.equal(dom.get("research-marker-select").disabled, true);
+  assert.match(dom.get("research-evidence-error").textContent, /SHA-256 verification failed/);
+  assert.match(dom.get("mode-indicator").textContent, /BROWSER VERIFICATION FAILED/);
+});
