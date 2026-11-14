@@ -68,3 +68,20 @@ This is an access/schema-verification abstention, not evidence that the dataset 
 ## Required next execution
 
 Run the existing pilot from an environment with outbound HTTPS/DNS access to `osdr.nasa.gov`. Save the exact metadata and catalog JSON responses, download the catalog-listed HDCVD9 transformed file without rewriting it, record HTTP headers and byte length, compute SHA-256, and inspect the true header, missing tokens, participant/sample IDs, and timepoint values. Only then freeze the digest and map columns. If the actual CSV contradicts the study-page sample metadata, preserve the discrepancy and return `INVALID_DATA` or a reasoned abstention according to the contract.
+
+## Follow-up: GitHub Actions metadata response captured
+
+The manual GitHub Actions run 43592311262 reached the NASA legacy metadata endpoint successfully before the old SPA-page check failed.
+
+- Metadata endpoint HTTP status: 200
+- Captured response: metadata-response.json in artifact osd575-live-audit-43592311262
+- Artifact SHA-256: 12e6c66a22900d50483a1075211b9b6f204d2fad42d792bf92c7cb6ca006d157
+- study[OSD-575].version: numeric 3
+- study[OSD-575].studies[]: record with identifier OSD-575, study title, and public release date
+- additionalInformation.samples[s_OSD-575-txt].raw: 28 sample rows; source identifiers C001-C004; seven raw time strings including Return plus 194
+- HDCVD9 assay metadata under additionalInformation.assays: the transformed filename appears in the Transformed Files field alongside the ALSDA Transformed Data protocol label; its Raw Data File field is Not Available
+- A recursive inspection of the complete captured JSON found no license/rights field and no CC0-1.0 value. The known CC0-1.0 value therefore remains sourced from the official NASA study record, not from this legacy JSON endpoint.
+
+This captured API response is now the schema basis for extractStudyMetadata(). The revised script no longer requests or parses the SPA HTML page. It validates the version and HDCVD9 transformation metadata from the JSON response, then proceeds to the file catalog and exact remote download.
+
+The CSV itself remains unobserved until the revised manual workflow completes successfully. No file SHA-256 for the HDCVD9 CSV is available yet.
