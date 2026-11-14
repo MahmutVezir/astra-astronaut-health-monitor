@@ -2,6 +2,7 @@
 
 const OSDR_ORIGIN = "https://osdr.nasa.gov";
 const OSDR_API_ROOT = OSDR_ORIGIN + "/osdr/data/osd";
+const OSDR_PUBLIC_BUCKET_HOST = "nasa-osdr.s3.us-west-2.amazonaws.com";
 
 function parseStudyIdentifier(studyId, requestedVersion = null) {
   const match = String(studyId).match(/^OSD-(\d+)(?:\.(\d+))?$/);
@@ -161,7 +162,31 @@ function resolveOsdrDownloadUrl(remoteUrl) {
   const url = new URL(remoteUrl, OSDR_ORIGIN);
   if (url.protocol !== "https:" ||
       !(url.hostname === "osdr.nasa.gov" || url.hostname.endsWith(".nasa.gov"))) {
-    throw new Error("Refusing a download URL outside NASA HTTPS domains");
+    throw new Error("Refusing a catalog download URL outside NASA HTTPS domains");
+  }
+  return url.href;
+}
+
+function validateOsdrDownloadResponseUrl(responseUrl, expectedFileName = null) {
+  if (typeof responseUrl !== "string" || responseUrl.trim() === "") {
+    throw new TypeError("OSDR download response URL is required");
+  }
+  const url = new URL(responseUrl);
+  const isNasaHost = url.hostname === "osdr.nasa.gov" || url.hostname.endsWith(".nasa.gov");
+  const isOfficialPublicBucket = url.hostname === OSDR_PUBLIC_BUCKET_HOST;
+  if (url.protocol !== "https:" || !(isNasaHost || isOfficialPublicBucket)) {
+    throw new Error(
+      "Refusing a download redirect outside verified NASA HTTPS endpoints (protocol=" +
+      url.protocol + ", host=" + url.hostname + ")"
+    );
+  }
+  if (isOfficialPublicBucket && expectedFileName) {
+    const finalName = decodeSafely(url.pathname.split("/").pop() || "");
+    if (finalName !== expectedFileName) {
+      throw new Error(
+        "The NASA OSDR public-bucket redirect did not resolve to the exact catalog filename"
+      );
+    }
   }
   return url.href;
 }
@@ -279,7 +304,7 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
     const status = response && Number.isInteger(response.status) ? response.status : "unknown";
     throw new Error("OSDR file download failed with HTTP " + status);
   }
-  if (response.url) resolveOsdrDownloadUrl(response.url);
+  if (response.url) validateOsdrDownloadResponseUrl(response.url, getFileName(fileRecord));
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length === 0) throw new Error("OSDR returned an empty file");
 
@@ -310,5 +335,6 @@ module.exports = {
   getFileName,
   getRemoteUrl,
   resolveOsdrDownloadUrl,
+  validateOsdrDownloadResponseUrl,
   downloadStudyFile
 };
