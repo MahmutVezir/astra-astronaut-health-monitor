@@ -89,6 +89,14 @@ test("extracts concrete API endpoint references from observed bundle strings", (
   assert.ok(endpoints.includes("/search/data/details/"));
 });
 
+test("extracts observed HTTP request paths without mistaking URLSearchParams.get for an API call", () => {
+  const source = 'const route="/experiments/search"; client.get(route,{params:{q:"DSO-470"}}); client.post("/experiments/query",{q:"DSO-470"}); params.get("q");';
+  const requests = extractApiRequestReferences(source);
+  assert.ok(requests.some((item) => item.method === "GET" && item.path === "/experiments/search"));
+  assert.ok(requests.some((item) => item.method === "POST" && item.path === "/experiments/query"));
+  assert.equal(requests.some((item) => item.path === "q"), false);
+});
+
 test("extracts versioned API route context without calling a guessed endpoint", () => {
   const source = 'const base="/api/v1"; client.get(base + "/search/experiments");';
   const contexts = extractApiContexts(source);

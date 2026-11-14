@@ -105,6 +105,43 @@ function extractApiEndpointReferences(source, limit = 160) {
   return [...new Set(values)].slice(0, limit);
 }
 
+function extractApiRequestReferences(source, limit = 160) {
+  const text = String(source);
+  const constants = new Map();
+  const constantPattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*["'\x60](\/[^"'\x60]{1,180})["'\x60]/g;
+  for (const match of text.matchAll(constantPattern)) {
+    constants.set(match[1], match[2]);
+  }
+
+  const requests = [];
+  const literalPattern = /\.(get|post|put|delete|patch)\s*\(\s*["'\x60](\/[^"'\x60]{1,180})["'\x60]/gi;
+  for (const match of text.matchAll(literalPattern)) {
+    requests.push({
+      method: match[1].toUpperCase(),
+      path: match[2],
+      source: "literal HTTP-client argument"
+    });
+  }
+
+  const variablePattern = /\.(get|post|put|delete|patch)\s*\(\s*([A-Za-z_$][\w$]*)\s*(?:[,)]|$)/gi;
+  for (const match of text.matchAll(variablePattern)) {
+    const path = constants.get(match[2]);
+    if (path) {
+      requests.push({
+        method: match[1].toUpperCase(),
+        path,
+        source: "local path constant"
+      });
+    }
+  }
+
+  const unique = new Map();
+  for (const request of requests) {
+    unique.set(request.method + " " + request.path, request);
+  }
+  return [...unique.values()].slice(0, limit);
+}
+
 function extractApiContexts(source, limit = 40) {
   const patterns = [
     /\/api\/v1/gi,
@@ -269,6 +306,7 @@ async function run() {
         network_contexts: extractNetworkContexts(source),
         api_contexts: extractApiContexts(source),
         api_endpoint_references: extractApiEndpointReferences(source),
+        api_request_references: extractApiRequestReferences(source),
         asset_references: extractAssetReferences(source)
       };
     } catch (error) {
@@ -378,6 +416,7 @@ async function run() {
         network_contexts: extractNetworkContexts(source),
         api_contexts: extractApiContexts(source),
         api_endpoint_references: extractApiEndpointReferences(source),
+        api_request_references: extractApiRequestReferences(source),
         asset_references: extractAssetReferences(source)
       };
     } catch (error) {
@@ -420,14 +459,18 @@ async function run() {
     asset_network_contexts: allAssetResults.flatMap((asset) =>
       (asset.network_contexts || []).map((context) => ({ asset: asset.file_name, ...context }))
     ).slice(0, 60),
-    api_route_contexts: allAssetResults.flatMap((asset) =>
+    api_route_contexts: allDiscoveryAssets.flatMap((asset) =>
       (asset.api_contexts || []).map((context) => ({ asset: asset.file_name, ...context }))
-    ).slice(0, 100),
-    api_endpoint_references: allAssetResults.flatMap((asset) =>
+    ).slice(0, 160),
+    api_endpoint_references: allDiscoveryAssets.flatMap((asset) =>
       (asset.api_endpoint_references || []).map((reference) => ({ asset: asset.file_name, reference }))
-    ).slice(0, 200),
+    ).slice(0, 300),
+    api_request_references: allDiscoveryAssets.flatMap((asset) =>
+      (asset.api_request_references || []).map((request) => ({ asset: asset.file_name, ...request }))
+    ).slice(0, 300),
     discovered_nested_asset_references: nestedAssetUrls,
-    asset_results: allAssetResults.map(({ evidence_snippets, api_hints: hints, code_references, network_contexts, api_contexts, asset_references, ...rest }) => rest),
+    discovered_second_level_asset_references: tertiaryAssetUrls,
+    asset_results: allDiscoveryAssets.map(({ evidence_snippets, api_hints: hints, code_references, network_contexts, api_contexts, api_endpoint_references, api_request_references, asset_references, ...rest }) => rest),
     measurement_files_downloaded: 0,
     decision: candidateLinks.length || indexSnippets.length || scriptSnippets.length || apiHints.length
       ? "DISCOVERY_REFERENCES_FOUND_REQUIRES_EXACT_RECORD_REVIEW"
