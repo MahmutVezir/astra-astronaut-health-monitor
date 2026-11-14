@@ -29,30 +29,30 @@ The SHA-256 above is a project-maintained reproducibility pin calculated from th
 
 ## Sample traceability and value structure
 
-The transformed CSV contains only \`Sample Name\` plus assay-value columns; it does not contain explicit participant and timepoint columns. The authoritative OSDR ISA sample table exposes \`Source Name\`, \`Sample Name\`, and \`Factor Value: Time\`. A one-to-one exact join on \`Sample Name\` resolves all 28 CSV rows to the metadata table:
+The transformed CSV contains only `Sample Name` plus assay-value columns; it does not contain explicit participant and timepoint columns. The raw NASA OSDR metadata response contains an ISA sample table with `Source Name`, `Sample Name`, and `Factor Value: Time`. A separate offline inspection of the two files confirmed a one-to-one match across all 28 sample identifiers:
 
 - Participants: C001, C002, C003, C004 — **4 independent participants**
 - Samples: **28**, seven per participant
 - Collection points: L-92, L-44, L-3, R+1, R+45, R+82, R+194
-- Participant/timepoint pairing: all four participants have repeated observations at all seven listed collection points
+- Each participant has one sample at each of the seven listed collection points
 
-The analysis pipeline now uses that explicit metadata join rather than guessing participant/timepoint values from text patterns in the CSV. It does not alter the stored source CSV.
+The updated production acquisition code implements this exact metadata join. **Run #7 predates that change**: its pilot report has no column map and therefore reports `INSUFFICIENT_EVIDENCE`. That result reflects the old inability to map CSV rows, not a biological conclusion about the assay. The next live run must demonstrate the updated mapping and normalization checks in its own `pilot-report.json` before Research Mode can unlock the biomarker plots.
 
-Nine concentration columns are treated as the primary numeric assay measurements. The paired \`*_percent\` columns are retained as normalized representations, not counted as additional independent biomarkers.
+Nine concentration columns are treated as primary numeric assay measurements. The nine paired `*_percent` columns are normalized representations, not nine additional independent biomarkers.
 
 ## Normalization cross-check
 
-NASA's study description states that HDCVD9 concentrations were extrapolated with a four- or five-parameter logistic standard curve and that measurements were normalized by the average of pre-flight values from all crew. The transformed file's percent columns were independently checked against:
+NASA's study description says the assay data are normalized by the average of pre-flight values from all crew. The transformed file's percent columns were independently recalculated against:
 
-\`percent = 100 × row concentration / mean concentration across all crew pre-flight samples\`
+`percent = 100 × row concentration / mean concentration across all crew pre-flight samples`
 
-The pre-flight reference set comprises the 12 samples at L-92, L-44 and L-3 (four crew members × three collection points). All nine paired percent columns reproduced the formula over all 28 rows. The maximum absolute difference was below \(5 × 10^{-8}\), consistent with rounding in the CSV.
+The reference set comprises the 12 samples at L-92, L-44 and L-3 (four participants × three pre-flight collections). All nine paired percent columns reproduced the formula across all 28 rows; the largest absolute difference was below (5 × 10^{-8}), consistent with rounding in the CSV.
 
-This verifies the mathematical relationship in the downloaded transformed file. It does not independently validate the assay's laboratory calibration or the vendor's underlying raw data.
+This independent offline calculation confirms the arithmetic relationship in the downloaded transformed file. It does not validate the assay laboratory's calibration or the vendor's underlying raw measurements. The revised production pipeline repeats the same check and records a structured normalization audit; that production check remains pending the next live workflow run.
 
 ## Scientific decision and limitations
 
-The data pipeline is now complete: exact catalog match, verified download URL and redirect destination, preserved source bytes, matching pinned SHA-256, successful CSV parsing, complete metadata-backed row mapping, and a passing normalization cross-check.
+The source acquisition and byte-integrity stages are complete. The 28-row metadata join and nine-analyte normalization formula have passed a separate offline review of the downloaded artifact, but the live production pilot report has not yet recorded those revised analysis gates. A new run is required before the end-to-end data pipeline can be marked complete.
 
 The evidence decision remains **LIMITED_EVIDENCE**, not ANALYZABLE for general inference:
 
@@ -65,7 +65,7 @@ The evidence decision remains **LIMITED_EVIDENCE**, not ANALYZABLE for general i
 
 ## Permitted next analysis
 
-The defensible next step is a participant-level descriptive profile of the non-flagged markers across the seven collection points, accompanied by all four individual trajectories and clearly stated units/normalization. Any cross-participant summaries must report \(n=4\) and remain descriptive; no population-level significance claim should be made from this cohort alone.
+After the revised live pipeline report passes, the defensible next analysis is a participant-level descriptive profile of the non-flagged markers across the seven collection points, accompanied by all four individual trajectories and clearly stated units/normalization. Any cross-participant summaries must report \(n=4\) and remain descriptive; no population-level significance claim should be made from this cohort alone.
 
 ## Source references
 
