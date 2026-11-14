@@ -494,6 +494,7 @@ async function main(options = {}) {
   const catalogDownloadUrl = fileRecord ? getRemoteUrl(fileRecord) : null;
 
   let downloaded = null;
+  let rawBytesSaved = false;
   let digest = null;
   let trace = null;
   let parseError = null;
@@ -549,6 +550,7 @@ async function main(options = {}) {
       const csvPath = path.join(outputDir, FILE_NAME);
       // Save the exact response bytes before parsing; no text decoding/re-encoding is used for the stored source file.
       await fs.writeFile(csvPath, downloaded.bytes);
+      rawBytesSaved = true;
 
       try {
         parsed = parseCsv(downloaded.bytes.toString("utf8"));
@@ -635,7 +637,7 @@ async function main(options = {}) {
       ? "not_previously_frozen; actual downloaded bytes are hashed, not compared to an invented reference digest"
       : "not_calculated; no verified file bytes were downloaded",
     byte_length: downloaded ? downloaded.bytes.length : null,
-    raw_bytes_preserved: Boolean(downloaded),
+    raw_bytes_preserved: rawBytesSaved,
     csv_relative_path: downloaded ? path.relative(process.cwd(), path.join(outputDir, FILE_NAME)) : null,
     metadata_api_retrieved_at: new Date().toISOString(),
     pilot_decision: decision,
@@ -676,14 +678,16 @@ async function main(options = {}) {
     analysis_gate: {
       catalog_match_found: Boolean(fileRecord),
       download_url_verified: Boolean(downloaded && downloaded.downloadUrl),
-      raw_bytes_preserved: Boolean(downloaded),
+      raw_bytes_preserved: rawBytesSaved,
       file_sha256_calculated: Boolean(digest),
       byte_length: downloaded ? downloaded.bytes.length : null,
       csv_parse_passed: Boolean(parsed),
       column_map_available: Boolean(columnMap),
-      observed_structure_available: Boolean(observed && observed.participant_count !== null && observed.sample_count !== null),
-      data_pipeline_completed: Boolean(downloaded && digest && parsed && columnMap && observed &&
-        observed.participant_count !== null && observed.sample_count !== null)
+      observed_structure_available: Boolean(observed && observed.participant_count > 0 &&
+        observed.sample_count > 0 && observed.timepoints.length > 0 && observed.measurement_columns.length > 0),
+      data_pipeline_completed: Boolean(downloaded && rawBytesSaved && digest && parsed && columnMap && observed &&
+        observed.participant_count > 0 && observed.sample_count > 0 && observed.timepoints.length > 0 &&
+        observed.measurement_columns.length > 0)
     },
     trace_contract: trace,
     license_note: studyMetadata &&
