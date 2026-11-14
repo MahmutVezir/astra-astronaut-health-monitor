@@ -97,7 +97,8 @@ test("install pre-caches all assets required to reopen NASA Research Mode offlin
     "./research-data-loader.js",
     "./data/osdr/OSD-575/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
     "./data/osdr/OSD-575/isa-sample-map.json",
-    "./data/osdr/OSD-575/source-audit.json"
+    "./data/osdr/OSD-575/source-audit.json",
+    "./icons/astra.svg"
   ]) {
     assert.equal(worker.calls.precached.includes(asset), true, asset + " must be cached at install");
   }
