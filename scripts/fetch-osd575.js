@@ -331,20 +331,31 @@ function inferColumnMap(headers, rows) {
 
 async function fetchJsonCaptured(url, fetchImpl, snapshots) {
   const response = await fetchImpl(url, { headers: { accept: "application/json" } });
-  if (!response.ok) throw new Error("OSDR API returned HTTP " + response.status + " for " + url);
-  const text = await response.text();
-  let body;
+  const rawText = await response.text();
+  let body = null;
+  let parseError = null;
   try {
-    body = JSON.parse(text);
+    body = JSON.parse(rawText);
   } catch (error) {
-    throw new Error("OSDR API returned invalid JSON for " + url + ": " + error.message);
+    parseError = error.message;
   }
-  snapshots.push({
+
+  const snapshot = {
     url,
+    response_url: response.url || url,
     status: response.status,
-    raw_response_text: text,
+    raw_response_text: rawText,
     body
-  });
+  };
+  if (parseError) snapshot.parse_error = parseError;
+  snapshots.push(snapshot);
+
+  if (!response.ok) {
+    throw new Error("OSDR API returned HTTP " + response.status + " for " + url);
+  }
+  if (parseError) {
+    throw new Error("OSDR API returned invalid JSON for " + url + ": " + parseError);
+  }
   return jsonResponse(true, response.status, body, response.url || url);
 }
 
