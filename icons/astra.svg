@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>ASTRA</title>
+  <rect width="512" height="512" rx="112" fill="#0a1220"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#1f5260" stroke-width="10"/>
+  <circle cx="256" cy="256" r="166" fill="none" stroke="#27c8bd" stroke-opacity=".35" stroke-width="3"/>
+  <path d="M256 92 414 396h-78l-30-62H206l-30 62h-78L256 92Zm0 140-25 52h50l-25-52Z" fill="#eaf7f6" fill-rule="evenodd"/>
+  <path d="M210 292h42l18-34 23 62 19-28h28" fill="none" stroke="#27c8bd" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="256" r="8" fill="#27c8bd"/>
+</svg>
