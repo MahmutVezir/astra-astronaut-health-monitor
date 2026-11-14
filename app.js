@@ -72,11 +72,6 @@
     }
   }
 
-  function addLog(type, message) {
-    state.log.unshift({ time: new Date().toISOString(), type: type, message: message });
-    state.log = state.log.slice(0, 100);
-  }
-
   function renderCards(assessment) {
     const html = assessment.items.map(function (item) {
       const icon = ({ heartRate: "♡", spo2: "◉", temperature: "⌁", sleep: "☾" })[item.key];
@@ -114,6 +109,15 @@
     }).join("");
   }
 
+  function renderResearchTimeline() {
+    const target = $("osd-timeline");
+    if (!target || !window.AstraResearch || !window.AstraResearch.inspiration4) return;
+    const study = window.AstraResearch.inspiration4;
+    target.innerHTML = '<p class="timeline-heading">NASA-reported sample collection points</p><div class="timeline-track">' + study.timepoints.map(function (point) {
+      return '<div class="timeline-point"><span class="timeline-code">' + esc(point.label) + '</span><span class="timeline-phase">' + esc(point.phase) + '</span></div>';
+    }).join("") + '</div><p class="timeline-note">Relative to launch (L) or return (R). These are research sample timepoints, not continuous vital-sign measurements.</p>';
+  }
+
   function renderLog() {
     const list = $("log-list");
     $("empty-log").hidden = state.log.length > 0;
@@ -143,6 +147,7 @@
     renderTrend();
     renderLog();
     renderInputs();
+    renderResearchTimeline();
     $("last-updated").textContent = state.updatedAt ? "Updated " + new Date(state.updatedAt).toLocaleString() : "Demo readings loaded";
   }
 
