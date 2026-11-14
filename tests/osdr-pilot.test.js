@@ -285,9 +285,9 @@ test("missing study entry in metadata API produces a reasoned abstention", async
 
 test("CSV parser preserves NASA-style missing-value tokens without inventing nulls", () => {
   const parsed = parseCsv(
-    "participant_id,sample_name,timepoint,marker_a,marker_b\\n" +
-    "C001,C001_serum_L-3,L-3,NA,\\n" +
-    "C001,C001_serum_R+194,R+194,1.25,NaN\\n"
+    "participant_id,sample_name,timepoint,marker_a,marker_b\n" +
+    "C001,C001_serum_L-3,L-3,NA,\n" +
+    "C001,C001_serum_R+194,R+194,1.25,NaN\n"
   );
   assert.equal(parsed.rows[0].marker_a, "NA");
   assert.equal(parsed.rows[0].marker_b, "");
