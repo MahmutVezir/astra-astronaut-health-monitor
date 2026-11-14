@@ -174,15 +174,15 @@
     setText("research-timepoint-count", study.timepoints.length);
     setText("research-assay", study.assay || "Not reported");
     setText("research-decision", researchEvidence || sourceAuditPassed ? "LIMITED EVIDENCE" : "DATA QA PENDING");
-    setText("research-metadata-status", metadataVerified
-      ? "Verified · " + expectedSampleCount + "/" + expectedSampleCount + " ISA matches"
-      : researchEvidenceError
-        ? "Browser verification failed"
+    setText("research-metadata-status", researchEvidenceError
+      ? "Browser verification failed"
+      : metadataVerified
+        ? researchEvidence
+          ? "Verified · " + expectedSampleCount + "/" + expectedSampleCount + " ISA matches"
+          : "Server audit verified · browser check pending"
         : researchEvidence
           ? "Verification incomplete"
-          : audit.metadataVerified === true
-            ? "Server audit verified · browser check pending"
-            : "Not verified");
+          : "Not verified");
     setText("research-catalog-status", researchEvidence
       ? "HTTP 200 · exact HDCVD9 record matched"
       : audit.catalogFileFound
