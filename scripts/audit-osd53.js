@@ -29,6 +29,10 @@ function getStudyRecord(payload, datasetId = DATASET_ID) {
   return { study, record };
 }
 
+function isNumericVersion(value) {
+  return /^\d+$/.test(String(value));
+}
+
 function findExplicitLicense(value) {
   const visited = new Set();
   function visit(item, parentKey = "") {
@@ -99,7 +103,7 @@ async function run() {
   const metadata = await fetchStudyMetadata(DATASET_ID, captureFetch);
   const { study, record } = getStudyRecord(metadata);
   const version = String(study.version || "").trim();
-  if (!/^\\d+$/.test(version)) {
+  if (!isNumericVersion(version)) {
     throw new Error("NASA metadata did not expose a numeric " + DATASET_ID + " version.");
   }
 
@@ -162,4 +166,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { getStudyRecord, findExplicitLicense, summarizeFiles };
+module.exports = { getStudyRecord, isNumericVersion, findExplicitLicense, summarizeFiles };
