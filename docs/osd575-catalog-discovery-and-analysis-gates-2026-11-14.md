@@ -103,3 +103,14 @@ The catalog-discovery step is no longer the blocker. The next run must capture a
 PR #17 adds a strict redirect validator that continues to require HTTPS and accepts only NASA hosts or the single OSDR bucket host `nasa-osdr.s3.us-west-2.amazonaws.com`. For the bucket host it also requires the final path component to equal the exact catalog filename. Unit tests reject arbitrary external hosts, other S3 buckets, HTTP, and mismatched filenames.
 
 This change is grounded in two separate source facts: NASA identifies the public bucket as `nasa-osdr` in `us-west-2`; AWS documents the virtual-hosted S3 endpoint pattern `https://bucket-name.s3.region.amazonaws.com/key`. The resulting hostname is therefore a narrowly derived allowlist entry, **not a redirect destination already observed in run #5**. A live run must still confirm the actual redirect URL before this acquisition path can be considered validated.
+
+
+## 10. Live run #6: observed ALSDA redirect (14 November 2026)
+
+- Workflow: [Fetch and audit NASA OSD-575, run #6](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43607599347).
+- The versioned bare catalog endpoint again returned the exact HDCVD9 transformed CSV record, with declared size 6,207 bytes and `restricted=false`.
+- The catalog-provided NASA download route followed a redirect to `https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv`.
+- Run #6 rejected that destination because the previous allowlist covered only `nasa-osdr.s3.us-west-2.amazonaws.com`. The audit preserved the observed redirect host, exact object path, and filename. No file bytes were accepted or saved; `file_sha256=null`, `byte_length=null`, and the CSV parse/mapping gates remain false.
+- NASA's OSDR FAQ states that OSDR integrates ALSDA and GeneLab and that OSDR data files can be accessed programmatically through the Public API or public AWS S3. This establishes the broad acquisition context, but the exact ALSDA bucket hostname above is treated as **observed redirect evidence from the live NASA download route**, not as a bucket name independently published in the NASA guide. AWS documents legacy global S3 virtual-hosted endpoints of the form `bucket-name.s3.amazonaws.com`. Sources: [NASA OSDR FAQ](https://science.nasa.gov/reference/osdr-faq/), [NASA About OSDR](https://science.nasa.gov/biological-physical/data/osdr/), and [AWS S3 virtual hosting](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
+- The next code change adds only this exact observed host and only the exact HDCVD9 object path. It does not allow arbitrary S3 buckets, arbitrary keys, HTTP, or other filenames. A subsequent live run must still verify HTTP status, response byte count against the catalog's 6,207-byte declaration, and SHA-256 before any analysis.
+
