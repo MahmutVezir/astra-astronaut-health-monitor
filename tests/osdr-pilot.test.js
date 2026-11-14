@@ -1175,7 +1175,7 @@ test("end-to-end audit uses the documented unversioned catalog fallback and anal
     assert.equal(result.pilotReport.column_map.timepoint, "Factor Value: Time");
     assert.equal(result.pilotReport.observed.participant_count, 4);
     assert.equal(result.pilotReport.observed.sample_count, 4);
-    assert.deepEqual(result.pilotReport.observed.timepoints, ["Launch minus 3"]);
+    assert.deepEqual(result.pilotReport.observed.timepoints, ["L-3"]);
     assert.ok(result.pilotReport.trace_contract.decision_reasons.some(
       (item) => item.code === "INSUFFICIENT_PAIRED_TIMEPOINTS"
     ));
