@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype · main commit `e045799aae0f21e0cd10aa37e402f217d650cf95`  
+**Build:** 0.1 prototype · main commit `5e79a64398f4b41657e7dfe34559ba58f2740f0a`  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -51,18 +51,19 @@ Run `npm test` with Node.js 18+.
 
 ## Current automated validation evidence — 14 November 2026
 
-- Main commit: `e045799aae0f21e0cd10aa37e402f217d650cf95`.
-- GitHub Actions validation + deployment: [run 43635290127](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43635290127).
+- Main application commit: `5e79a64398f4b41657e7dfe34559ba58f2740f0a`.
+- GitHub Actions validation + deployment: [run 43635721343](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43635721343).
 - JavaScript syntax checks: passed.
-- Automated test suite: **103 passed, 0 failed, 0 skipped** (confirmed from the test job log).
+- Automated test suite: **104 passed, 0 failed, 0 skipped** (confirmed from the test job log).
 - Research Mode integration using the committed NASA source files: passed; source SHA-256, 28/28 sample mapping, nine-analyte normalization, participant charts/table, fibrinogen warning, 28/28 metadata status, and audit-run identifier were verified.
-- Regression tests verify Research Mode metadata status is derived from the imported `metadata_sample_join` field and browser-side 28/28 join.
+- Regression tests verify metadata status is derived from the imported `metadata_sample_join` field and the browser-side 28/28 join.
+- Regression tests verify a failed browser-side source verification is shown as a failure, not a successful metadata status; the biomarker selector stays disabled.
 - Regression tests verify partial saved demo records do not fill absent readings with nominal example values.
-- Regression tests verify the mode indicator remains in the currently selected demo view after scenarios and wellbeing actions re-render the dashboard.
+- Regression tests verify the mode indicator remains in the selected demo view after scenario and wellbeing actions re-render the dashboard.
 - Navigation integrity test verifies all six tabs resolve to six unique view sections.
 - Mission-log CSV tests verify MIME type, filename, content, empty-log fallback, and delayed object-URL cleanup.
 - Service Worker tests: passed for initial Research Mode precaching, offline navigation fallback, same-origin cache writes, cache-version cleanup limited to ASTRA, and request pass-through.
-- GitHub Pages deployment: successful for this main commit.
+- GitHub Pages deployment: successful for the tested application commit.
 - NLSP DSO-470 discovery: [run 43615678402](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678402) succeeded; discovery artifact preserved; zero measurement files downloaded.
 - Initial NASA OSD-575 acquisition: [run #9 (43612460864)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
 - Latest NASA OSD-575 re-audit: [run #10 (43616651617)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43616651617).
