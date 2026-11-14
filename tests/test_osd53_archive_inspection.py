@@ -41,9 +41,9 @@ class OSD53ArchiveInspectionTests(unittest.TestCase):
         report = parse_delimited_text(
             "samples.tsv",
             (
-                "Sample Name\\tCharacteristics[Organism]\\tFactor Value[Spaceflight]\\t"
-                "Factor Value[Time]\\tCharacteristics[Study Subject]\\n"
-                "GSM100\\tHomo sapiens\\tSpace Flight\\tL-30\\tAstronaut A\\n"
+                "Sample Name\tCharacteristics[Organism]\tFactor Value[Spaceflight]\t"
+                "Factor Value[Time]\tCharacteristics[Study Subject]\n"
+                "GSM100\tHomo sapiens\tSpace Flight\tL-30\tAstronaut A\n"
             ).encode("utf-8"),
         )
         self.assertEqual(report["metadata_preview"][0]["Sample Name"], "GSM100")
