@@ -2,7 +2,7 @@
 
 ## Status
 
-**Outcome: access blocked in the execution environment; no real file was downloaded, parsed, or hashed.** This is an access finding, not an `INVALID_DATA` finding. No synthetic or third-party checksum is substituted.
+**Updated outcome:** the original execution environment could not resolve NASA DNS. A subsequent GitHub Actions run did reach the legacy metadata JSON endpoint (HTTP 200) and captured its response, but the run then stopped at the obsolete SPA HTML check. The file catalog and actual CSV have not yet been downloaded. This is an access/workflow blocker, not an `INVALID_DATA` finding. No synthetic or third-party checksum is substituted.
 
 ## Evidence from the NASA OSDR study page
 
@@ -30,7 +30,7 @@ The implementation's documented endpoints were attempted from the execution envi
 1. `GET https://osdr.nasa.gov/osdr/data/osd/meta/575`
 2. `GET https://osdr.nasa.gov/osdr/data/osd/files/575`
 
-The HTTP client could not resolve the NASA host: `Temporary failure in name resolution`. The web retrieval layer also reported the direct API URLs as inaccessible. Therefore no HTTP status, response JSON, API version field, file-catalog entry, or API-level license field could be inspected in this run.
+The original local execution environment could not resolve the NASA host: `Temporary failure in name resolution`. The web retrieval layer also reported direct API URLs as inaccessible. The later GitHub Actions run did receive HTTP 200 from the metadata endpoint and saved the full JSON response. The file catalog had not yet been requested because the old SPA page check failed first.
 
 NASA documents these metadata and file-catalog endpoint patterns and explains that file records expose a `remote_url` for HTTPS downloads:
 https://api.nasa.gov/
