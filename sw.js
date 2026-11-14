@@ -1,7 +1,8 @@
 "use strict";
 
-const CACHE_PREFIX = "astra-shell-";
-const CACHE_NAME = "astra-shell-v3";
+const CACHE_PREFIX = "astra-astronaut-health-monitor-";
+const CACHE_NAME = "astra-astronaut-health-monitor-shell-v1";
+const LEGACY_CACHE_NAMES = ["astra-shell-v2"];
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -29,7 +30,8 @@ self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
       const previousAppCaches = keys.filter(function (key) {
-        return key.indexOf(CACHE_PREFIX) === 0 && key !== CACHE_NAME;
+        return LEGACY_CACHE_NAMES.includes(key) ||
+          (key.indexOf(CACHE_PREFIX) === 0 && key !== CACHE_NAME);
       });
       return Promise.all(previousAppCaches.map(function (key) {
         return caches.delete(key);
@@ -50,14 +52,10 @@ self.addEventListener("fetch", function (event) {
       return cache.match(event.request).then(function (cached) {
         if (cached) return cached;
         return fetch(event.request).then(function (response) {
-          if (response && response.ok) {
-            const copy = response.clone();
-            const cacheWrite = cache.put(event.request, copy);
-            if (typeof event.waitUntil === "function") {
-              event.waitUntil(cacheWrite.catch(function () {}));
-            }
-          }
-          return response;
+          if (!response || !response.ok) return response;
+          return cache.put(event.request, response.clone()).catch(function () {}).then(function () {
+            return response;
+          });
         }).catch(function () {
           if (event.request.mode === "navigate") {
             return cache.match("./index.html");
