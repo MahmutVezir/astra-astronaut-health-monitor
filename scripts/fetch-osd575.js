@@ -681,8 +681,9 @@ async function main(options = {}) {
       byte_length: downloaded ? downloaded.bytes.length : null,
       csv_parse_passed: Boolean(parsed),
       column_map_available: Boolean(columnMap),
-      observed_structure_available: Boolean(observed),
-      complete: Boolean(downloaded && digest && parsed && columnMap && observed)
+      observed_structure_available: Boolean(observed && observed.participant_count !== null && observed.sample_count !== null),
+      data_pipeline_completed: Boolean(downloaded && digest && parsed && columnMap && observed &&
+        observed.participant_count !== null && observed.sample_count !== null)
     },
     trace_contract: trace,
     license_note: studyMetadata &&
