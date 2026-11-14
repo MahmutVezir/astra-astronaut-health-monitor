@@ -103,18 +103,23 @@
 
     const csvPath = config.csvPath || (evidenceConfig && evidenceConfig.csvPath);
     const metadataPath = config.metadataPath || (evidenceConfig && evidenceConfig.metadataPath);
+    const auditPath = config.auditPath || (evidenceConfig && evidenceConfig.auditPath);
     const expectedSha = config.expectedSha256 || (evidenceConfig && evidenceConfig.sha256);
-    if (!csvPath || !metadataPath || !expectedSha) throw new Error("The verified OSD-575 source manifest is incomplete.");
+    if (!csvPath || !metadataPath || !auditPath || !expectedSha) throw new Error("The verified OSD-575 source manifest is incomplete.");
 
     const responses = await Promise.all([
       fetchImpl(csvPath, { cache: "no-cache" }),
-      fetchImpl(metadataPath, { cache: "no-cache" })
+      fetchImpl(metadataPath, { cache: "no-cache" }),
+      fetchImpl(auditPath, { cache: "no-cache" })
     ]);
     if (!responses[0] || !responses[0].ok) {
       throw new Error("The source HDCVD9 CSV could not be loaded (HTTP " + (responses[0] && responses[0].status || "unknown") + ").");
     }
     if (!responses[1] || !responses[1].ok) {
       throw new Error("The NASA ISA sample map could not be loaded (HTTP " + (responses[1] && responses[1].status || "unknown") + ").");
+    }
+    if (!responses[2] || !responses[2].ok) {
+      throw new Error("The post-download scientific audit record could not be loaded (HTTP " + (responses[2] && responses[2].status || "unknown") + ").");
     }
 
     const sourceBuffer = await responses[0].arrayBuffer();
@@ -124,9 +129,16 @@
     }
 
     const metadata = await responses[1].json();
+    const audit = await responses[2].json();
     if (!metadata || metadata.dataset_id !== "OSD-575" || String(metadata.dataset_version) !== "3" ||
         !Array.isArray(metadata.records) || metadata.records.length !== 28) {
       throw new Error("The NASA ISA sample map is not the expected OSD-575 Version 3, 28-sample map.");
+    }
+    if (!audit || audit.dataset_id !== "OSD-575" || String(audit.dataset_version) !== "3" ||
+        audit.sha256 !== actualSha || audit.sha256_is_project_maintained_pin_not_nasa_signature !== true ||
+        audit.metadata_sample_join !== "PASS" || audit.normalization_audit?.status !== "PASS" ||
+        audit.scientific_decision !== "LIMITED_EVIDENCE") {
+      throw new Error("The imported live audit does not verify the exact source, metadata join, normalization, and conservative evidence decision.");
     }
 
     const bytes = new Uint8Array(sourceBuffer);
@@ -270,6 +282,7 @@
       metadataSampleCount: sampleIndex.size,
       measurementCellCount: mappedRows.length * concentrationColumns.length,
       normalizationAudit,
+      audit,
       markers,
       excludedMarkerNote: "Fibrinogen is retained and auditable in the source file, but its biological interpretation is flagged because the current assay vendor documentation states it cannot be measured in serum. Do not use it for biological conclusions until the discrepancy is resolved."
     };
