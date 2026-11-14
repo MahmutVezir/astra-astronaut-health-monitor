@@ -47,3 +47,28 @@ test("NASA Research Mode is the default entry view and demo controls are separat
   assert.match(app, /DEMO \/ MANUAL INPUT/);
   assert.match(css, /\.research-mode \.demo-only/);
 });
+
+test("NASA research source registry keeps DSO 602 separate from NLSP experiment 3.1.2", function () {
+  const modulePath = require.resolve("../research-data.js");
+  delete require.cache[modulePath];
+  require(modulePath);
+  const sources = globalThis.AstraResearch.sources;
+  const ids = sources.map((source) => source.id);
+  assert.equal(new Set(ids).size, ids.length, "research source IDs must be unique");
+
+  const dso602 = sources.find((source) => source.id === "DSO-602");
+  const experiment312 = sources.find((source) => source.id === "NLSP-3.1.2");
+  assert.ok(dso602, "DSO 602 must remain a separately identified source");
+  assert.ok(experiment312, "NLSP experiment 3.1.2 must remain a separately identified source");
+  assert.notEqual(dso602.url, experiment312.url);
+  assert.match(dso602.url, /IDP-LSDA_HARDWARE/);
+  assert.match(dso602.accessNote, /separate NLSP experiment 3\.1\.2/i);
+  assert.match(experiment312.url, /f8e3f755-5caa-522c-b628-7153cfe446f5/);
+  assert.match(experiment312.accessNote, /not DSO 602/i);
+
+  sources.forEach((source) => {
+    assert.ok(source.name && source.provider && source.environment && source.statusLabel, source.id);
+    assert.match(source.url, /^https:\/\//, source.id + " must link to HTTPS");
+    assert.ok(Array.isArray(source.measures) && source.measures.length > 0, source.id);
+  });
+});
