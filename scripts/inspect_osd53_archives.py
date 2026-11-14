@@ -189,7 +189,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
             else lines[header_index:header_index + 2]
         ),
         "metadata_preview": metadata_preview,
-        "row_key_preview_first_10": row_key_preview,
+        "row_key_preview_first_50": row_key_preview,
         "malformed_row_count": malformed_rows,
         "sample_id_field_values": sorted(set(sample_ids))[:500],
         "source_id_field_values": sorted(set(source_ids))[:500],
