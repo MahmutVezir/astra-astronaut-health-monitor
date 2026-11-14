@@ -13,6 +13,7 @@ const DATASET_ID = "OSD-575";
 const DATASET_VERSION = "3"; // Expected value; the recorded version is read from the NASA JSON response.
 const STUDY_PAGE_URL = "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575";
 const FILE_NAME = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
+const PINNED_FILE_SHA256 = "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c";
 const OUTPUT_DIR = path.join(process.cwd(), "data", "osdr", DATASET_ID);
 const METADATA_URL = "https://osdr.nasa.gov/osdr/data/osd/meta/575";
 const CATALOG_URL = "https://osdr.nasa.gov/osdr/data/osd/files/575.3";
@@ -329,6 +330,215 @@ function inferColumnMap(headers, rows) {
   return { participant, sample, timepoint, measurement };
 }
 
+
+function normalizeOsdrTimepoint(value) {
+  const label = String(value ?? "").trim().replace(/\s+days?$/i, "");
+  const launch = label.match(/^Launch\s+minus\s+(\d+)$/i);
+  if (launch) return "L-" + launch[1];
+  const returned = label.match(/^Return\s+plus\s+(\d+)$/i);
+  if (returned) return "R+" + returned[1];
+  if (/^L-\d+$/i.test(label)) return label.toUpperCase();
+  if (/^R\+\d+$/i.test(label)) return "R+" + label.slice(2);
+  return null;
+}
+
+function extractSampleMetadata(payload) {
+  const study = payload && payload.study && payload.study[DATASET_ID];
+  const tables = Object.values((study && study.additionalInformation &&
+    study.additionalInformation.samples) || {});
+  const table = tables.find((candidate) => {
+    if (!candidate || !Array.isArray(candidate.header) || !Array.isArray(candidate.raw)) return false;
+    const titles = new Set(candidate.header.map((item) => item && item.title));
+    return titles.has("Source Name") && titles.has("Sample Name") &&
+      titles.has("Factor Value: Time");
+  });
+  if (!table) throw new Error("The NASA OSDR ISA sample table does not expose Source Name, Sample Name and Factor Value: Time.");
+
+  const headerByTitle = new Map(table.header.map((item) => [item.title, item.field]));
+  const sourceField = headerByTitle.get("Source Name");
+  const sampleField = headerByTitle.get("Sample Name");
+  const timeField = headerByTitle.get("Factor Value: Time");
+  const records = table.raw.map((row, index) => {
+    const participantId = String((row && row[sourceField]) ?? "").trim();
+    const sampleName = String((row && row[sampleField]) ?? "").trim();
+    const timepoint = String((row && row[timeField]) ?? "").trim();
+    const timepointLabel = normalizeOsdrTimepoint(timepoint);
+    if (!participantId || !sampleName || !timepoint || !timepointLabel) {
+      throw new Error("The NASA OSDR ISA sample table has an incomplete or unsupported identifier at row " + (index + 1) + ".");
+    }
+    return {
+      participant_id: participantId,
+      sample_name: sampleName,
+      timepoint,
+      timepoint_label: timepointLabel,
+      metadata_row: index + 1
+    };
+  });
+  if (records.length === 0) throw new Error("The NASA OSDR ISA sample table is empty.");
+  const sampleNames = records.map((record) => record.sample_name);
+  if (new Set(sampleNames).size !== sampleNames.length) {
+    throw new Error("The NASA OSDR ISA sample table contains duplicate Sample Name values.");
+  }
+  return records;
+}
+
+function mapRowsUsingSampleMetadata(headers, rows, sampleMetadata) {
+  const sampleColumn = findHeader(headers, ["Sample Name", "Sample ID", "sample_id", "Sample"]);
+  const metadataRecords = Array.isArray(sampleMetadata) ? sampleMetadata : [];
+  const emptyProvenance = {
+    method: "EXACT_SAMPLE_NAME_JOIN_TO_OSDR_ISA_SAMPLE_TABLE",
+    sample_column: sampleColumn,
+    metadata_sample_count: metadataRecords.length,
+    csv_row_count: Array.isArray(rows) ? rows.length : 0,
+    matched_csv_rows: 0,
+    unmatched_csv_sample_names: [],
+    duplicate_csv_sample_names: [],
+    study_samples_not_present_in_file: [],
+    complete_csv_row_match: false,
+    full_study_sample_coverage: false
+  };
+  if (!sampleColumn || !Array.isArray(rows) || rows.length === 0 || metadataRecords.length === 0) {
+    return { columnMap: null, rows: rows || [], headers: headers || [], provenance: emptyProvenance };
+  }
+
+  const metadataBySample = new Map();
+  for (const record of metadataRecords) {
+    if (!record || !record.sample_name || metadataBySample.has(record.sample_name)) {
+      throw new Error("NASA OSDR sample metadata must contain unique, non-empty Sample Name identifiers.");
+    }
+    metadataBySample.set(record.sample_name, record);
+  }
+
+  const seenCsvSamples = new Set();
+  const duplicateCsvSamples = new Set();
+  const unmatchedCsvSamples = new Set();
+  const mappedRows = [];
+  let matchedCsvRows = 0;
+  for (const row of rows) {
+    const sampleName = String(row[sampleColumn] ?? "").trim();
+    if (seenCsvSamples.has(sampleName)) duplicateCsvSamples.add(sampleName);
+    seenCsvSamples.add(sampleName);
+    const metadata = metadataBySample.get(sampleName);
+    if (!sampleName || !metadata) {
+      unmatchedCsvSamples.add(sampleName || "(blank)");
+      mappedRows.push(row);
+      continue;
+    }
+    matchedCsvRows += 1;
+    mappedRows.push({
+      ...row,
+      __osdr_metadata_participant_id: metadata.participant_id,
+      __osdr_metadata_timepoint: metadata.timepoint_label
+    });
+  }
+
+  const csvSampleSet = new Set(rows.map((row) => String(row[sampleColumn] ?? "").trim()));
+  const metadataOnlySamples = metadataRecords
+    .map((record) => record.sample_name)
+    .filter((sampleName) => !csvSampleSet.has(sampleName));
+  const provenance = {
+    ...emptyProvenance,
+    matched_csv_rows: matchedCsvRows,
+    unmatched_csv_sample_names: [...unmatchedCsvSamples].sort(),
+    duplicate_csv_sample_names: [...duplicateCsvSamples].sort(),
+    study_samples_not_present_in_file: metadataOnlySamples.sort(),
+    complete_csv_row_match: unmatchedCsvSamples.size === 0 && duplicateCsvSamples.size === 0,
+    full_study_sample_coverage: unmatchedCsvSamples.size === 0 &&
+      duplicateCsvSamples.size === 0 && metadataOnlySamples.length === 0
+  };
+
+  if (!provenance.complete_csv_row_match) {
+    return { columnMap: null, rows, headers, provenance };
+  }
+
+  let measurement = headers.filter((header) =>
+    /_concentration_(?:nanogram|picogram)_per_milliliter$/i.test(header)
+  );
+  if (measurement.length === 0) {
+    const metadataHeader = /(participant|subject|source|sample|time|factor|protocol|characteristic|organism|material|sex|spaceflight|assay|storage|temperature|collection|company|kit|description|identifier|file|treatment|ref|percent)/i;
+    measurement = headers.filter((header) => {
+      if (header === sampleColumn || metadataHeader.test(header)) return false;
+      return rows.some((row) => isNumericMeasurement(row[header]));
+    });
+  }
+  if (measurement.length === 0) {
+    return { columnMap: null, rows, headers, provenance };
+  }
+
+  return {
+    rows: mappedRows,
+    headers: [...headers, "__osdr_metadata_participant_id", "__osdr_metadata_timepoint"],
+    columnMap: {
+      participant: "__osdr_metadata_participant_id",
+      sample: sampleColumn,
+      timepoint: "__osdr_metadata_timepoint",
+      measurement
+    },
+    provenance
+  };
+}
+
+function auditBaselinePercentNormalization(rows, headers, columnMap) {
+  if (!Array.isArray(rows) || !Array.isArray(headers) || !columnMap ||
+      !Array.isArray(columnMap.measurement) || !columnMap.timepoint) {
+    return { status: "NOT_RUN", reason: "A verified row map and concentration columns are required." };
+  }
+  const headerSet = new Set(headers);
+  const baselineTimepoints = new Set(OSD575.timepoints.filter((value) => value.startsWith("L-")));
+  const baselineRows = rows.filter((row) => {
+    const normalized = normalizeOsdrTimepoint(row[columnMap.timepoint]);
+    return normalized && baselineTimepoints.has(normalized);
+  });
+  if (baselineRows.length === 0) {
+    return { status: "NOT_VERIFIABLE", reason: "No mapped pre-flight rows were available.", baseline_sample_count: 0, analytes: [] };
+  }
+
+  const tolerance = 1e-6;
+  const analytes = columnMap.measurement.map((concentrationColumn) => {
+    const concentrationMatch = concentrationColumn.match(/^(.*)_concentration_(?:nanogram|picogram)_per_milliliter$/i);
+    const percentColumn = concentrationMatch ? concentrationMatch[1] + "_percent" : null;
+    if (!percentColumn || !headerSet.has(percentColumn)) {
+      return { concentration_column: concentrationColumn, percent_column: percentColumn, status: "NOT_VERIFIABLE", reason: "Paired percent column not found." };
+    }
+    const baselineValues = baselineRows.map((row) => Number(row[concentrationColumn]));
+    const allRows = rows.map((row) => ({
+      concentration: Number(row[concentrationColumn]),
+      percent: Number(row[percentColumn])
+    }));
+    if (baselineValues.some((value) => !Number.isFinite(value)) ||
+        allRows.some((item) => !Number.isFinite(item.concentration) || !Number.isFinite(item.percent))) {
+      return { concentration_column: concentrationColumn, percent_column: percentColumn, status: "NOT_VERIFIABLE", reason: "Non-numeric or missing values prevent the normalization check." };
+    }
+    const baselineMean = baselineValues.reduce((sum, value) => sum + value, 0) / baselineValues.length;
+    if (!Number.isFinite(baselineMean) || baselineMean === 0) {
+      return { concentration_column: concentrationColumn, percent_column: percentColumn, status: "NOT_VERIFIABLE", reason: "Pre-flight mean is zero or non-finite." };
+    }
+    const maxAbsoluteError = Math.max(...allRows.map((item) =>
+      Math.abs(item.percent - (100 * item.concentration / baselineMean))
+    ));
+    return {
+      concentration_column: concentrationColumn,
+      percent_column: percentColumn,
+      baseline_mean_concentration: baselineMean,
+      baseline_sample_count: baselineValues.length,
+      rows_checked: allRows.length,
+      max_absolute_error: maxAbsoluteError,
+      tolerance,
+      status: maxAbsoluteError <= tolerance ? "PASS" : "MISMATCH"
+    };
+  });
+
+  return {
+    status: analytes.length > 0 && analytes.every((item) => item.status === "PASS") ? "PASS" : "NOT_FULLY_VERIFIED",
+    formula: "100 × row concentration / mean concentration across all crew pre-flight samples",
+    baseline_timepoints: [...baselineTimepoints],
+    baseline_sample_count: baselineRows.length,
+    analyte_count: analytes.length,
+    tolerance,
+    analytes
+  };
+}
+
 async function fetchJsonCaptured(url, fetchImpl, snapshots) {
   const response = await fetchImpl(url, { headers: { accept: "application/json" } });
   const rawText = await response.text();
@@ -384,6 +594,7 @@ async function main(options = {}) {
   await writeJson(outputDir, "metadata-response.json", metadataSnapshots);
 
   let studyMetadata = null;
+  let sampleMetadata = [];
   let metadataValidationError = null;
   let metadataFileReferences = {
     file_name: FILE_NAME,
@@ -393,6 +604,7 @@ async function main(options = {}) {
   if (metadata) {
     try {
       studyMetadata = extractStudyMetadata(metadata);
+      sampleMetadata = extractSampleMetadata(metadata);
       metadataFileReferences = extractMetadataFileReferences(metadata);
       await writeJson(outputDir, "study-metadata-summary.json", studyMetadata);
     } catch (error) {
@@ -502,6 +714,14 @@ async function main(options = {}) {
   let parsed = null;
   let columnMap = null;
   let observed = null;
+  let analysisRows = null;
+  let analysisHeaders = null;
+  let rowMappingProvenance = null;
+  let normalizationAudit = null;
+  let analysisIntegrity = null;
+  const referenceSha256 = options.referenceSha256 === undefined
+    ? PINNED_FILE_SHA256
+    : options.referenceSha256;
 
   if (metadataValidationError) {
     trace = createAuditTrace(
@@ -558,32 +778,65 @@ async function main(options = {}) {
       } catch (error) {
         parseError = error.message;
       }
-      columnMap = parsed ? inferColumnMap(parsed.headers, parsed.rows) : null;
+      const directColumnMap = parsed ? inferColumnMap(parsed.headers, parsed.rows) : null;
+      analysisRows = parsed ? parsed.rows : null;
+      analysisHeaders = parsed ? parsed.headers : null;
+      if (directColumnMap) {
+        columnMap = directColumnMap;
+        rowMappingProvenance = {
+          method: "DIRECT_COLUMNS_IN_TRANSFORMED_CSV",
+          participant_source: directColumnMap.participant,
+          sample_source: directColumnMap.sample,
+          timepoint_source: directColumnMap.timepoint,
+          matched_csv_rows: parsed.rows.length,
+          complete_csv_row_match: true
+        };
+      } else if (parsed) {
+        const mapped = mapRowsUsingSampleMetadata(parsed.headers, parsed.rows, sampleMetadata);
+        columnMap = mapped.columnMap;
+        analysisRows = mapped.rows;
+        analysisHeaders = mapped.headers;
+        rowMappingProvenance = mapped.provenance;
+      }
 
       const analysis = analyzeOsd575FileBytes({
         bytes: downloaded.bytes,
+        expectedSha256: referenceSha256,
         columnMap,
+        analysisRows,
+        analysisHeaders,
         rawDataAvailable: studyMetadata.raw_data_file_status !== "Not Available",
         minIndependentParticipants: 10
       });
       trace = analysis.trace;
+      analysisIntegrity = analysis.integrity;
       parsed = analysis.parsed || parsed;
       parseError = analysis.trace.decision === "INVALID_DATA" &&
         analysis.trace.decision_reasons.some((reason) => reason.code === "CSV_PARSE_FAILED")
         ? analysis.trace.decision_reasons[0].message
         : parseError;
 
+      const evidenceRows = analysis.analysisRows || analysisRows || (parsed && parsed.rows) || [];
+      const evidenceHeaders = analysis.analysisHeaders || analysisHeaders || (parsed && parsed.headers) || [];
+      if (analysisIntegrity && analysisIntegrity.matches) {
+        normalizationAudit = auditBaselinePercentNormalization(evidenceRows, evidenceHeaders, columnMap);
+      }
       observed = parsed ? {
         header_count: parsed.headers.length,
         row_count: parsed.rows.length,
+        participant_ids: columnMap
+          ? [...new Set(evidenceRows.map((row) => String(row[columnMap.participant] ?? "").trim()).filter(Boolean))].sort()
+          : [],
         participant_count: columnMap
-          ? new Set(parsed.rows.map((row) => String(row[columnMap.participant] ?? "").trim()).filter(Boolean)).size
+          ? new Set(evidenceRows.map((row) => String(row[columnMap.participant] ?? "").trim()).filter(Boolean)).size
           : null,
         sample_count: columnMap
-          ? new Set(parsed.rows.map((row) => String(row[columnMap.sample] ?? "").trim()).filter(Boolean)).size
+          ? new Set(evidenceRows.map((row) => String(row[columnMap.sample] ?? "").trim()).filter(Boolean)).size
           : null,
         timepoints: columnMap
-          ? [...new Set(parsed.rows.map((row) => String(row[columnMap.timepoint] ?? "").trim()).filter(Boolean))].sort()
+          ? OSD575.timepoints.filter((timepoint) =>
+              evidenceRows.some((row) => normalizeOsdrTimepoint(row[columnMap.timepoint]) === timepoint)
+            )
           : [],
         measurement_columns: columnMap ? columnMap.measurement : [],
         numeric_measurement_cells: analysis.evidence
@@ -648,10 +901,15 @@ async function main(options = {}) {
     download_response: downloadResponse,
     download_failure: downloadFailure,
     file_sha256: digest,
-    reference_sha256: null,
+    reference_sha256: referenceSha256 || null,
     reference_sha256_status: digest
-      ? "not_previously_frozen; actual downloaded bytes are hashed, not compared to an invented reference digest"
+      ? referenceSha256
+        ? (digest === referenceSha256 ? "MATCHED_REVIEWED_REFERENCE_SHA256" : "MISMATCHED_REVIEWED_REFERENCE_SHA256")
+        : "not_previously_frozen; actual downloaded bytes are hashed but no reference pin was supplied"
       : "not_calculated; no verified file bytes were downloaded",
+    reference_sha256_source: referenceSha256
+      ? "Reviewed reproducibility pin established from the first exact OSDR catalog download (run 43608345184); this is a project-maintained pin, not a NASA-published checksum."
+      : null,
     byte_length: downloaded ? downloaded.bytes.length : null,
     raw_bytes_preserved: rawBytesSaved,
     csv_relative_path: downloaded ? path.relative(process.cwd(), path.join(outputDir, FILE_NAME)) : null,
@@ -671,6 +929,8 @@ async function main(options = {}) {
     file_bytes: downloaded ? downloaded.bytes.length : null,
     csv_parse_error: parseError,
     column_map: columnMap,
+    row_mapping_provenance: rowMappingProvenance,
+    baseline_percent_normalization_audit: normalizationAudit,
     observed,
     metadata_file_references: metadataFileReferences,
     catalog_discovery_attempts: catalogAttempts,
@@ -702,9 +962,13 @@ async function main(options = {}) {
       byte_length: downloaded ? downloaded.bytes.length : null,
       csv_parse_passed: Boolean(parsed),
       column_map_available: Boolean(columnMap),
+      sha256_reference_match: Boolean(analysisIntegrity && analysisIntegrity.verified && analysisIntegrity.matches),
+      row_mapping_complete: Boolean(rowMappingProvenance && rowMappingProvenance.complete_csv_row_match !== false),
       observed_structure_available: Boolean(observed && observed.participant_count > 0 &&
         observed.sample_count > 0 && observed.timepoints.length > 0 && observed.measurement_columns.length > 0),
-      data_pipeline_completed: Boolean(downloaded && rawBytesSaved && digest && parsed && columnMap && observed &&
+      data_pipeline_completed: Boolean(downloaded && rawBytesSaved && digest && parsed && columnMap &&
+        analysisIntegrity && analysisIntegrity.verified && analysisIntegrity.matches &&
+        rowMappingProvenance && rowMappingProvenance.complete_csv_row_match !== false && observed &&
         observed.participant_count > 0 && observed.sample_count > 0 && observed.timepoints.length > 0 &&
         observed.measurement_columns.length > 0)
     },
@@ -751,7 +1015,11 @@ module.exports = {
   inferColumnMap,
   findApiLicense,
   extractStudyMetadata,
+  extractSampleMetadata,
   extractMetadataFileReferences,
+  normalizeOsdrTimepoint,
+  mapRowsUsingSampleMetadata,
+  auditBaselinePercentNormalization,
   createAuditTrace,
   main
 };
