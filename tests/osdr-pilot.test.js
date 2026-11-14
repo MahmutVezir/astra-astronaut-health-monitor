@@ -158,7 +158,7 @@ test("OSD-575 pilot downloads only the exact catalog file and records a SHA-256 
     if (String(url).includes("/meta/575")) {
       return { ok: true, status: 200, json: async () => ({ study: { "OSD-575": {} } }) };
     }
-    if (String(url).includes("/files/575/")) {
+    if (String(url).includes("/files/575")) {
       return {
         ok: true,
         status: 200,
@@ -196,7 +196,7 @@ test("OSD-575 pilot downloads only the exact catalog file and records a SHA-256 
   assert.equal(record.decision, "LIMITED_EVIDENCE");
   assert.equal(calls.length, 3);
   assert.ok(calls[0].endsWith("/meta/575"));
-  assert.ok(calls[1].includes("/files/575/"));
+  assert.ok(calls[1].includes("/files/575"));
   assert.ok(calls[2].startsWith("https://osdr.nasa.gov/"));
 });
 
@@ -206,7 +206,7 @@ test("OSD-575 pilot marks a checksum mismatch as INVALID_DATA", async () => {
     if (String(url).includes("/meta/575")) {
       return { ok: true, status: 200, json: async () => ({ study: { "OSD-575": {} } }) };
     }
-    if (String(url).includes("/files/575/")) {
+    if (String(url).includes("/files/575")) {
       return {
         ok: true,
         status: 200,
@@ -399,4 +399,144 @@ test("OSD-575 metadata API version mismatch is rejected before downloading data"
     }
   };
   assert.throws(() => extractStudyMetadata(payload), /expected version 3/);
+});
+
+
+test("OSD-575 catalog requests the metadata-verified version and follows every page_total page", async () => {
+  const { listStudyFiles } = require("../src/core/osdr-client.js");
+  const pages = [
+    {
+      page_number: 0,
+      page_size: 2,
+      page_total: 2,
+      hits: 1,
+      total_hits: 1,
+      studies: {
+        "OSD-575.3": {
+          file_count: 3,
+          study_files: [
+            { file_name: "first.txt", remote_url: "/download?file=first.txt" },
+            { file_name: "second.txt", remote_url: "/download?file=second.txt" }
+          ]
+        }
+      }
+    },
+    {
+      page_number: 1,
+      page_size: 2,
+      page_total: 2,
+      hits: 1,
+      total_hits: 1,
+      studies: {
+        "OSD-575.3": {
+          file_count: 3,
+          study_files: [
+            { file_name: "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv", remote_url: "/download?file=target.csv" }
+          ]
+        }
+      }
+    }
+  ];
+  const urls = [];
+  const records = await listStudyFiles("OSD-575", {
+    studyVersion: "3",
+    pageSize: 2,
+    fetchImpl: async (url) => {
+      urls.push(String(url));
+      const page = Number(new URL(String(url)).searchParams.get("page"));
+      return { ok: true, json: async () => pages[page] };
+    }
+  });
+
+  assert.equal(records.length, 3);
+  assert.ok(urls[0].includes("/files/575.3/"));
+  assert.ok(urls[0].includes("page=0"));
+  assert.ok(urls[1].includes("/files/575.3/"));
+  assert.ok(urls[1].includes("page=1"));
+  assert.equal(
+    selectStudyFile(records, "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv").file_name,
+    "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv"
+  );
+});
+
+test("catalog file selection matches the exact target at the end of remote_url file query values", () => {
+  const { selectStudyFile, getCsvFileCandidates } = require("../src/core/osdr-client.js");
+  const target = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
+  const records = [
+    {
+      file_name: "opaque-download-entry",
+      remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=assays/HDCVD9/" + target
+    },
+    {
+      filename: "another.csv",
+      remote_url: "/geode-py/ws/studies/OSD-575/download?file=other.csv"
+    }
+  ];
+
+  assert.equal(selectStudyFile(records, target), records[0]);
+  assert.deepEqual(getCsvFileCandidates(records), [target, "another.csv"]);
+});
+
+test("catalog pagination rejects a truncated study_file list when file_count is larger", async () => {
+  const { listStudyFiles } = require("../src/core/osdr-client.js");
+  await assert.rejects(
+    () => listStudyFiles("OSD-575", {
+      studyVersion: "3",
+      pageSize: 2,
+      fetchImpl: async () => ({
+        ok: true,
+        json: async () => ({
+          page_number: 0,
+          page_size: 2,
+          page_total: 1,
+          hits: 1,
+          total_hits: 1,
+          studies: {
+            "OSD-575.3": {
+              file_count: 3,
+              study_files: [
+                { file_name: "one.txt", remote_url: "/file/one.txt" },
+                { file_name: "two.txt", remote_url: "/file/two.txt" }
+              ]
+            }
+          }
+        })
+      })
+    }),
+    /returned 2 unique files, but study metadata declares file_count=3/
+  );
+});
+
+test("catalog pagination uses total_hits when page_total is omitted", async () => {
+  const { listStudyFiles } = require("../src/core/osdr-client.js");
+  const urls = [];
+  const records = await listStudyFiles("OSD-575", {
+    pageSize: 2,
+    fetchImpl: async (url) => {
+      urls.push(String(url));
+      const page = Number(new URL(String(url)).searchParams.get("page"));
+      return {
+        ok: true,
+        json: async () => ({
+          page_number: page,
+          page_size: 2,
+          total_hits: 3,
+          studies: {
+            "OSD-575": {
+              study_files: page === 0
+                ? [
+                    { file_name: "one.txt", remote_url: "/file/one.txt" },
+                    { file_name: "two.txt", remote_url: "/file/two.txt" }
+                  ]
+                : [{ file_name: "three.txt", remote_url: "/file/three.txt" }]
+            }
+          }
+        })
+      };
+    }
+  });
+
+  assert.equal(records.length, 3);
+  assert.equal(urls.length, 2);
+  assert.ok(urls[1].includes("page=1"));
 });
