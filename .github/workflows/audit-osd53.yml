@@ -1,4 +1,4 @@
-name: Audit NASA OSDR OSD-53 metadata and file catalog
+name: Audit NASA OSDR OSD-53 metadata, files and archive structure
 
 on:
   workflow_dispatch:
@@ -7,7 +7,9 @@ on:
     paths:
       - ".github/workflows/audit-osd53.yml"
       - "scripts/audit-osd53.js"
+      - "scripts/inspect_osd53_archives.py"
       - "tests/osd53-audit.test.js"
+      - "tests/test_osd53_archive_inspection.py"
       - "src/core/osdr-client.js"
 
 permissions:
@@ -20,7 +22,7 @@ concurrency:
 jobs:
   audit-public-record:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Check out ASTRA repository
         uses: actions/checkout@v4
@@ -28,17 +30,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Validate audit script syntax
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate Node.js audit script syntax
         run: node --check scripts/audit-osd53.js
-      - name: Run audit unit tests
+      - name: Run OSD-53 Node.js unit tests
         run: node --test tests/osd53-audit.test.js
-      - name: Fetch NASA metadata and file catalog without downloading measurement data
+      - name: Run OSD-53 archive inspection unit tests
+        run: python -m unittest discover -s tests -p 'test_osd53_archive_inspection.py' -v
+      - name: Fetch NASA metadata, exact public archives and integrity evidence
         run: node scripts/audit-osd53.js
-      - name: Preserve raw NASA API responses and audit summary
+      - name: Inspect ZIP structure and tabular metadata without persisting extracted files
+        run: python scripts/inspect_osd53_archives.py artifacts/osd53-audit/files artifacts/osd53-audit/summary.json
+      - name: Preserve raw NASA responses and audit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: osd53-metadata-file-catalog-audit-${{ github.run_id }}
+          name: osd53-metadata-file-and-archive-audit-${{ github.run_id }}
           path: artifacts/osd53-audit/
           if-no-files-found: warn
           retention-days: 30
