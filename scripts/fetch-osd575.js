@@ -372,7 +372,6 @@ async function main(options = {}) {
   const metadataSnapshots = [];
   const catalogSnapshots = [];
   const metadataFetch = (url) => fetchJsonCaptured(url, fetchImpl, metadataSnapshots);
-  const catalogFetch = (url) => fetchJsonCaptured(url, fetchImpl, catalogSnapshots);
 
   logger.log("[OSD-575] Fetching live NASA JSON metadata...");
   let metadata = null;
@@ -495,6 +494,7 @@ async function main(options = {}) {
   const catalogDownloadUrl = fileRecord ? getRemoteUrl(fileRecord) : null;
 
   let downloaded = null;
+  let rawBytesSaved = false;
   let digest = null;
   let trace = null;
   let parseError = null;
@@ -550,6 +550,7 @@ async function main(options = {}) {
       const csvPath = path.join(outputDir, FILE_NAME);
       // Save the exact response bytes before parsing; no text decoding/re-encoding is used for the stored source file.
       await fs.writeFile(csvPath, downloaded.bytes);
+      rawBytesSaved = true;
 
       try {
         parsed = parseCsv(downloaded.bytes.toString("utf8"));
@@ -557,45 +558,6 @@ async function main(options = {}) {
         parseError = error.message;
       }
       columnMap = parsed ? inferColumnMap(parsed.headers, parsed.rows) : null;
-
-      const replayFetch = async (url) => {
-        const address = String(url);
-        if (address.includes("/meta/575")) {
-          return jsonResponse(true, 200, metadata, METADATA_URL);
-        }
-        if (address.includes("/files/")) {
-          const parsedUrl = new URL(address);
-          const page = Number(parsedUrl.searchParams.get("page") || 0);
-          const snapshot = catalogSnapshots.find((item) => {
-            const itemPage = item.body && Number.isInteger(item.body.page_number)
-              ? item.body.page_number
-              : Number(new URL(item.url).searchParams.get("page") || 0);
-            return itemPage === page;
-          });
-          return jsonResponse(
-            snapshot ? snapshot.status >= 200 && snapshot.status < 300 : true,
-            snapshot ? snapshot.status : 200,
-            snapshot ? snapshot.body : { studies: {} },
-            snapshot ? snapshot.url : address
-          );
-        }
-
-        const arrayBuffer = downloaded.bytes.buffer.slice(
-          downloaded.bytes.byteOffset,
-          downloaded.bytes.byteOffset + downloaded.bytes.byteLength
-        );
-        return {
-          ok: true,
-          status: downloaded.httpStatus || 200,
-          url: downloaded.downloadUrl,
-          headers: {
-            get: (name) => name.toLowerCase() === "content-length"
-              ? String(downloaded.bytes.length)
-              : downloaded.contentType
-          },
-          arrayBuffer: async () => arrayBuffer
-        };
-      };
 
       const analysis = analyzeOsd575FileBytes({
         bytes: downloaded.bytes,
@@ -675,7 +637,7 @@ async function main(options = {}) {
       ? "not_previously_frozen; actual downloaded bytes are hashed, not compared to an invented reference digest"
       : "not_calculated; no verified file bytes were downloaded",
     byte_length: downloaded ? downloaded.bytes.length : null,
-    raw_bytes_preserved: Boolean(downloaded),
+    raw_bytes_preserved: rawBytesSaved,
     csv_relative_path: downloaded ? path.relative(process.cwd(), path.join(outputDir, FILE_NAME)) : null,
     metadata_api_retrieved_at: new Date().toISOString(),
     pilot_decision: decision,
@@ -716,13 +678,16 @@ async function main(options = {}) {
     analysis_gate: {
       catalog_match_found: Boolean(fileRecord),
       download_url_verified: Boolean(downloaded && downloaded.downloadUrl),
-      raw_bytes_preserved: Boolean(downloaded),
+      raw_bytes_preserved: rawBytesSaved,
       file_sha256_calculated: Boolean(digest),
       byte_length: downloaded ? downloaded.bytes.length : null,
       csv_parse_passed: Boolean(parsed),
       column_map_available: Boolean(columnMap),
-      observed_structure_available: Boolean(observed),
-      complete: Boolean(downloaded && digest && parsed && columnMap && observed)
+      observed_structure_available: Boolean(observed && observed.participant_count > 0 &&
+        observed.sample_count > 0 && observed.timepoints.length > 0 && observed.measurement_columns.length > 0),
+      data_pipeline_completed: Boolean(downloaded && rawBytesSaved && digest && parsed && columnMap && observed &&
+        observed.participant_count > 0 && observed.sample_count > 0 && observed.timepoints.length > 0 &&
+        observed.measurement_columns.length > 0)
     },
     trace_contract: trace,
     license_note: studyMetadata &&

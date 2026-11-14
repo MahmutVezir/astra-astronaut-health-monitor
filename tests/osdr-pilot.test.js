@@ -4,7 +4,7 @@ const { parseCsv } = require("../src/core/csv.js");
 const { sha256, verifySha256 } = require("../src/core/integrity.js");
 const { evaluateEvidence } = require("../src/core/evidence-engine.js");
 const { validateTraceRecord, createTraceRecord } = require("../src/core/trace-contract.js");
-const { runOsd575Pilot } = require("../src/core/osd575-pilot.js");
+const { analyzeOsd575FileBytes, runOsd575Pilot } = require("../src/core/osd575-pilot.js");
 
 const COLUMNS = {
   participant: "participant_id",
@@ -459,6 +459,46 @@ test("OSD-575 catalog requests the metadata-verified version and follows every p
   );
 });
 
+test("OSDR catalog client supports NASA-documented bare versioned and unversioned endpoints", async () => {
+  const { listStudyFiles } = require("../src/core/osdr-client.js");
+  const expected = {
+    file_name: "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+    remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv"
+  };
+
+  for (const testCase of [
+    { studyVersion: "3", key: "OSD-575.3", suffix: "/files/575.3" },
+    { studyVersion: null, key: "OSD-575", suffix: "/files/575" }
+  ]) {
+    const urls = [];
+    const records = await listStudyFiles("OSD-575", {
+      studyVersion: testCase.studyVersion,
+      trailingSlash: false,
+      bareFirstPage: true,
+      fetchImpl: async (url) => {
+        urls.push(String(url));
+        return {
+          ok: true,
+          json: async () => ({
+            hits: 1,
+            input: testCase.studyVersion ? "575.3" : "575",
+            page_number: 0,
+            page_size: 25,
+            page_total: 1,
+            total_hits: 1,
+            studies: { [testCase.key]: { file_count: 1, study_files: [expected] } }
+          })
+        };
+      }
+    });
+
+    assert.equal(urls.length, 1);
+    assert.ok(urls[0].endsWith(testCase.suffix));
+    assert.equal(new URL(urls[0]).search, "");
+    assert.deepEqual(records, [expected]);
+  }
+});
+
 test("catalog file selection matches the exact target at the end of remote_url file query values", () => {
   const { selectStudyFile, getCsvFileCandidates } = require("../src/core/osdr-client.js");
   const target = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
@@ -619,14 +659,14 @@ test("OSD-575 metadata filename references are extracted from the observed meta/
   assert.deepEqual(references.download_urls, []);
 });
 
-test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE artifact instead of throwing", async () => {
+test("empty documented OSDR catalog variants preserve responses and abstain without asserting the file does not exist", async () => {
   const fs = require("node:fs/promises");
   const os = require("node:os");
   const path = require("node:path");
   const { main } = require("../scripts/fetch-osd575.js");
   const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "osd575-empty-catalog-"));
   const metadata = makeOsd575MetadataPayload();
-  const catalog = {
+  const versionedCatalog = {
     hits: 0,
     input: "575.3",
     page_number: 0,
@@ -637,6 +677,7 @@ test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE ar
     total_hits: 1,
     valid_input: ["575"]
   };
+  const unversionedCatalog = { ...versionedCatalog, input: "575" };
   const fetchCalls = [];
 
   try {
@@ -644,10 +685,13 @@ test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE ar
       outputDir,
       logger: { log() {}, warn() {}, error() {} },
       fetchImpl: async (url) => {
-        fetchCalls.push(String(url));
-        if (String(url).includes("/meta/575")) return fakeJsonResponse(String(url), metadata);
-        if (String(url).includes("/files/575.3/")) return fakeJsonResponse(String(url), catalog);
-        throw new Error("Unexpected network request: " + url);
+        const address = String(url);
+        fetchCalls.push(address);
+        if (address.includes("/meta/575")) return fakeJsonResponse(address, metadata);
+        if (address.includes("/files/575.3/")) return fakeJsonResponse(address, versionedCatalog);
+        if (address.endsWith("/files/575.3")) return fakeJsonResponse(address, versionedCatalog);
+        if (address.endsWith("/files/575")) return fakeJsonResponse(address, unversionedCatalog);
+        throw new Error("Unexpected network request: " + address);
       }
     });
 
@@ -655,22 +699,28 @@ test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE ar
     assert.equal(result.manifest.file_sha256, null);
     assert.equal(result.manifest.file_download_url, null);
     assert.equal(result.manifest.file_catalog_record_found, false);
+    assert.equal(result.manifest.catalog_access_state, "NO_VERIFIED_CATALOG_MATCH_OR_DOWNLOAD_URL");
     assert.equal(result.pilotReport.trace_contract.decision, "INSUFFICIENT_EVIDENCE");
     assert.equal(
       result.pilotReport.trace_contract.decision_reasons[0].code,
-      "METADATA_FILE_REFERENCE_WITHOUT_CATALOG_DOWNLOAD_RECORD"
+      "NO_CATALOG_MATCH_AFTER_DOCUMENTED_LOOKUPS"
     );
     assert.ok(fetchCalls.some((url) => url.includes("/meta/575")));
-    assert.ok(fetchCalls.some((url) => url.includes("/files/575.3/")));
+    assert.ok(fetchCalls.some((url) => url.includes("/files/575.3/?page=0")));
+    assert.ok(fetchCalls.some((url) => url.endsWith("/files/575.3")));
+    assert.ok(fetchCalls.some((url) => url.endsWith("/files/575")));
+    assert.equal(result.pilotReport.catalog_discovery_attempts.length, 3);
 
     const metadataArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "metadata-response.json"), "utf8"));
     const catalogArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "file-catalog-response.json"), "utf8"));
     const reportArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "pilot-report.json"), "utf8"));
     assert.ok(metadataArtifact[0].raw_response_text.includes("LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv"));
-    assert.deepEqual(catalogArtifact[0].body.studies, {});
+    assert.equal(catalogArtifact.length, 3);
+    assert.ok(catalogArtifact.every((snapshot) => snapshot.body.hits === 0));
     assert.equal(catalogArtifact[0].body.total_hits, 1);
     assert.equal(reportArtifact.trace_contract.decision, "INSUFFICIENT_EVIDENCE");
     assert.equal(reportArtifact.file_sha256, null);
+    assert.equal(reportArtifact.analysis_gate.data_pipeline_completed, false);
     await assert.rejects(fs.access(path.join(outputDir, "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv")));
   } finally {
     await fs.rm(outputDir, { recursive: true, force: true });
@@ -740,6 +790,156 @@ test("when the exact transformed CSV has a real catalog remote_url, the fetch au
     assert.equal(result.pilotReport.trace_contract.file_sha256, expectedDigest);
     const savedBytes = await fs.readFile(path.join(outputDir, fileName));
     assert.equal(sha256(savedBytes), expectedDigest);
+  } finally {
+    await fs.rm(outputDir, { recursive: true, force: true });
+  }
+});
+
+
+test("byte analysis returns INSUFFICIENT_EVIDENCE when no participant has repeated timepoints, but LIMITED_EVIDENCE for partial participant coverage", () => {
+  const { analyzeOsd575FileBytes } = require("../src/core/osd575-pilot.js");
+  const { inferColumnMap } = require("../scripts/fetch-osd575.js");
+  const timepoints = ["L-92", "L-44", "L-3", "R+1", "R+45", "R+82", "R+194"];
+
+  const partialRows = ["participant_id,sample_id,timepoint,marker_a,marker_b"];
+  for (let participant = 1; participant <= 3; participant += 1) {
+    for (const timepoint of timepoints) {
+      partialRows.push("C00" + participant + ",C00" + participant + "_" + timepoint + "," + timepoint + "," + participant + ",2");
+    }
+  }
+  const partialBytes = Buffer.from(partialRows.join("\n") + "\n", "utf8");
+  const partialParsed = parseCsv(partialBytes.toString("utf8"));
+  const partialMap = inferColumnMap(partialParsed.headers, partialParsed.rows);
+  const partial = analyzeOsd575FileBytes({
+    bytes: partialBytes,
+    columnMap: partialMap,
+    rawDataAvailable: false
+  });
+
+  assert.equal(partial.trace.decision, "LIMITED_EVIDENCE");
+  assert.equal(partial.evidence.observed_participant_count, 3);
+  assert.equal(partial.evidence.paired_participant_count, 3);
+  assert.ok(partial.trace.decision_reasons.some((item) => item.code === "PARTICIPANT_COVERAGE_BELOW_STUDY_TOTAL"));
+  assert.ok(!partial.trace.decision_reasons.some((item) => item.code === "INSUFFICIENT_PAIRED_TIMEPOINTS"));
+
+  const singleRows = ["participant_id,sample_id,timepoint,marker_a,marker_b"];
+  for (let participant = 1; participant <= 4; participant += 1) {
+    singleRows.push("C00" + participant + ",C00" + participant + "_L-3,L-3," + participant + ",2");
+  }
+  const singleBytes = Buffer.from(singleRows.join("\n") + "\n", "utf8");
+  const singleParsed = parseCsv(singleBytes.toString("utf8"));
+  const singleMap = inferColumnMap(singleParsed.headers, singleParsed.rows);
+  const single = analyzeOsd575FileBytes({
+    bytes: singleBytes,
+    columnMap: singleMap,
+    rawDataAvailable: false
+  });
+
+  assert.equal(single.trace.decision, "INSUFFICIENT_EVIDENCE");
+  assert.ok(single.trace.decision_reasons.some((item) => item.code === "INSUFFICIENT_PAIRED_TIMEPOINTS"));
+  assert.equal(single.fileSha256, sha256(singleBytes));
+  assert.equal(single.byteLength, singleBytes.length);
+});
+
+test("end-to-end audit uses the documented unversioned catalog fallback and analyzes synthetic incomplete CSV bytes", async () => {
+  const fs = require("node:fs/promises");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { main } = require("../scripts/fetch-osd575.js");
+  const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "osd575-unversioned-fallback-"));
+  const metadata = makeOsd575MetadataPayload();
+  const fileName = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
+  const fileRecord = {
+    file_name: fileName,
+    remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + encodeURIComponent(fileName),
+    file_size: 256,
+    category: "Transformed Data",
+    restricted: false
+  };
+  const emptyVersioned = {
+    hits: 0,
+    input: "575.3",
+    page_number: 0,
+    page_size: 25,
+    page_total: 1,
+    studies: {},
+    success: true,
+    total_hits: 1,
+    valid_input: ["575"]
+  };
+  const unversioned = {
+    hits: 1,
+    input: "575",
+    page_number: 0,
+    page_size: 25,
+    page_total: 1,
+    studies: { "OSD-575": { file_count: 1, study_files: [fileRecord] } },
+    success: true,
+    total_hits: 1,
+    valid_input: ["575"]
+  };
+  const rows = ["Source Name,Sample Name,Factor Value: Time,IL-6"];
+  for (let participant = 1; participant <= 4; participant += 1) {
+    rows.push("C00" + participant + ",C00" + participant + "_serum_L-3,Launch minus 3," + (participant * 10));
+  }
+  const bytes = Buffer.from(rows.join("\n") + "\n", "utf8");
+  const expectedDigest = sha256(bytes);
+  const requestedUrls = [];
+
+  try {
+    const result = await main({
+      outputDir,
+      logger: { log() {}, warn() {}, error() {} },
+      fetchImpl: async (url) => {
+        const address = String(url);
+        requestedUrls.push(address);
+        if (address.includes("/meta/575")) return fakeJsonResponse(address, metadata);
+        if (address.includes("/files/575.3/")) return fakeJsonResponse(address, emptyVersioned);
+        if (address.endsWith("/files/575.3")) return fakeJsonResponse(address, emptyVersioned);
+        if (address.endsWith("/files/575")) return fakeJsonResponse(address, unversioned);
+        if (address.includes("/geode-py/ws/studies/OSD-575/download")) {
+          return {
+            ok: true,
+            status: 200,
+            url: address,
+            headers: {
+              get: (name) => name.toLowerCase() === "content-length" ? String(bytes.length) : "text/csv"
+            },
+            arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+          };
+        }
+        throw new Error("Unexpected network request: " + address);
+      }
+    });
+
+    assert.equal(result.decision, "INSUFFICIENT_EVIDENCE");
+    assert.equal(result.manifest.file_catalog_record_found, true);
+    assert.equal(result.manifest.file_catalog_record_source, "UNVERSIONED_DOCUMENTED_BARE_ENDPOINT");
+    assert.equal(result.manifest.catalog_access_state, "FILE_DOWNLOADED_AND_HASHED");
+    assert.equal(result.manifest.file_sha256, expectedDigest);
+    assert.equal(result.manifest.byte_length, bytes.length);
+    assert.equal(result.manifest.raw_bytes_preserved, true);
+    assert.equal(result.pilotReport.file_sha256, expectedDigest);
+    assert.equal(result.pilotReport.column_map.participant, "Source Name");
+    assert.equal(result.pilotReport.column_map.sample, "Sample Name");
+    assert.equal(result.pilotReport.column_map.timepoint, "Factor Value: Time");
+    assert.equal(result.pilotReport.observed.participant_count, 4);
+    assert.equal(result.pilotReport.observed.sample_count, 4);
+    assert.deepEqual(result.pilotReport.observed.timepoints, ["Launch minus 3"]);
+    assert.ok(result.pilotReport.trace_contract.decision_reasons.some(
+      (item) => item.code === "INSUFFICIENT_PAIRED_TIMEPOINTS"
+    ));
+    assert.equal(result.pilotReport.analysis_gate.data_pipeline_completed, true);
+    assert.ok(requestedUrls.some((url) => url.endsWith("/files/575.3")));
+    assert.ok(requestedUrls.some((url) => url.endsWith("/files/575")));
+    assert.ok(requestedUrls.some((url) => url.includes("/geode-py/ws/studies/OSD-575/download")));
+
+    const saved = await fs.readFile(path.join(outputDir, fileName));
+    assert.equal(sha256(saved), expectedDigest);
+    const report = JSON.parse(await fs.readFile(path.join(outputDir, "pilot-report.json"), "utf8"));
+    assert.equal(report.trace_contract.decision, "INSUFFICIENT_EVIDENCE");
+    assert.equal(report.observed.participant_count, 4);
+    assert.equal(report.analysis_gate.data_pipeline_completed, true);
   } finally {
     await fs.rm(outputDir, { recursive: true, force: true });
   }
