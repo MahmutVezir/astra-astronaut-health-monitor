@@ -23,7 +23,7 @@ jobs:
       - name: Check out research dashboard branch
         uses: actions/checkout@v4
         with:
-          ref: feat/osd575-research-mode-dashboard
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download the audit artifact from the completed NASA workflow
@@ -178,4 +178,4 @@ jobs:
             exit 0
           fi
           git commit -m "Import verified NASA OSD-575 HDCVD9 source data"
-          git push origin HEAD:feat/osd575-research-mode-dashboard
+          git push origin HEAD:main
