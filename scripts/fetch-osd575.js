@@ -149,14 +149,14 @@ async function main() {
   const metadata = await fetchStudyMetadata(DATASET_ID, metadataFetch);
   await fs.writeFile(
     path.join(OUTPUT_DIR, "metadata-response.json"),
-    JSON.stringify(metadataSnapshots, null, 2) + "\\n",
+    JSON.stringify(metadataSnapshots, null, 2) + "\n",
     "utf8"
   );
 
   const studyPage = await verifyOfficialStudyPage(fetchWithTimeout);
   await fs.writeFile(
     path.join(OUTPUT_DIR, "study-page-verification.json"),
-    JSON.stringify(studyPage, null, 2) + "\\n",
+    JSON.stringify(studyPage, null, 2) + "\n",
     "utf8"
   );
 
@@ -168,7 +168,7 @@ async function main() {
   const fileRecords = await listStudyFiles(DATASET_ID, { fetchImpl: catalogFetch });
   await fs.writeFile(
     path.join(OUTPUT_DIR, "file-catalog-response.json"),
-    JSON.stringify(catalogSnapshots, null, 2) + "\\n",
+    JSON.stringify(catalogSnapshots, null, 2) + "\n",
     "utf8"
   );
 
@@ -181,19 +181,6 @@ async function main() {
   const bytes = download.bytes;
   const digest = sha256(bytes);
   const csvPath = path.join(OUTPUT_DIR, FILE_NAME);
-  await fs.writeFile(csvPath, bytes);
-
-  await fs.writeFile(
-    path.join(OUTPUT_DIR, "metadata-response.json"),
-    JSON.stringify(metadataSnapshots, null, 2) + "\n",
-    "utf8"
-  );
-  await fs.writeFile(
-    path.join(OUTPUT_DIR, "file-catalog-response.json"),
-    JSON.stringify(catalogSnapshots, null, 2) + "\n",
-    "utf8"
-  );
-
   let parsed = null;
   let parseError = null;
   try {
