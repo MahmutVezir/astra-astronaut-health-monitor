@@ -2,7 +2,7 @@
 
 **Know your baseline. Notice the change. Act with evidence.**
 
-ASTRA is a small, offline-first web prototype for astronaut health monitoring during long-duration missions. It gathers manually entered or simulated indicators, compares each available value with an illustrative personal reference band, and explains whether the entry is within that demo band, needs review, or is missing.
+ASTRA is a small, offline-first web prototype for astronaut health monitoring during long-duration missions. It gathers manually entered or simulated indicators, compares each available value with a locally configurable reference band, and explains whether the entry is within that demo band, needs review, or is missing.
 
 > **Important:** ASTRA is a student prototype, not a validated medical device. It does not diagnose, predict an event, prescribe treatment, or replace a flight surgeon or mission medical protocol. All readings in the demo are simulated or manually entered. The reference bands are demonstration settings, not medical thresholds or NASA standards.
 
@@ -11,7 +11,7 @@ ASTRA is a small, offline-first web prototype for astronaut health monitoring du
 - Responsive browser dashboard with four signals: heart rate, blood oxygen (SpO₂), body temperature, and sleep duration.
 - Manual data entry with basic input validation and explicit missing-data handling.
 - Three reproducible scenarios: nominal day, baseline shift, and incomplete data.
-- Personal-reference comparison with transparent, inspectable rules.
+- Configurable reference-band comparison with transparent, inspectable rules.
 - Daily crew wellbeing self-report (sleep quality, perceived stress, fatigue, and mood).
 - Local mission log, browser persistence, and CSV export.
 - NASA OSDR research context panel showing the published sample-collection timepoints for Inspiration4 study OSD-575.
@@ -58,7 +58,7 @@ For each signal, the engine:
 4. Returns **Within baseline**, **Review**, or **No data** for that individual signal.
 5. Makes the overall assessment **Limited** when readings are missing; missing information is never silently treated as normal.
 
-The bands currently configured in `health-engine.js` are fictional example settings for demonstrating software behavior. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
+The initial reference bands are fictional example settings. Users can configure different lower/upper values locally for the demo profile, but this does not clinically validate them. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
 
 ## AI assistance disclosure
 
