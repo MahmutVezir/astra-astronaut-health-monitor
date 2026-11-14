@@ -23,7 +23,7 @@ jobs:
       - name: Check out research dashboard branch
         uses: actions/checkout@v4
         with:
-          ref: feat/osd575-research-data-dashboard
+          ref: feat/osd575-research-mode-dashboard
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download the audit artifact from the completed NASA workflow
