@@ -87,7 +87,7 @@
   function renderCards(assessment) {
     const html = assessment.items.map(function (item) {
       const icon = ({ heartRate: "♡", spo2: "◉", temperature: "⌁", sleep: "☾" })[item.key];
-      return '<article class="signal-card"><div class="card-top"><span class="signal-icon">' + icon + '</span><span class="state-label state-' + statusClass(item.status) + '">' + statusText(item.status) + '</span></div><p class="signal-name">' + esc(item.label) + '</p><strong class="signal-value">' + esc(formatValue(item.key, item.value)) + '</strong><p class="signal-reference">Demo band: ' + esc(state.bands[item.key].lower + "–" + state.bands[item.key].upper + " " + window.AstraHealth.SIGNALS[item.key].unit) + '</p></article>';
+      return '<article class="signal-card"><div class="card-top"><span class="signal-icon">' + icon + '</span><span class="state-label state-' + statusClass(item.status) + '">' + statusText(item.status) + '</span></div><p class="signal-name">' + esc(item.label) + '</p><strong class="signal-value">' + esc(formatValue(item.key, item.value)) + '</strong><p class="signal-reference">Configured band: ' + esc(state.bands[item.key].lower + "–" + state.bands[item.key].upper + " " + window.AstraHealth.SIGNALS[item.key].unit) + '</p></article>';
     }).join("");
     $("signal-cards").innerHTML = html;
   }
@@ -217,7 +217,7 @@
     state.scenario = "manual";
     state.updatedAt = new Date().toISOString();
     const assessment = window.AstraHealth.assess(state.readings, state.bands);
-    addLog("READINGS SAVED", assessment.available + " of " + assessment.total + " signals available; " + assessment.review + " outside illustrative bands.");
+    addLog("READINGS SAVED", assessment.available + " of " + assessment.total + " signals available; " + assessment.review + " outside configured bands.");
     saveState();
     renderAll();
     $("signals-message").textContent = "Readings saved locally. " + assessment.summary;
