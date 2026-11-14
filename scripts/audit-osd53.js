@@ -7,11 +7,19 @@ const {
   fetchStudyMetadata,
   listStudyFiles,
   getFileName,
-  getRemoteUrl
+  getRemoteUrl,
+  downloadStudyFile
 } = require("../src/core/osdr-client.js");
 
 const DATASET_ID = "OSD-53";
 const OUTPUT_DIR = path.join(process.cwd(), "artifacts", "osd53-audit");
+const FILE_OUTPUT_DIR = path.join(OUTPUT_DIR, "files");
+const MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
+const EXPECTED_FILES = [
+  "OSD-53_metadata_OSD-53-ISA.zip",
+  "GLDS-53_microarray_E-GEOD-47126.additional.zip",
+  "GLDS-53_microarray_E-GEOD-47126.processed.zip"
+];
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
@@ -85,6 +93,74 @@ function summarizeFiles(records) {
   };
 }
 
+function selectExactPublicFile(records, expectedFileName) {
+  const matches = records.filter((record) => getFileName(record) === expectedFileName);
+  if (matches.length !== 1) {
+    throw new Error("Expected exactly one catalog record for " + expectedFileName +
+      "; found " + matches.length + ".");
+  }
+  const record = matches[0];
+  if (record.restricted !== false) {
+    throw new Error("Refusing to download " + expectedFileName +
+      " because the catalog does not explicitly mark it unrestricted.");
+  }
+  const declaredSize = record.file_size === null || record.file_size === undefined || record.file_size === ""
+    ? null
+    : Number(record.file_size);
+  if (declaredSize !== null && (!Number.isSafeInteger(declaredSize) || declaredSize < 0 || declaredSize > MAX_ARCHIVE_BYTES)) {
+    throw new Error("Refusing " + expectedFileName + " because its declared size is invalid or exceeds the 25 MiB audit limit.");
+  }
+  if (!getRemoteUrl(record)) {
+    throw new Error("Refusing " + expectedFileName + " because the exact catalog record has no remote URL.");
+  }
+  return record;
+}
+
+async function downloadAndPinPublicFiles(records) {
+  await fs.mkdir(FILE_OUTPUT_DIR, { recursive: true });
+  const results = [];
+  for (const fileName of EXPECTED_FILES) {
+    try {
+      const record = selectExactPublicFile(records, fileName);
+      const downloaded = await downloadStudyFile(record);
+      if (downloaded.bytes.length > MAX_ARCHIVE_BYTES) {
+        throw new Error("Downloaded file exceeded the 25 MiB audit limit.");
+      }
+      if (downloaded.catalogFileSizeBytes !== null &&
+          downloaded.catalogFileSizeBytes !== downloaded.bytes.length) {
+        throw new Error("Downloaded byte count does not match the NASA catalog.");
+      }
+      if (downloaded.contentType &&
+          !/(zip|octet-stream|application\/x-zip)/i.test(downloaded.contentType)) {
+        throw new Error("Unexpected content type for a ZIP archive: " + downloaded.contentType);
+      }
+      const filePath = path.join(FILE_OUTPUT_DIR, fileName);
+      await fs.writeFile(filePath, downloaded.bytes);
+      results.push({
+        file_name: fileName,
+        status: "DOWNLOADED_AND_SIZE_VERIFIED",
+        declared_size_bytes: downloaded.catalogFileSizeBytes,
+        actual_size_bytes: downloaded.bytes.length,
+        sha256: sha256(downloaded.bytes),
+        http_status: downloaded.httpStatus,
+        content_type: downloaded.contentType,
+        source_download_url: downloaded.downloadUrl,
+        final_response_host: downloaded.finalResponseHost,
+        final_response_path: downloaded.finalResponsePath,
+        redirected: downloaded.redirected,
+        temporary_path: filePath
+      });
+    } catch (error) {
+      results.push({
+        file_name: fileName,
+        status: "NOT_DOWNLOADED",
+        error: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+  return results;
+}
+
 async function run() {
   await fs.mkdir(path.join(OUTPUT_DIR, "responses"), { recursive: true });
   const captured = [];
@@ -122,6 +198,9 @@ async function run() {
   }
   const license = findExplicitLicense(metadata);
   const catalog = summarizeFiles(files);
+  const fileDownloads = await downloadAndPinPublicFiles(files);
+  const allExpectedFilesDownloaded = fileDownloads.length === EXPECTED_FILES.length &&
+    fileDownloads.every((item) => item.status === "DOWNLOADED_AND_SIZE_VERIFIED");
 
   for (let i = 0; i < captured.length; i += 1) {
     const item = captured[i];
@@ -143,12 +222,16 @@ async function run() {
     assay_metadata_tables: Object.keys((study.additionalInformation && study.additionalInformation.assays) || {}),
     catalog,
     catalog_error: catalogError,
-    measurement_file_downloads: 0,
+    file_level_downloads: fileDownloads,
+    expected_file_count: EXPECTED_FILES.length,
+    verified_file_download_count: fileDownloads.filter((item) => item.status === "DOWNLOADED_AND_SIZE_VERIFIED").length,
     decision: catalogError
       ? "DEFER_CATALOG_RETRIEVAL_FAILED_RAW_RESPONSES_PRESERVED"
-      : license && catalog.public_count > 0
-      ? "METADATA_AND_PUBLIC_FILE_CANDIDATES_FOUND_REQUIRES_FILE_LEVEL_QA"
-      : "DEFER_INTEGRATION_PENDING_LICENSE_OR_PUBLIC_FILE_EVIDENCE",
+      : !allExpectedFilesDownloaded
+      ? "DEFER_FILE_LEVEL_DOWNLOAD_OR_INTEGRITY_QA_INCOMPLETE"
+      : !license
+      ? "DEFER_INTEGRATION_PENDING_LICENSE_REVIEW_AND_ARCHIVE_CONTENT_QA"
+      : "FILE_DOWNLOADS_VERIFIED_PENDING_ARCHIVE_CONTENT_AND_SCIENTIFIC_QA",
     limitations: [
       "This audit does not download or analyze measurement files.",
       "A public catalog record does not by itself establish scientific suitability or permission to redistribute.",
@@ -175,4 +258,12 @@ if (require.main === module) {
   });
 }
 
-module.exports = { getStudyRecord, isNumericVersion, findExplicitLicense, summarizeFiles };
+module.exports = {
+  getStudyRecord,
+  isNumericVersion,
+  findExplicitLicense,
+  summarizeFiles,
+  selectExactPublicFile,
+  EXPECTED_FILES,
+  MAX_ARCHIVE_BYTES
+};
