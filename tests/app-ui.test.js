@@ -53,6 +53,7 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, export, and pe
   const storage = new Map();
   const exportedBlobs = [];
   const revokedObjectUrls = [];
+  const scheduledTimeouts = [];
   class TestBlob {
     constructor(parts, options) {
       this.parts = parts;
@@ -80,7 +81,11 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, export, and pe
     const window = {
       AstraHealth: health,
       AstraResearch: researchWindow.AstraResearch,
-      addEventListener() {}
+      addEventListener() {},
+      setTimeout(callback, delay) {
+        scheduledTimeouts.push({ callback, delay });
+        return scheduledTimeouts.length;
+      }
     };
     vm.runInNewContext(read("app.js"), {
       document: dom.document,
@@ -183,12 +188,130 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, export, and pe
   assert.match(csv, /^"recorded_at","record_type","heart_rate_bpm","spo2_percent","temperature_c","sleep_hours","note"/);
   assert.match(csv, /"WELLBEING CHECK-IN"/);
   assert.match(csv, /"Self-report saved:/);
+  assert.deepEqual(revokedObjectUrls, []);
+  assert.equal(scheduledTimeouts[0].delay, 1000);
+  scheduledTimeouts.shift().callback();
   assert.deepEqual(revokedObjectUrls, ["blob:astra-export-1"]);
 
   reloaded.get("clear-log").click();
   reloaded.get("export-csv").click();
   assert.equal(exportedBlobs.length, 2);
+  assert.deepEqual(revokedObjectUrls, ["blob:astra-export-1"]);
+  scheduledTimeouts.shift().callback();
+  assert.deepEqual(revokedObjectUrls, ["blob:astra-export-1", "blob:astra-export-2"]);
   const emptyLogCsv = exportedBlobs[1].parts.join("");
   assert.match(emptyLogCsv, /"CURRENT DEMO STATE"/);
   assert.match(emptyLogCsv, /"Simulated or manually entered; not a medical record"/);
+});
+
+
+test("Research Mode derives NASA metadata verification from the imported snake_case audit and exact 28/28 browser join", async function () {
+  const researchWindow = {};
+  vm.runInNewContext(read("research-data.js"), { window: researchWindow, globalThis: researchWindow });
+  const participantIds = ["C001", "C002", "C003", "C004"];
+  const timepoints = ["L-92", "L-44", "L-3", "R+1", "R+45", "R+82", "R+194"];
+  const participants = {};
+  participantIds.forEach(function (participant, participantIndex) {
+    participants[participant] = timepoints.map(function (timepoint, index) {
+      return { timepoint, concentration: 100 + index, percentOfPreflightMean: 95 + participantIndex + index };
+    });
+  });
+  const byTimepoint = timepoints.map(function (timepoint, index) {
+    const values = participantIds.map(function (participant, participantIndex) { return 95 + participantIndex + index; });
+    return {
+      timepoint,
+      n: 4,
+      mean: values.reduce(function (sum, value) { return sum + value; }, 0) / 4,
+      min: Math.min.apply(null, values),
+      max: Math.max.apply(null, values)
+    };
+  });
+  const evidence = {
+    datasetId: "OSD-575",
+    datasetVersion: "3",
+    fileBytes: 6207,
+    sha256: "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c",
+    rowCount: 28,
+    columnCount: 19,
+    participantIds,
+    timepoints,
+    matchedSampleCount: 28,
+    metadataSampleCount: 28,
+    normalizationAudit: { status: "PASS", baselineSampleCount: 12, analyteCount: 9, maxAbsoluteError: 4.9e-8 },
+    audit: {
+      workflow_run_id: 43616651617,
+      dataset_id: "OSD-575",
+      dataset_version: "3",
+      metadata_sample_join: "PASS",
+      mapped_samples: 28,
+      mapped_participants: 4,
+      mapped_timepoints: 7,
+      normalization_audit: { status: "PASS", analyte_count: 9 },
+      scientific_decision: "LIMITED_EVIDENCE"
+    },
+    markers: [{
+      id: "crp",
+      label: "CRP",
+      unit: "pg/mL",
+      flaggedForInterpretation: false,
+      participants,
+      byTimepoint
+    }]
+  };
+  const dom = createDom();
+  const localStorage = { getItem() { return null; }, setItem() {} };
+  const appWindow = {
+    AstraHealth: health,
+    AstraResearch: researchWindow.AstraResearch,
+    AstraResearchLoader: { loadOds575Evidence() { return Promise.resolve(evidence); } },
+    addEventListener() {}
+  };
+  vm.runInNewContext(read("app.js"), {
+    document: dom.document,
+    window: appWindow,
+    localStorage,
+    Blob,
+    URL,
+    navigator: {},
+    location: { protocol: "file:" }
+  });
+  await new Promise(function (resolve) { setImmediate(resolve); });
+
+  assert.equal(dom.get("research-metadata-status").textContent, "Verified · 28/28 ISA matches");
+  assert.equal(dom.get("research-run-status").textContent, "Run ID 43616651617");
+  assert.equal(dom.get("research-data-state").textContent, "DATA + ANALYSIS VERIFIED");
+  assert.equal(dom.get("research-evidence-rows").textContent, "28 / 28");
+  assert.equal(dom.get("research-evidence-matches").textContent, "28 / 28");
+  assert.doesNotMatch(dom.get("research-metadata-status").textContent, /Not verified/);
+});
+
+test("partial saved demo records keep absent readings missing instead of restoring nominal example values", function () {
+  const dom = createDom();
+  const stored = {
+    readings: { heartRate: 74 },
+    wellbeing: { sleepQuality: 4, stress: 2, fatigue: 2, mood: 4 },
+    log: []
+  };
+  const localStorage = {
+    getItem(key) { return key === "astra.demo.v1" ? JSON.stringify(stored) : null; },
+    setItem() {}
+  };
+  const researchWindow = {};
+  vm.runInNewContext(read("research-data.js"), { window: researchWindow, globalThis: researchWindow });
+  vm.runInNewContext(read("app.js"), {
+    document: dom.document,
+    window: { AstraHealth: health, AstraResearch: researchWindow.AstraResearch, addEventListener() {} },
+    localStorage,
+    Blob,
+    URL,
+    navigator: {},
+    location: { protocol: "file:" }
+  });
+
+  assert.equal(String(dom.get("heart-rate").value), "74");
+  assert.equal(dom.get("spo2").value, "");
+  assert.equal(dom.get("temperature").value, "");
+  assert.equal(dom.get("sleep").value, "");
+  assert.equal(dom.get("overall-status").textContent, "DATA INCOMPLETE");
+  assert.match(dom.get("assessment-list").innerHTML, /No reading was entered/);
 });
