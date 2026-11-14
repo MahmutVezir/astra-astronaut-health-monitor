@@ -11,6 +11,7 @@ const {
   extractNetworkContexts,
   extractApiContexts,
   extractApiEndpointReferences,
+  extractApiRequestReferences,
   extractAssetReferences,
   resolveSameOriginUrl,
   resolveAssetReference
