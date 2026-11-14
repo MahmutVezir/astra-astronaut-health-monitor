@@ -10,6 +10,7 @@ on:
       - "scripts/inspect_osd53_archives.py"
       - "tests/osd53-audit.test.js"
       - "tests/test_osd53_archive_inspection.py"
+      - "requirements-osd53-audit.txt"
       - "src/core/osdr-client.js"
 
 permissions:
@@ -36,6 +37,8 @@ jobs:
           python-version: "3.12"
       - name: Validate Node.js audit script syntax
         run: node --check scripts/audit-osd53.js
+      - name: Install pinned OSD-53 inspection dependency
+        run: python -m pip install --disable-pip-version-check -r requirements-osd53-audit.txt
       - name: Run OSD-53 Node.js unit tests
         run: node --test tests/osd53-audit.test.js
       - name: Run OSD-53 archive inspection unit tests
