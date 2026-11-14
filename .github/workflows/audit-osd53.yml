@@ -1,0 +1,44 @@
+name: Audit NASA OSDR OSD-53 metadata and file catalog
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-osd53.yml"
+      - "scripts/audit-osd53.js"
+      - "tests/osd53-audit.test.js"
+      - "src/core/osdr-client.js"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: osd53-audit
+  cancel-in-progress: false
+
+jobs:
+  audit-public-record:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out ASTRA repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate audit script syntax
+        run: node --check scripts/audit-osd53.js
+      - name: Run audit unit tests
+        run: node --test tests/osd53-audit.test.js
+      - name: Fetch NASA metadata and file catalog without downloading measurement data
+        run: node scripts/audit-osd53.js
+      - name: Preserve raw NASA API responses and audit summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osd53-metadata-file-catalog-audit-${{ github.run_id }}
+          path: artifacts/osd53-audit/
+          if-no-files-found: warn
+          retention-days: 30
