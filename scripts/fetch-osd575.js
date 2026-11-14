@@ -247,11 +247,15 @@ async function main() {
   await writeJson("study-metadata-summary.json", studyMetadata);
 
   console.log("[OSD-575] Fetching the OSDR file catalog...");
-  const fileRecords = await listStudyFiles(DATASET_ID, {
-    fetchImpl: catalogFetch,
-    studyVersion: studyMetadata.dataset_version
-  });
-  await writeJson("file-catalog-response.json", catalogSnapshots);
+  let fileRecords;
+  try {
+    fileRecords = await listStudyFiles(DATASET_ID, {
+      fetchImpl: catalogFetch,
+      studyVersion: studyMetadata.dataset_version
+    });
+  } finally {
+    await writeJson("file-catalog-response.json", catalogSnapshots);
+  }
 
   const fileRecord = selectStudyFile(fileRecords, FILE_NAME);
   if (!fileRecord) {
