@@ -68,7 +68,7 @@ function findExplicitLicense(value) {
 function summarizeFiles(records) {
   const files = records.map((record) => ({
     file_name: getFileName(record),
-    file_size_bytes: Number.isFinite(Number(record && record.file_size))
+    file_size_bytes: record && record.file_size !== null && record.file_size !== undefined && record.file_size !== "" && Number.isFinite(Number(record.file_size))
       ? Number(record.file_size)
       : null,
     restricted: typeof (record && record.restricted) === "boolean"
