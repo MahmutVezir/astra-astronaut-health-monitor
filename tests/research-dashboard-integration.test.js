@@ -107,8 +107,8 @@ test("Research Mode renders NASA OSD-575 participant charts only after the commi
   vm.runInNewContext(await read("app.js"), context);
 
   const status = dom.get("research-evidence-status");
-  for (let attempt = 0; attempt < 20 && status.textContent !== "SHA-256 · MAP · NORMALIZATION PASS"; attempt += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
+  for (let attempt = 0; attempt < 200 && status.textContent !== "SHA-256 · MAP · NORMALIZATION PASS" && !dom.get("research-evidence-error").textContent; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
   }
 
   assert.equal(requests.length, 3);
