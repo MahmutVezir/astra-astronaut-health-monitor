@@ -340,9 +340,20 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
       /^\d+$/.test(contentLength) && Number(contentLength) !== bytes.length) {
     throw new Error("Downloaded byte count mismatch: header=" + contentLength + ", actual=" + bytes.length);
   }
+  const catalogFileSize = Number(fileRecord && fileRecord.file_size);
+  if (Number.isInteger(catalogFileSize) && catalogFileSize >= 0 &&
+      catalogFileSize !== bytes.length) {
+    throw new Error(
+      "Downloaded byte count mismatch with OSDR catalog: declared=" +
+      catalogFileSize + ", actual=" + bytes.length
+    );
+  }
 
   return {
     bytes,
+    catalogFileSizeBytes: Number.isInteger(catalogFileSize) && catalogFileSize >= 0
+      ? catalogFileSize
+      : null,
     downloadUrl,
     finalResponseUrl: finalResponse.origin + finalResponse.pathname,
     finalResponseHost: finalResponse.hostname,
