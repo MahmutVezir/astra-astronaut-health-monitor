@@ -24,19 +24,23 @@
         { label: "R+194", phase: "Post-flight" }
       ],
       acquisitionAudit: {
-        runNumber: 4,
-        runId: 43596179113,
-        auditedAt: "2026-11-14T12:43:13.791Z",
+        runNumber: 5,
+        runId: 43600280830,
+        auditedAt: "2026-11-14T13:32:40.977Z",
         decision: "INSUFFICIENT_EVIDENCE",
         metadataVerified: true,
         transformedFileReferencedInMetadata: true,
         catalogHttpStatus: 200,
-        catalogHits: 0,
+        catalogHits: 1,
         catalogTotalHits: 1,
-        catalogReturnedStudyCount: 0,
+        catalogReturnedStudyCount: 1,
+        catalogFileFound: true,
+        catalogFileSizeBytes: 6207,
+        catalogFileRestricted: false,
+        catalogLookupForm: "VERSIONED_DOCUMENTED_BARE_ENDPOINT",
         csvDownloaded: false,
         fileSha256: null,
-        note: "This is the last live data-access audit (run #4): its versioned paginated catalog request returned no file record or download URL. The current main branch adds two documented bare-endpoint fallbacks, but that updated lookup has not yet been executed live. No measurements were downloaded or analyzed."
+        note: "Live run #5 found the exact HDCVD9 transformed CSV in the versioned bare /files/575.3 catalog response (9 study files; exact record size 6,207 bytes; restricted=false). The catalog-provided NASA download URL redirected to a host outside the current strict NASA HTTPS allowlist, so the downloader correctly abstained. No CSV bytes, SHA-256, column map, or biomarker measurements were obtained."
       },
       source: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
     },
@@ -48,9 +52,9 @@
         environment: "Commercial spaceflight · human biospecimens",
         domain: "Immune and cardiovascular-related serum proteins",
         measures: ["HDCVD9 multiplex assay", "Transformed serum measurements"],
-        evidenceStatus: "METADATA_VERIFIED_FILE_NOT_RETRIEVED",
-        statusLabel: "File access blocked",
-        accessNote: "Study metadata is verified; the versioned file catalog returned zero file records. No CSV values or file hash are available.",
+        evidenceStatus: "CATALOG_MATCH_DOWNLOAD_UNVERIFIED",
+        statusLabel: "Catalog found · download pending",
+        accessNote: "Live run #5 found the exact HDCVD9 transformed CSV in NASA's versioned bare file catalog, with a catalog-provided remote_url and a 6,207-byte declared size. The download redirect was rejected by the strict host allowlist; no source bytes, SHA-256, or measurements are available.",
         role: "Primary spaceflight research source",
         url: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
       },
