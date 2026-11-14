@@ -80,6 +80,20 @@ test("extracts versioned API route context without calling a guessed endpoint", 
   assert.ok(contexts.some((item) => /search\/experiments/.test(item.snippet)));
 });
 
+test("does not drop lazily loaded search modules after many vendor asset references", () => {
+  const vendorAssets = Array.from({ length: 75 }, (_, index) =>
+    "assets/vendor-" + String(index).padStart(2, "0") + ".js"
+  );
+  const targetAssets = [
+    "assets/SearchDataPage-BYc8sLuE.js",
+    "assets/ResearchDetailsPage-D4Z_MSMq.js"
+  ];
+  const source = [...vendorAssets, ...targetAssets].map((item) => '"' + item + '"').join(";");
+  const references = extractAssetReferences(source);
+  assert.ok(references.includes("assets/SearchDataPage-BYc8sLuE.js"));
+  assert.ok(references.includes("assets/ResearchDetailsPage-D4Z_MSMq.js"));
+});
+
 test("rejects third-party scripts from same-origin discovery", () => {
   assert.equal(resolveSameOriginUrl("https://tracker.invalid/app.js", "https://nlsp.nasa.gov/explore"), null);
   assert.equal(resolveSameOriginUrl("javascript:alert(1)", "https://nlsp.nasa.gov/explore"), null);

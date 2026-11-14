@@ -74,7 +74,7 @@ function extractEvidenceSnippets(source, limit = 30) {
   return results;
 }
 
-function extractAssetReferences(source, limit = 40) {
+function extractAssetReferences(source, limit = 250) {
   const pattern = /["'\x60](assets\/[A-Za-z0-9_.-]+\.js(?:\?[^"'\x60\s]*)?)["'\x60]/g;
   return [...new Set(Array.from(String(source).matchAll(pattern), (match) => match[1]))].slice(0, limit);
 }
