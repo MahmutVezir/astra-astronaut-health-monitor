@@ -164,7 +164,11 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         "column_count": len(headers),
         "headers": combined_headers[:80],
         "group_headers": group_headers[:80] if group_headers else None,
-        "header_preview_lines": lines[header_index:header_index + 2],
+        "header_preview_lines": (
+            lines[header_index - 1:header_index + 1]
+            if group_headers is not None
+            else lines[header_index:header_index + 2]
+        ),
         "metadata_preview": metadata_preview,
         "row_key_preview_first_10": row_key_preview,
         "malformed_row_count": malformed_rows,
