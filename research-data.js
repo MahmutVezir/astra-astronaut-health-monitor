@@ -54,7 +54,7 @@
         measures: ["HDCVD9 multiplex assay", "Transformed serum measurements"],
         evidenceStatus: "CATALOG_MATCH_DOWNLOAD_UNVERIFIED",
         statusLabel: "Catalog found · download pending",
-        accessNote: "Live run #5 found the exact HDCVD9 transformed CSV in NASA's versioned bare file catalog, with a catalog-provided remote_url and a 6,207-byte declared size. The download redirect was rejected by the strict host allowlist; no source bytes, SHA-256, or measurements are available.",
+        accessNote: "Live run #5 found the exact HDCVD9 transformed CSV in NASA's versioned bare file catalog, with a catalog-provided remote_url and a 6,207-byte declared size. The run's download redirect was rejected by the then-current host allowlist. PR #17 now allows only the narrowly derived NASA OSDR bucket hostname and exact filename, but a new live run must confirm that the actual redirect matches it; no source bytes, SHA-256, or measurements are available.",
         role: "Primary spaceflight research source",
         url: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
       },
