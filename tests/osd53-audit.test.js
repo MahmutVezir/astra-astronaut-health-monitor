@@ -36,10 +36,11 @@ test("summarizes public, restricted and unknown file access separately", () => {
   const result = summarizeFiles([
     { file_name: "public.zip", file_size: 100, restricted: false, remote_url: "https://osdr.nasa.gov/a" },
     { file_name: "private.zip", file_size: 200, restricted: true, remote_url: "https://osdr.nasa.gov/b" },
-    { file_name: "unknown.zip", file_size: 300 }
+    { file_name: "unknown.zip", file_size: null }
   ]);
   assert.equal(result.record_count, 3);
   assert.equal(result.public_count, 1);
   assert.equal(result.restricted_count, 1);
   assert.equal(result.unknown_access_count, 1);
+  assert.equal(result.files[2].file_size_bytes, null);
 });
