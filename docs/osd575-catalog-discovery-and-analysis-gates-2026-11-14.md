@@ -77,15 +77,22 @@ The expanded tests cover these deliberately different situations:
 
 These are synthetic test fixtures, not NASA observations. They validate the analysis and abstention logic, not the contents of the live HDCVD9 file.
 
-## 6. What remains unproven
+## 6. What remains unproven after live run #5
 
-Until a live run returns an exact catalog record and a real `remote_url`, the HDCVD9 CSV remains **not downloaded**. Therefore there is still no live file SHA-256, no actual column map, no observed measurement table, and no biomarker result.
+The exact HDCVD9 catalog record and its NASA-provided remote_url are now verified by live run #5. The catalog record declares a 6,207-byte file and restricted=false. However, the download did not complete: the final redirect host fell outside the current strict NASA HTTPS allowlist. Therefore the CSV bytes remain **not downloaded**, and there is still no live file SHA-256, actual column map, observed measurement table, or biomarker result.
 
 Even after a successful download, the HDCVD9 panel is a transformed serum multiplex assay, not continuous heart-rate or blood-pressure telemetry. Its outputs can support only a carefully bounded, descriptive participant-level assay analysis. The project must not turn a cytokine concentration into a clinical diagnosis or a real-time crew alert.
 
 ## 7. Next live validation
 
-Run the updated `Fetch and audit NASA OSD-575` workflow on `main` with download confirmation. Inspect `catalog_discovery_attempts` in `pilot-report.json`:
+The catalog-discovery step is no longer the blocker. The next run must test the catalog-provided redirect against the exact official OSDR public-bucket host documented by NASA. The code must continue to reject arbitrary external redirects, and it must verify that the final object name is the exact HDCVD9 CSV. Only then should it save the original bytes and compute the SHA-256, byte length, parsed schema, column map, and observed structure. Do not construct a direct S3 object key from assumptions; use the actual redirect returned by the NASA catalog URL.
 
-- If a documented endpoint returns the target record and `remote_url`, verify the downloaded bytes, SHA-256, byte length, mapping, and observed structure.
-- If all three documented lookups remain empty, retain the raw responses and report the unresolved catalog behavior. Do not expand into guessed `files/...` paths.
+## 8. Live run #5 evidence (14 November 2026)
+
+- Workflow: [Fetch and audit NASA OSD-575, run #5](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43600280830).
+- The first paginated versioned request still returned HTTP 200 with hits=0, total_hits=1, and no study entry.
+- The documented bare versioned request /osdr/data/osd/files/575.3 returned HTTP 200, hits=1, one study (OSD-575), and nine file records.
+- The exact record was LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv, with file_size=6207, restricted=false, and the catalog-provided relative remote_url /geode-py/ws/studies/OSD-575/download?source=datamanager&file=LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv.
+- The downloader rejected the final redirect because it was outside the existing NASA HTTPS host allowlist. The artifact records OSDR_FILE_DOWNLOAD_UNAVAILABLE; file_sha256=null, byte_length=null, raw_bytes_preserved=false, and all parse/mapping/observation gates remain false.
+- This is a **catalog-resolution success but a download-validation failure**. It is not a completed data acquisition and not a scientific result.
+- NASA documents a public OSDR AWS bucket named nasa-osdr in us-west-2; the redirect validator will be extended only for that exact host, not for arbitrary S3 or third-party domains. See the [NASA OSDR AWS guide](https://www.nasa.gov/reference/osdr-help-getting-started-with-aws-and-osdr-data/) and [Registry of Open Data entry](https://registry.opendata.aws/nasa-osdr/).
