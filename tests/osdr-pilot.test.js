@@ -659,14 +659,14 @@ test("OSD-575 metadata filename references are extracted from the observed meta/
   assert.deepEqual(references.download_urls, []);
 });
 
-test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE artifact instead of throwing", async () => {
+test("empty documented OSDR catalog variants preserve responses and abstain without asserting the file does not exist", async () => {
   const fs = require("node:fs/promises");
   const os = require("node:os");
   const path = require("node:path");
   const { main } = require("../scripts/fetch-osd575.js");
   const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "osd575-empty-catalog-"));
   const metadata = makeOsd575MetadataPayload();
-  const catalog = {
+  const versionedCatalog = {
     hits: 0,
     input: "575.3",
     page_number: 0,
@@ -677,6 +677,7 @@ test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE ar
     total_hits: 1,
     valid_input: ["575"]
   };
+  const unversionedCatalog = { ...versionedCatalog, input: "575" };
   const fetchCalls = [];
 
   try {
@@ -684,10 +685,13 @@ test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE ar
       outputDir,
       logger: { log() {}, warn() {}, error() {} },
       fetchImpl: async (url) => {
-        fetchCalls.push(String(url));
-        if (String(url).includes("/meta/575")) return fakeJsonResponse(String(url), metadata);
-        if (String(url).includes("/files/575.3/")) return fakeJsonResponse(String(url), catalog);
-        throw new Error("Unexpected network request: " + url);
+        const address = String(url);
+        fetchCalls.push(address);
+        if (address.includes("/meta/575")) return fakeJsonResponse(address, metadata);
+        if (address.includes("/files/575.3/")) return fakeJsonResponse(address, versionedCatalog);
+        if (address.endsWith("/files/575.3")) return fakeJsonResponse(address, versionedCatalog);
+        if (address.endsWith("/files/575")) return fakeJsonResponse(address, unversionedCatalog);
+        throw new Error("Unexpected network request: " + address);
       }
     });
 
@@ -695,22 +699,28 @@ test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE ar
     assert.equal(result.manifest.file_sha256, null);
     assert.equal(result.manifest.file_download_url, null);
     assert.equal(result.manifest.file_catalog_record_found, false);
+    assert.equal(result.manifest.catalog_access_state, "NO_VERIFIED_CATALOG_MATCH_OR_DOWNLOAD_URL");
     assert.equal(result.pilotReport.trace_contract.decision, "INSUFFICIENT_EVIDENCE");
     assert.equal(
       result.pilotReport.trace_contract.decision_reasons[0].code,
-      "METADATA_FILE_REFERENCE_WITHOUT_CATALOG_DOWNLOAD_RECORD"
+      "NO_CATALOG_MATCH_AFTER_DOCUMENTED_LOOKUPS"
     );
     assert.ok(fetchCalls.some((url) => url.includes("/meta/575")));
-    assert.ok(fetchCalls.some((url) => url.includes("/files/575.3/")));
+    assert.ok(fetchCalls.some((url) => url.includes("/files/575.3/?page=0")));
+    assert.ok(fetchCalls.some((url) => url.endsWith("/files/575.3")));
+    assert.ok(fetchCalls.some((url) => url.endsWith("/files/575")));
+    assert.equal(result.pilotReport.catalog_discovery_attempts.length, 3);
 
     const metadataArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "metadata-response.json"), "utf8"));
     const catalogArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "file-catalog-response.json"), "utf8"));
     const reportArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "pilot-report.json"), "utf8"));
     assert.ok(metadataArtifact[0].raw_response_text.includes("LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv"));
-    assert.deepEqual(catalogArtifact[0].body.studies, {});
+    assert.equal(catalogArtifact.length, 3);
+    assert.ok(catalogArtifact.every((snapshot) => snapshot.body.hits === 0));
     assert.equal(catalogArtifact[0].body.total_hits, 1);
     assert.equal(reportArtifact.trace_contract.decision, "INSUFFICIENT_EVIDENCE");
     assert.equal(reportArtifact.file_sha256, null);
+    assert.equal(reportArtifact.analysis_gate.data_pipeline_completed, false);
     await assert.rejects(fs.access(path.join(outputDir, "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv")));
   } finally {
     await fs.rm(outputDir, { recursive: true, force: true });
