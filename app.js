@@ -13,6 +13,7 @@
   let researchEvidence = null;
   let researchEvidenceError = null;
   let selectedResearchMarker = "crp";
+  let activeView = "research";
   let state = {
     readings: Object.assign({}, SCENARIOS.nominal),
     bands: Object.keys(DEFAULT_BANDS).reduce(function (out, key) { out[key] = Object.assign({}, DEFAULT_BANDS[key]); return out; }, {}),
@@ -218,7 +219,7 @@
       stateLabel.className = "state-label " + (researchEvidence ? "state-good" : "state-limited");
     }
     const modeIndicator = $("mode-indicator");
-    if (modeIndicator) {
+    if (modeIndicator && activeView === "research") {
       modeIndicator.textContent = researchEvidence
         ? "NASA RESEARCH MODE · SHA-256 + SAMPLE MAP VERIFIED"
         : researchEvidenceError
@@ -466,6 +467,7 @@
   }
 
   function activateView(name) {
+    activeView = name;
     document.querySelectorAll(".tab").forEach(function (button) {
       const active = button.dataset.view === name;
       button.classList.toggle("active", active);
