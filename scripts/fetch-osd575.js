@@ -372,7 +372,6 @@ async function main(options = {}) {
   const metadataSnapshots = [];
   const catalogSnapshots = [];
   const metadataFetch = (url) => fetchJsonCaptured(url, fetchImpl, metadataSnapshots);
-  const catalogFetch = (url) => fetchJsonCaptured(url, fetchImpl, catalogSnapshots);
 
   logger.log("[OSD-575] Fetching live NASA JSON metadata...");
   let metadata = null;
@@ -557,45 +556,6 @@ async function main(options = {}) {
         parseError = error.message;
       }
       columnMap = parsed ? inferColumnMap(parsed.headers, parsed.rows) : null;
-
-      const replayFetch = async (url) => {
-        const address = String(url);
-        if (address.includes("/meta/575")) {
-          return jsonResponse(true, 200, metadata, METADATA_URL);
-        }
-        if (address.includes("/files/")) {
-          const parsedUrl = new URL(address);
-          const page = Number(parsedUrl.searchParams.get("page") || 0);
-          const snapshot = catalogSnapshots.find((item) => {
-            const itemPage = item.body && Number.isInteger(item.body.page_number)
-              ? item.body.page_number
-              : Number(new URL(item.url).searchParams.get("page") || 0);
-            return itemPage === page;
-          });
-          return jsonResponse(
-            snapshot ? snapshot.status >= 200 && snapshot.status < 300 : true,
-            snapshot ? snapshot.status : 200,
-            snapshot ? snapshot.body : { studies: {} },
-            snapshot ? snapshot.url : address
-          );
-        }
-
-        const arrayBuffer = downloaded.bytes.buffer.slice(
-          downloaded.bytes.byteOffset,
-          downloaded.bytes.byteOffset + downloaded.bytes.byteLength
-        );
-        return {
-          ok: true,
-          status: downloaded.httpStatus || 200,
-          url: downloaded.downloadUrl,
-          headers: {
-            get: (name) => name.toLowerCase() === "content-length"
-              ? String(downloaded.bytes.length)
-              : downloaded.contentType
-          },
-          arrayBuffer: async () => arrayBuffer
-        };
-      };
 
       const analysis = analyzeOsd575FileBytes({
         bytes: downloaded.bytes,
