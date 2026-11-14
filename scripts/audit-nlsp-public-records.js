@@ -174,14 +174,74 @@ async function fetchObservedDatasetFileExplorerBundle() {
     if (requestCalls.length >= 30) break;
   }
   const imports = Array.from(source.matchAll(/from["']([^"']+\.js)["']/g), (match) => match[1]);
-  const apiPathLiterals = Array.from(source.matchAll(/["'`]((?:\/api\/v1|\/api|\/explore|\/data|\/files)[^"'`]{1,240})["'`]/g), (match) => match[1]);
+  const apiPathLiterals = Array.from(source.matchAll(/["']((?:\/api\/v1|\/api|\/explore|\/data|\/files)[^"']{1,240})["']/g), (match) => match[1]);
+  const keyAssignments = [];
+  for (const match of source.matchAll(/\bkey\s*:/g)) {
+    const index = match.index;
+    keyAssignments.push({ offset: index, snippet: source.slice(Math.max(0, index - 500), Math.min(source.length, index + 800)) });
+    if (keyAssignments.length >= 25) break;
+  }
+  const apiClientImport = imports.find((value) => value.includes("index-BsIoQ7MG.js")) || null;
+  let apiClient = { result: null, contexts: [] };
+  if (apiClientImport) {
+    const apiClientUrl = new URL(apiClientImport, url);
+    if (apiClientUrl.origin === ORIGIN && apiClientUrl.pathname.startsWith("/assets/")) {
+      try {
+        const clientResponse = await fetch(apiClientUrl.toString(), {
+          headers: { accept: "application/javascript", "user-agent": "ASTRA-NLSP-Public-Record-Audit/1.0" },
+          redirect: "follow",
+          signal: AbortSignal.timeout(45000)
+        });
+        const clientBytes = Buffer.from(await clientResponse.arrayBuffer());
+        const clientFinalUrl = new URL(clientResponse.url);
+        apiClient.result = {
+          requested_url: apiClientUrl.toString(),
+          final_url: clientResponse.url,
+          http_status: clientResponse.status,
+          content_type: clientResponse.headers.get("content-type"),
+          byte_length: clientBytes.byteLength,
+          sha256: sha256(clientBytes),
+          response_ok: clientResponse.ok
+        };
+        if (clientFinalUrl.origin === ORIGIN && clientResponse.ok && clientBytes.byteLength <= 5 * 1024 * 1024) {
+          await fs.writeFile(path.join(OUTPUT_DIR, "nlsp-api-client-index-BsIoQ7MG.js"), clientBytes);
+          const clientSource = clientBytes.toString("utf8");
+          for (const term of ["baseURL", "/api/v1", "axios.create", "create({"]) {
+            let cursor = 0;
+            let count = 0;
+            while (cursor < clientSource.length && count < 8 && apiClient.contexts.length < 35) {
+              const index = clientSource.toLowerCase().indexOf(term.toLowerCase(), cursor);
+              if (index < 0) break;
+              apiClient.contexts.push({
+                term,
+                snippet: clientSource.slice(Math.max(0, index - 400), Math.min(clientSource.length, index + term.length + 700))
+              });
+              cursor = index + term.length;
+              count += 1;
+            }
+          }
+        }
+      } catch (error) {
+        apiClient.result = { requested_url: apiClientUrl.toString(), error: error.message };
+      }
+    }
+  }
   result.matches = contexts.length;
   result.download_call_count = downloadCalls.length;
   result.request_call_count = requestCalls.length;
   result.import_count = imports.length;
-  return { result, contexts, downloadCalls, requestCalls, imports: [...new Set(imports)], apiPathLiterals: [...new Set(apiPathLiterals)] };
+  result.api_client_import = apiClientImport;
+  return {
+    result,
+    contexts,
+    downloadCalls,
+    requestCalls,
+    imports: [...new Set(imports)],
+    apiPathLiterals: [...new Set(apiPathLiterals)],
+    keyAssignments,
+    apiClient
+  };
 }
-
 async function requestAndPreserve(url, outputName) {
   const parsedUrl = new URL(url);
   if (parsedUrl.origin !== ORIGIN || !parsedUrl.pathname.startsWith("/api/v1/data/")) {
@@ -280,8 +340,10 @@ async function run() {
           keys: child && typeof child === "object" ? Object.keys(child).slice(0, 60) : [],
           values: child && typeof child === "object" ? Object.fromEntries(
             Object.entries(child).filter(([key, value]) =>
-              /(file|download|remote|url|md5|guid|access|license|restrict|size|public)/i.test(key) &&
-              (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+              /(file|download|remote|url|md5|guid|access|license|restrict|size|public)/i.test(key) ||
+              ["key", "meta", "date", "type", "ext"].includes(key)
+            ).filter(([, value]) =>
+              typeof value === "string" || typeof value === "number" || typeof value === "boolean"
             )
           ) : {},
           dataset_file_info: child?.dataset_file_info && typeof child.dataset_file_info === "object"
@@ -298,8 +360,10 @@ async function run() {
         keys: item && typeof item === "object" ? Object.keys(item).slice(0, 80) : [],
         values: item && typeof item === "object" ? Object.fromEntries(
           Object.entries(item).filter(([key, value]) =>
-            /(file|download|remote|url|md5|guid|access|license|restrict|size|public)/i.test(key) &&
-            (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+            /(file|download|remote|url|md5|guid|access|license|restrict|size|public)/i.test(key) ||
+            ["id", "_id", "__dirid", "experiment_id", "dataset_fileIndex"].includes(key)
+          ).filter(([, value]) =>
+            typeof value === "string" || typeof value === "number" || typeof value === "boolean"
           )
         ) : {}
       }));
@@ -360,7 +424,14 @@ async function run() {
     searches: searchResults,
     returned_search_records: returnedRecords,
     detail_records: detailResults,
-    observed_dataset_file_explorer_bundle: datasetFileExplorer,
+    observed_dataset_file_explorer_bundle: datasetFileExplorer.result,
+    dataset_file_explorer_contexts: datasetFileExplorer.contexts || [],
+    dataset_file_explorer_download_calls: datasetFileExplorer.downloadCalls || [],
+    dataset_file_explorer_request_calls: datasetFileExplorer.requestCalls || [],
+    dataset_file_explorer_imports: datasetFileExplorer.imports || [],
+    dataset_file_explorer_api_path_literals: datasetFileExplorer.apiPathLiterals || [],
+    dataset_file_explorer_key_assignments: datasetFileExplorer.keyAssignments || [],
+    dataset_file_explorer_api_client: datasetFileExplorer.apiClient || null,
     measurement_files_downloaded: 0,
     file_bytes_downloaded: 0,
     decision,
@@ -385,6 +456,8 @@ async function run() {
     dataset_file_explorer_request_calls: datasetFileExplorer.requestCalls || [],
     dataset_file_explorer_imports: datasetFileExplorer.imports || [],
     dataset_file_explorer_api_path_literals: datasetFileExplorer.apiPathLiterals || [],
+    dataset_file_explorer_key_assignments: datasetFileExplorer.keyAssignments || [],
+    dataset_file_explorer_api_client: datasetFileExplorer.apiClient || null,
     detail_records: detailResults.map((item) => ({
       query_record: item.query_record,
       http_status: item.request.http_status ?? null,
