@@ -29,15 +29,11 @@
     return Number(value).toFixed(spec.digits) + " " + spec.unit;
   };
   const statusText = function (status) {
-    return ({ WITHIN: "Within baseline", REVIEW: "Review", NO_DATA: "No data", INVALID: "Invalid", LIMITED: "Assessment limited" })[status] || status;
+    return ({ WITHIN: "Within demo band", REVIEW: "Review", NO_DATA: "No data", INVALID: "Invalid", LIMITED: "Assessment limited" })[status] || status;
   };
   const statusClass = function (status) {
     return ({ WITHIN: "good", REVIEW: "review", NO_DATA: "missing", INVALID: "invalid", LIMITED: "limited" })[status] || "neutral";
   };
-  const nowStamp = function () {
-    return new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-  };
-
   function saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -223,7 +219,7 @@
   function exportCsv() {
     const rows = [["recorded_at", "record_type", "heart_rate_bpm", "spo2_percent", "temperature_c", "sleep_hours", "note"]];
     state.log.forEach(function (entry) {
-      rows.push([entry.time, entry.type, entry.heartRate || "", entry.spo2 || "", entry.temperature || "", entry.sleep || "", entry.message]);
+      rows.push([entry.time, entry.type, entry.heartRate ?? "", entry.spo2 ?? "", entry.temperature ?? "", entry.sleep ?? "", entry.message]);
     });
     if (state.log.length === 0) {
       rows.push([new Date().toISOString(), "CURRENT DEMO STATE", state.readings.heartRate ?? "", state.readings.spo2 ?? "", state.readings.temperature ?? "", state.readings.sleep ?? "", "Simulated or manually entered; not a medical record"]);
