@@ -259,13 +259,34 @@ test("catalog download URLs stay on NASA HTTPS and redirects allow only the offi
     () => validateOsdrDownloadResponseUrl("https://example.com/" + fileName, fileName),
     /outside verified NASA HTTPS endpoints/
   );
+  assert.equal(
+    validateOsdrDownloadResponseUrl(
+      "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/" + fileName,
+      fileName
+    ),
+    "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/" + fileName
+  );
   assert.throws(
-    () => validateOsdrDownloadResponseUrl("https://another-bucket.s3.us-west-2.amazonaws.com/" + fileName, fileName),
+    () => validateOsdrDownloadResponseUrl("https://another-bucket.s3.amazonaws.com/" + fileName, fileName),
     /outside verified NASA HTTPS endpoints/
   );
   assert.throws(
-    () => validateOsdrDownloadResponseUrl("http://nasa-osdr.s3.us-west-2.amazonaws.com/" + fileName, fileName),
+    () => validateOsdrDownloadResponseUrl("http://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/" + fileName, fileName),
     /outside verified NASA HTTPS endpoints/
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl(
+      "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/other-study/" + fileName,
+      fileName
+    ),
+    /exact catalog filename and approved object path/
+  );
+  assert.throws(
+    () => validateOsdrDownloadResponseUrl(
+      "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/other.csv",
+      fileName
+    ),
+    /exact catalog filename and approved object path/
   );
   assert.throws(
     () => validateOsdrDownloadResponseUrl(
@@ -276,27 +297,39 @@ test("catalog download URLs stay on NASA HTTPS and redirects allow only the offi
   );
 });
 
-test("OSDR download accepts only the exact file redirect in NASA's official public bucket", async () => {
+test("OSDR download accepts the observed ALSDA bucket only for the exact HDCVD9 object", async () => {
   const { downloadStudyFile } = require("../src/core/osdr-client.js");
   const fileName = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
   const bytes = Buffer.from("source,sample,timepoint,marker\nC001,S1,L-3,1\n", "utf8");
   const record = {
     file_name: fileName,
+    file_size: bytes.length,
     remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + fileName
   };
   const result = await downloadStudyFile(record, async () => ({
     ok: true,
     status: 200,
-    url: "https://nasa-osdr.s3.us-west-2.amazonaws.com/OSD-575/version-3/ALSDA/" + fileName,
+    url: "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/" + fileName,
     headers: { get: (name) => name.toLowerCase() === "content-length" ? String(bytes.length) : "text/csv" },
     arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
   }));
   assert.deepEqual(result.bytes, bytes);
+  assert.equal(result.catalogFileSizeBytes, bytes.length);
   assert.equal(result.downloadUrl, "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + fileName);
-  assert.equal(result.finalResponseUrl, "https://nasa-osdr.s3.us-west-2.amazonaws.com/OSD-575/version-3/ALSDA/" + fileName);
-  assert.equal(result.finalResponseHost, "nasa-osdr.s3.us-west-2.amazonaws.com");
-  assert.equal(result.finalResponsePath, "/OSD-575/version-3/ALSDA/" + fileName);
+  assert.equal(result.finalResponseUrl, "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/" + fileName);
+  assert.equal(result.finalResponseHost, "genelab-alsda-repo-prod.s3.amazonaws.com");
+  assert.equal(result.finalResponsePath, "/alsda-data/LSDS-8/Multiplex/" + fileName);
   assert.equal(result.redirected, true);
+  await assert.rejects(
+    () => downloadStudyFile({ ...record, file_size: bytes.length + 1 }, async () => ({
+      ok: true,
+      status: 200,
+      url: "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/" + fileName,
+      headers: { get: () => null },
+      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+    })),
+    /mismatch with OSDR catalog/
+  );
   await assert.rejects(
     () => downloadStudyFile(record, async () => ({
       ok: true,

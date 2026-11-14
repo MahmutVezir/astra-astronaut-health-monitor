@@ -3,6 +3,8 @@
 const OSDR_ORIGIN = "https://osdr.nasa.gov";
 const OSDR_API_ROOT = OSDR_ORIGIN + "/osdr/data/osd";
 const OSDR_PUBLIC_BUCKET_HOST = "nasa-osdr.s3.us-west-2.amazonaws.com";
+const OSDR_ALSDA_BUCKET_HOST = "genelab-alsda-repo-prod.s3.amazonaws.com";
+const OSDR_ALSDA_HDCVD9_PATH = "/alsda-data/LSDS-8/Multiplex/";
 
 function parseStudyIdentifier(studyId, requestedVersion = null) {
   const match = String(studyId).match(/^OSD-(\d+)(?:\.(\d+))?$/);
@@ -174,7 +176,8 @@ function validateOsdrDownloadResponseUrl(responseUrl, expectedFileName = null) {
   const url = new URL(responseUrl);
   const isNasaHost = url.hostname === "osdr.nasa.gov" || url.hostname.endsWith(".nasa.gov");
   const isOfficialPublicBucket = url.hostname === OSDR_PUBLIC_BUCKET_HOST;
-  if (url.protocol !== "https:" || !(isNasaHost || isOfficialPublicBucket)) {
+  const isObservedAlsdaBucket = url.hostname === OSDR_ALSDA_BUCKET_HOST;
+  if (url.protocol !== "https:" || !(isNasaHost || isOfficialPublicBucket || isObservedAlsdaBucket)) {
     const error = new Error(
       "Refusing a download redirect outside verified NASA HTTPS endpoints (protocol=" +
       url.protocol + ", host=" + url.hostname + ", path=" + url.pathname + ")"
@@ -187,11 +190,15 @@ function validateOsdrDownloadResponseUrl(responseUrl, expectedFileName = null) {
     };
     throw error;
   }
-  if (isOfficialPublicBucket && expectedFileName) {
+  if ((isOfficialPublicBucket || isObservedAlsdaBucket) && expectedFileName) {
     const finalName = decodeSafely(url.pathname.split("/").pop() || "");
-    if (finalName !== expectedFileName) {
+    const expectedPath = isObservedAlsdaBucket
+      ? OSDR_ALSDA_HDCVD9_PATH + expectedFileName
+      : null;
+    if (finalName !== expectedFileName ||
+        (isObservedAlsdaBucket && url.pathname !== expectedPath)) {
       const error = new Error(
-        "The NASA OSDR public-bucket redirect did not resolve to the exact catalog filename (host=" +
+        "The OSDR bucket redirect did not resolve to the exact catalog filename and approved object path (host=" +
         url.hostname + ", path=" + url.pathname + ")"
       );
       error.redirect = {
@@ -333,9 +340,20 @@ async function downloadStudyFile(fileRecord, fetchImpl = globalThis.fetch) {
       /^\d+$/.test(contentLength) && Number(contentLength) !== bytes.length) {
     throw new Error("Downloaded byte count mismatch: header=" + contentLength + ", actual=" + bytes.length);
   }
+  const catalogFileSize = Number(fileRecord && fileRecord.file_size);
+  if (Number.isInteger(catalogFileSize) && catalogFileSize >= 0 &&
+      catalogFileSize !== bytes.length) {
+    throw new Error(
+      "Downloaded byte count mismatch with OSDR catalog: declared=" +
+      catalogFileSize + ", actual=" + bytes.length
+    );
+  }
 
   return {
     bytes,
+    catalogFileSizeBytes: Number.isInteger(catalogFileSize) && catalogFileSize >= 0
+      ? catalogFileSize
+      : null,
     downloadUrl,
     finalResponseUrl: finalResponse.origin + finalResponse.pathname,
     finalResponseHost: finalResponse.hostname,

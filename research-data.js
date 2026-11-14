@@ -24,9 +24,9 @@
         { label: "R+194", phase: "Post-flight" }
       ],
       acquisitionAudit: {
-        runNumber: 5,
-        runId: 43600280830,
-        auditedAt: "2026-11-14T13:32:40.977Z",
+        runNumber: 6,
+        runId: 43607599347,
+        auditedAt: "2026-11-14T14:58:14.856Z",
         decision: "INSUFFICIENT_EVIDENCE",
         metadataVerified: true,
         transformedFileReferencedInMetadata: true,
@@ -40,7 +40,7 @@
         catalogLookupForm: "VERSIONED_DOCUMENTED_BARE_ENDPOINT",
         csvDownloaded: false,
         fileSha256: null,
-        note: "Live run #5 found the exact HDCVD9 transformed CSV in the versioned bare /files/575.3 catalog response (9 study files; exact record size 6,207 bytes; restricted=false). The catalog-provided NASA download URL redirected to a host outside the current strict NASA HTTPS allowlist, so the downloader correctly abstained. No CSV bytes, SHA-256, column map, or biomarker measurements were obtained."
+        note: "Live run #6 found the exact HDCVD9 transformed CSV in the versioned bare /files/575.3 catalog response (9 study files; exact record size 6,207 bytes; restricted=false). The NASA download route redirected to the observed ALSDA S3 host and exact object path, which the current allowlist did not yet include. The downloader correctly abstained. No CSV bytes, SHA-256, column map, or biomarker measurements were obtained."
       },
       source: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
     },
@@ -54,7 +54,7 @@
         measures: ["HDCVD9 multiplex assay", "Transformed serum measurements"],
         evidenceStatus: "CATALOG_MATCH_DOWNLOAD_UNVERIFIED",
         statusLabel: "Catalog found · download pending",
-        accessNote: "Live run #5 found the exact HDCVD9 transformed CSV in NASA's versioned bare file catalog, with a catalog-provided remote_url and a 6,207-byte declared size. The run's download redirect was rejected by the then-current host allowlist. PR #17 now allows only the narrowly derived NASA OSDR bucket hostname and exact filename, but a new live run must confirm that the actual redirect matches it; no source bytes, SHA-256, or measurements are available.",
+        accessNote: "Live run #6 found the exact HDCVD9 transformed CSV in NASA's versioned bare file catalog (6,207 bytes; restricted=false). The NASA download route redirected to the observed host genelab-alsda-repo-prod.s3.amazonaws.com and exact object path /alsda-data/LSDS-8/Multiplex/ plus the catalog filename. The run rejected it because that host was not yet allowlisted. PR #22 adds only this exact host/path rule; live byte download, SHA-256, CSV parsing and measurement verification are still pending.",
         role: "Primary spaceflight research source",
         url: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
       },
