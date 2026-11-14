@@ -198,7 +198,7 @@ async function run() {
   }
   const license = findExplicitLicense(metadata);
   const catalog = summarizeFiles(files);
-  const fileDownloads = await downloadAndPinPublicFiles(files);
+  const fileDownloads = catalogError ? [] : await downloadAndPinPublicFiles(files);
   const allExpectedFilesDownloaded = fileDownloads.length === EXPECTED_FILES.length &&
     fileDownloads.every((item) => item.status === "DOWNLOADED_AND_SIZE_VERIFIED");
 
@@ -233,9 +233,9 @@ async function run() {
       ? "DEFER_INTEGRATION_PENDING_LICENSE_REVIEW_AND_ARCHIVE_CONTENT_QA"
       : "FILE_DOWNLOADS_VERIFIED_PENDING_ARCHIVE_CONTENT_AND_SCIENTIFIC_QA",
     limitations: [
-      "This audit does not download or analyze measurement files.",
+      "This stage downloads only the three explicitly named public archives for integrity and structural inspection; it does not export their measurement values into the report.",
       "A public catalog record does not by itself establish scientific suitability or permission to redistribute.",
-      "Do not integrate OSD-53 until exact file contents, schema, sample mapping, license and measurement semantics are independently checked."
+      "Do not integrate OSD-53 until archive integrity, exact file contents, schema, sample mapping, license and measurement semantics are independently checked."
     ],
     captured_response_count: captured.length,
     captured_responses: captured.map((item, index) => ({
