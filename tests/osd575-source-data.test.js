@@ -36,11 +36,12 @@ const sourceFilesAvailable = Promise.all([
   exists(pilotPath)
 ]).then((values) => values.every(Boolean));
 
-test("committed NASA OSD-575 source bytes pass hash, sample-join and normalization verification", async (t) => {
-  if (!await sourceFilesAvailable) {
-    t.skip("The post-mapping live NASA artifact has not yet been imported to this branch.");
-    return;
-  }
+test("committed NASA OSD-575 source bytes pass hash, sample-join and normalization verification", async () => {
+  assert.equal(
+    await sourceFilesAvailable,
+    true,
+    "All seven verified OSD-575 source and audit files must be committed; missing evidence is a failure, not a skipped test."
+  );
 
   const csvBytes = await fs.readFile(csvPath);
   const metadata = JSON.parse(await fs.readFile(metadataPath, "utf8"));

@@ -105,6 +105,6 @@ ChatGPT (OpenAI) was used during the hackathon to help draft and review applicat
 - `data/osdr/OSD-575/` — exact downloaded NASA source CSV, NASA ISA sample map, and post-download audit record (imported only after the live artifact passes strict validation)
 - `scripts/fetch-osd575.js` and `src/core/osd575-pilot.js` — live OSDR acquisition, immutable byte preservation, metadata-backed analysis, and evidence decision
 - `sw.js` and `manifest.webmanifest` — app-shell cache and install metadata
-- `tests/health-engine.test.js`, `tests/osdr-pilot.test.js`, `tests/research-data-loader.test.js`, and `tests/osd575-source-data.test.js` — deterministic logic, acquisition, integrity, mapping, normalization, and imported-source tests (the committed OSD-575 source bundle is checked end-to-end; absence of any required file fails the test rather than silently skipping validation)
+- `tests/health-engine.test.js`, `tests/osdr-pilot.test.js`, `tests/research-data-loader.test.js`, `tests/osd575-source-data.test.js`, and `tests/research-dashboard-integration.test.js` — deterministic logic, acquisition, integrity, mapping, normalization, and an end-to-end test that renders the committed NASA source in Research Mode (missing source files fail closed)
 
 ASTRA is an independent student project created for the NASA Space Apps Challenge. It is not an official NASA product and is not endorsed by NASA.

@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype  
+**Build:** 0.1 prototype · main commit `804faeeb` (validation commit below)  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -25,14 +25,28 @@ Run `npm test` with Node.js 18+.
 - [x] CSV is 28 × 19 with 28 unique sample identifiers and nine concentration/percentage pairs.
 - [x] The downloaded sample names were independently compared with the 28 NASA ISA metadata sample identifiers.
 - [x] The nine percentage columns were independently recalculated against the all-crew pre-flight mean (12 samples); maximum absolute difference is below 5 × 10^-8.
-- [ ] Run the live acquisition workflow again after the metadata-backed analysis changes; require full sample mapping and all nine normalization checks to pass in pilot-report.json.
-- [ ] Verify the artifact importer commits the exact original CSV bytes, isa-sample-map.json, and source-audit.json to the research dashboard branch.
-- [ ] Confirm tests/osd575-source-data.test.js runs (not skips) and passes against the imported source.
-- [ ] Open Research Mode in a real browser; confirm the data status, participant count, sample-join count, normalization status, marker selector, four crew trajectories, and descriptive table are visible.
-- [ ] Select each marker; confirm units and participant trajectories change consistently.
+- [x] Live acquisition run #9 (GitHub Actions run 43612460864) completed with all 28 sample mappings and all nine normalization checks recorded in pilot-report.json.
+- [x] Verified-source import run 43612482985 committed the exact original CSV bytes, isa-sample-map.json, raw NASA API envelopes, and source-audit.json to main.
+- [x] tests/osd575-source-data.test.js passed against the committed source bundle; missing required files now fail the test rather than being skipped.
+- [x] Automated Research Mode integration test loads the committed NASA CSV, ISA map, and audit record, then verifies the 28/28 join, nine analytes, chart/table rendering, and fibrinogen flag.
+- [ ] Open the deployed Research Mode in a real browser; confirm layout, chart readability, keyboard/select behavior, and download link on desktop and mobile. This manual visual check has not been performed by the GitHub Actions test runner.
+- [x] Automated integration test selects CRP and fibrinogen; verifies the unit change and persistent fibrinogen interpretation warning.
+- [ ] Manually select each marker in a real browser; confirm units and participant trajectories change consistently.
 - [ ] Confirm fibrinogen displays a persistent interpretation warning and is not included in biological conclusions.
 - [ ] Download the source CSV from the page; recalculate its SHA-256 and compare with the documented project pin.
 - [ ] Confirm all demo HR/SpO₂/temperature/sleep inputs remain in Demo & Manual Mode and are never presented as NASA OSD-575 measurements.
+
+## Current automated validation evidence — 14 November 2026
+
+- Commit: `804faeeb4136849c4319fe7cacfc7aa3d68ac133`
+- GitHub Actions run: [43613264031](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43613264031)
+- JavaScript syntax checks: passed.
+- Automated test suite at this commit: **58 passed, 0 failed, 0 skipped**.
+- GitHub Pages deployment: successful.
+- NASA live acquisition: [run 43612460864](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
+- Verified source import: [run 43612482985](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612482985).
+
+The integration test added after this commit will raise the suite count by one and must pass before its code is accepted. The team still needs to perform and record the manual real-browser checks below. CI success is not a substitute for that visual QA.
 
 ## Browser functional tests
 
