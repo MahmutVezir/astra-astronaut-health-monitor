@@ -15,6 +15,7 @@ function createWorker(options = {}) {
     opened: [],
     precached: [],
     deleted: [],
+    put: [],
     claimed: 0,
     skippedWaiting: 0
   };
@@ -25,7 +26,9 @@ function createWorker(options = {}) {
     async match(request) {
       return options.cacheMatch ? options.cacheMatch(request) : null;
     },
-    async put() {}
+    async put(request, response) {
+      calls.put.push({ request, response });
+    }
   };
   const caches = {
     async open(name) {
@@ -87,7 +90,7 @@ test("install pre-caches all assets required to reopen NASA Research Mode offlin
   });
   await installPromise;
 
-  assert.equal(worker.calls.opened.includes("astra-shell-v3"), true);
+  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v1"), true);
   assert.equal(worker.calls.skippedWaiting, 1);
   for (const asset of [
     "./index.html",
@@ -100,9 +103,15 @@ test("install pre-caches all assets required to reopen NASA Research Mode offlin
   }
 });
 
-test("activation deletes only previous ASTRA caches and preserves other applications' caches", async () => {
+test("activation deletes only ASTRA caches and preserves unrelated application caches", async () => {
   const worker = createWorker({
-    cacheKeys: ["astra-shell-v1", "other-app-cache", "astra-shell-v2", "unrelated"]
+    cacheKeys: [
+      "astra-shell-v1",
+      "astra-shell-v2",
+      "astra-shell-another-app",
+      "astra-astronaut-health-monitor-shell-v0",
+      "other-app-cache"
+    ]
   });
   let activationPromise;
   worker.handlers.activate({
@@ -112,7 +121,10 @@ test("activation deletes only previous ASTRA caches and preserves other applicat
   });
   await activationPromise;
 
-  assert.deepEqual(worker.calls.deleted, ["astra-shell-v1", "astra-shell-v2"]);
+  assert.deepEqual(worker.calls.deleted, [
+    "astra-shell-v2",
+    "astra-astronaut-health-monitor-shell-v0"
+  ]);
   assert.equal(worker.calls.claimed, 1);
 });
 
@@ -151,6 +163,33 @@ test("offline navigation falls back to the cached app shell; uncached assets ret
   const result = await assetResponse;
   assert.equal(result.status, 503);
   assert.equal(result.statusText, "Offline");
+});
+
+test("successful same-origin responses are stored in the ASTRA cache before returning", async () => {
+  const networkResponse = {
+    ok: true,
+    clone() {
+      return { cachedCopy: true };
+    }
+  };
+  const worker = createWorker({
+    fetch: async () => networkResponse
+  });
+  let response;
+  worker.handlers.fetch({
+    request: {
+      method: "GET",
+      url: "https://example.test/astra/new-resource.json",
+      mode: "same-origin"
+    },
+    respondWith(promise) {
+      response = promise;
+    }
+  });
+
+  assert.equal(await response, networkResponse);
+  assert.equal(worker.calls.put.length, 1);
+  assert.equal(worker.calls.put[0].response.cachedCopy, true);
 });
 
 test("cross-origin and non-GET requests are left to the browser", () => {
