@@ -8,6 +8,7 @@ from pathlib import Path
 from scripts.inspect_osd53_archives import (
     inspect_directory,
     inspect_zip_bytes,
+    inspect_xls_bytes,
     parse_delimited_text,
     safe_member_name,
 )
@@ -74,6 +75,11 @@ class OSD53ArchiveInspectionTests(unittest.TestCase):
         self.assertEqual(report["zip_crc"], "PASS")
         self.assertEqual(report["member_count"], 1)
         self.assertTrue(report["tabular_members"][0]["is_expression_matrix_candidate"])
+
+    def test_rejects_invalid_legacy_xls_input(self):
+        import xlrd
+        with self.assertRaises(xlrd.biffh.XLRDError):
+            inspect_xls_bytes("invalid.xls", b"not an Excel workbook")
 
     def test_rejects_zip_path_traversal(self):
         with self.assertRaisesRegex(ValueError, "Unsafe ZIP member path"):
