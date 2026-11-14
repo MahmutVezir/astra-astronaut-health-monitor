@@ -303,6 +303,7 @@ test("OSDR download accepts the observed ALSDA bucket only for the exact HDCVD9 
   const bytes = Buffer.from("source,sample,timepoint,marker\nC001,S1,L-3,1\n", "utf8");
   const record = {
     file_name: fileName,
+    file_size: Buffer.byteLength("source,sample,timepoint,marker\\nC001,S1,L-3,1\\n", "utf8"),
     remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + fileName
   };
   const result = await downloadStudyFile(record, async () => ({
@@ -313,11 +314,22 @@ test("OSDR download accepts the observed ALSDA bucket only for the exact HDCVD9 
     arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
   }));
   assert.deepEqual(result.bytes, bytes);
+  assert.equal(result.catalogFileSizeBytes, bytes.length);
   assert.equal(result.downloadUrl, "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + fileName);
   assert.equal(result.finalResponseUrl, "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/" + fileName);
   assert.equal(result.finalResponseHost, "genelab-alsda-repo-prod.s3.amazonaws.com");
   assert.equal(result.finalResponsePath, "/alsda-data/LSDS-8/Multiplex/" + fileName);
   assert.equal(result.redirected, true);
+  await assert.rejects(
+    () => downloadStudyFile({ ...record, file_size: bytes.length + 1 }, async () => ({
+      ok: true,
+      status: 200,
+      url: "https://genelab-alsda-repo-prod.s3.amazonaws.com/alsda-data/LSDS-8/Multiplex/" + fileName,
+      headers: { get: () => null },
+      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+    })),
+    /mismatch with OSDR catalog/
+  );
   await assert.rejects(
     () => downloadStudyFile(record, async () => ({
       ok: true,
