@@ -49,6 +49,12 @@ function parseDocumentList(payload) {
   }
   return [];
 }
+function makeFileDownloadUrl(fileKey) {
+  const key = String(fileKey || "").trim();
+  if (!key) throw new Error("NLSP file key must not be blank.");
+  return API_BASE + "/files/" + encodeURIComponent(key) + "/download";
+}
+
 function getRecordId(record) {
   if (!record || typeof record !== "object") return null;
   const value = record.id ?? record._id ?? record.__dirid;
@@ -550,6 +556,99 @@ async function downloadBRSMACTFileInventory(fileRecords) {
   return output;
 }
 
+async function downloadBRSMCFRelatedFiles(relatedDatasets) {
+  const candidates = (Array.isArray(relatedDatasets) ? relatedDatasets : []).flatMap((dataset) =>
+    (Array.isArray(dataset?.children) ? dataset.children : []).map((child) => ({
+      dataset_label: String(dataset?.title || ""),
+      label: String(child?.label || ""),
+      values: child?.values || {}
+    }))
+  ).filter((item) => item.values.key && Number(item.values.file_size) > 0)
+    .slice(0, 20);
+
+  const directory = path.join(OUTPUT_DIR, "downloads", "BRSMCF");
+  await fs.mkdir(directory, { recursive: true });
+  const output = [];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const item = candidates[index];
+    const key = String(item.values.key);
+    const expectedBytes = Number(item.values.file_size);
+    const result = {
+      dataset_label: item.dataset_label,
+      source_file_label: item.label,
+      source_file_key: key,
+      expected_file_size: expectedBytes,
+      source_md5_available: false,
+      downloaded: false,
+      source_size_match: false,
+      source_md5_verified: false
+    };
+    const url = makeFileDownloadUrl(key);
+    result.requested_url = url;
+    try {
+      const response = await fetch(url, {
+        headers: {
+          accept: "application/octet-stream,text/csv,text/plain,*/*",
+          "user-agent": "ASTRA-NLSP-Public-Record-Audit/1.0"
+        },
+        redirect: "follow",
+        signal: AbortSignal.timeout(60000)
+      });
+      const bytes = Buffer.from(await response.arrayBuffer());
+      const finalUrl = new URL(response.url);
+      const finalHostAllowed = finalUrl.protocol === "https:" &&
+        (finalUrl.origin === ORIGIN || finalUrl.hostname.endsWith(".amazonaws.com"));
+      const actualSha256 = sha256(bytes);
+      const actualMd5 = crypto.createHash("md5").update(bytes).digest("hex");
+      result.final_url = response.url;
+      result.final_host = finalUrl.hostname;
+      result.http_status = response.status;
+      result.content_type = response.headers.get("content-type");
+      result.content_disposition = response.headers.get("content-disposition");
+      result.byte_length = bytes.byteLength;
+      result.sha256 = actualSha256;
+      result.md5_computed_not_source_verified = actualMd5;
+      result.final_host_allowed = finalHostAllowed;
+      result.source_size_match = bytes.byteLength === expectedBytes;
+      result.downloaded = response.ok && finalHostAllowed && result.source_size_match;
+      result.status = result.downloaded
+        ? "DOWNLOADED_SOURCE_SIZE_MATCHED_SOURCE_MD5_NOT_SUPPLIED"
+        : "DOWNLOAD_OR_SOURCE_SIZE_CHECK_FAILED";
+      if (result.downloaded) {
+        const safeFilename = String(index + 1).padStart(2, "0") + "-" +
+          path.basename(item.label || "brsmcf-file").replace(/[^A-Za-z0-9._-]/g, "_");
+        const destination = path.join(directory, safeFilename);
+        await fs.writeFile(destination, bytes);
+        result.artifact_path = path.relative(process.cwd(), destination);
+        const contentType = String(result.content_type || "").toLowerCase();
+        const isCsv = /\.csv$/i.test(item.label) || contentType.includes("text/csv");
+        const isText = isCsv || /\.txt$/i.test(item.label) || contentType.startsWith("text/");
+        if (isCsv) {
+          try {
+            const parsed = parseCsvTable(bytes.toString("utf8"));
+            result.csv_inspection = {
+              parse_status: "PASS",
+              row_count: parsed.rows.length,
+              column_count: parsed.headers.length,
+              headers: parsed.headers,
+              first_data_row: parsed.rows[0] || null
+            };
+          } catch (error) {
+            result.csv_inspection = { parse_status: "FAIL", error: error.message };
+          }
+        } else if (isText) {
+          result.text_preview = bytes.toString("utf8").split(/\r\n|\n|\r/).slice(0, 8);
+        }
+      }
+    } catch (error) {
+      result.error = error.message;
+      result.status = "DOWNLOAD_REQUEST_FAILED";
+    }
+    output.push(result);
+  }
+  return output;
+}
+
 async function run() {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   const searchResults = [];
@@ -666,6 +765,19 @@ async function run() {
   const bresmactDownloads = await downloadBRSMACTFileInventory(
     bresmactDetail && Array.isArray(bresmactDetail.related_data_files) ? bresmactDetail.related_data_files : []
   );
+  const brsmcfDetail = detailResults.find((item) => item.query_record.type === "EXPERIMENTS" &&
+    item.query_record.id === "9af6f9ba-3730-54ab-a82a-1a32798667ae");
+  const brsmcfDownloads = await downloadBRSMCFRelatedFiles(
+    brsmcfDetail && Array.isArray(brsmcfDetail.related_datasets) ? brsmcfDetail.related_datasets : []
+  );
+  const brsmcfSizeMatchedFiles = brsmcfDownloads.filter((item) => item.downloaded);
+  const brsmcfDetailMetadata = brsmcfDetail?.record_metadata || {};
+  const brsmcfReuseTermsFields = Object.fromEntries(Object.entries(brsmcfDetailMetadata).filter(([key]) =>
+    /(license|rights|reuse|terms|copyright)/i.test(key)
+  ));
+  const brsmcfReuseTermsStatus = Object.keys(brsmcfReuseTermsFields).length > 0
+    ? "REUSE_TERMS_FIELDS_PRESENT_REQUIRES_REVIEW"
+    : "NO_EXPLICIT_REUSE_TERMS_FIELD_RETURNED";
 
   const successfulSearches = searchResults.filter((item) => item.request.response_ok && item.request.json_valid);
   const returnedRecords = searchResults.flatMap((item) => item.records.map((record) => Object.assign({ query: item.query.term }, record)));
@@ -701,7 +813,9 @@ async function run() {
   let decision = "NO_VERIFIED_MATCHING_RECORD";
   if (successfulSearches.length === 0) decision = "API_SEARCH_UNAVAILABLE_OR_REQUIRES_AUTH";
   else if (primaryBRSMACTFile && reuseTermsStatus === "NO_EXPLICIT_REUSE_TERMS_FIELD_RETURNED") {
-    decision = "BRSMACT_PRIMARY_CSV_HASH_AND_SCHEMA_QA_PASSED_REUSE_TERMS_NOT_EXPLICITLY_RETURNED";
+    decision = brsmcfSizeMatchedFiles.length > 0
+      ? "BRSMACT_PRIMARY_CSV_SCHEMA_QA_PASSED_AND_BRSMCF_FILES_SIZE_MATCHED_REUSE_TERMS_NOT_EXPLICITLY_RETURNED"
+      : "BRSMACT_PRIMARY_CSV_HASH_AND_SCHEMA_QA_PASSED_REUSE_TERMS_NOT_EXPLICITLY_RETURNED";
   } else if (primaryBRSMACTFile) {
     decision = "BRSMACT_PRIMARY_CSV_HASH_AND_SCHEMA_QA_PASSED_REUSE_TERMS_REQUIRE_REVIEW";
   } else if (verifiedMeasurementFiles.length > 0) {
@@ -749,6 +863,13 @@ async function run() {
     file_inventory_downloaded: verifiedBRSMACTFiles.length,
     file_bytes_downloaded: verifiedBRSMACTFiles.reduce((sum, item) => sum + (item.actual_file_size || 0), 0),
     schema_pass_file_count: schemaPassFiles.length,
+    brsmcf_file_count: brsmcfDownloads.length,
+    brsmcf_size_matched_file_count: brsmcfSizeMatchedFiles.length,
+    brsmcf_downloaded_bytes: brsmcfSizeMatchedFiles.reduce((sum, item) => sum + (item.byte_length || 0), 0),
+    brsmcf_source_md5_verified_file_count: 0,
+    brsmcf_download_audit: brsmcfDownloads,
+    brsmcf_reuse_terms_status: brsmcfReuseTermsStatus,
+    brsmcf_reuse_terms_fields: brsmcfReuseTermsFields,
     primary_analysis_candidate: primaryBRSMACTFile ? {
       original_file_name: primaryBRSMACTFile.original_file_name,
       participant_count: primaryBRSMACTFile.schema_analysis.participant_count,
@@ -810,6 +931,13 @@ async function run() {
     file_inventory_downloaded: verifiedBRSMACTFiles.length,
     file_bytes_downloaded: verifiedBRSMACTFiles.reduce((sum, item) => sum + (item.actual_file_size || 0), 0),
     schema_pass_file_count: schemaPassFiles.length,
+    brsmcf_file_count: brsmcfDownloads.length,
+    brsmcf_size_matched_file_count: brsmcfSizeMatchedFiles.length,
+    brsmcf_downloaded_bytes: brsmcfSizeMatchedFiles.reduce((sum, item) => sum + (item.byte_length || 0), 0),
+    brsmcf_source_md5_verified_file_count: 0,
+    brsmcf_download_audit: brsmcfDownloads,
+    brsmcf_reuse_terms_status: brsmcfReuseTermsStatus,
+    brsmcf_reuse_terms_fields: brsmcfReuseTermsFields,
     primary_analysis_candidate: report.primary_analysis_candidate,
     reuse_terms_status: reuseTermsStatus,
     reuse_terms_fields: reuseTermsFields,
@@ -822,4 +950,4 @@ if (require.main === module) {
     process.exitCode = 1;
   });
 }
-module.exports = { makeSearchUrl, makeDetailUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle, parseCsvTable, parseClockDurationMinutes, parseMonthDayYear, summarizeActigraphyCsv };
+module.exports = { makeSearchUrl, makeDetailUrl, makeFileDownloadUrl, parseDocumentList, collectMetadataHints, getRecordId, getRecordTitle, parseCsvTable, parseClockDurationMinutes, parseMonthDayYear, summarizeActigraphyCsv };
