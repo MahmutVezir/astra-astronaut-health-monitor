@@ -499,6 +499,7 @@ module.exports = {
   extractNetworkContexts,
   extractApiContexts,
   extractApiEndpointReferences,
+  extractApiRequestReferences,
   extractAssetReferences,
   resolveSameOriginUrl,
   resolveAssetReference
