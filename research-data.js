@@ -87,10 +87,23 @@
         environment: "Shuttle spaceflight · 4–14-day missions",
         domain: "In-flight cardiovascular monitoring",
         measures: ["Continuous 24-hour ECG / Holter", "Heart rate and rhythm", "Automated blood pressure every 20 min awake / 30 min asleep"],
-        evidenceStatus: "PUBLIC_PROTOCOL_RESTRICTED_MEASUREMENTS",
-        statusLabel: "Timetable public · ECG/BP restricted",
-        accessNote: "NASA\u0027s NLSP record lists one open-access collection-timetable spreadsheet and restricted-access ECG, blood-pressure and related variables. NASA\u0027s EDOMP report describes 12 astronauts; raw measurement data have not been retrieved or approved for ASTRA.",
-        role: "Best-matched in-flight HR/BP candidate · access verification required",
+        evidenceStatus: "HISTORICAL_PROTOCOL_DOCUMENTED_DETAIL_PENDING",
+        statusLabel: "NASA study documented · detail pending",
+        accessNote: "NASA\u0027s EDOMP report documents 12 astronauts and continuous 24-hour Holter ECG with automated BP every 20 minutes while awake and 30 minutes during sleep. The NLSP hardware index lists Blood Pressure Variability During Space Flight as DSO 602, but its experiment-specific data record and file inventory have not yet been located. Do not confuse it with the separate NLSP experiment 3.1.2.",
+        role: "High-priority in-flight HR/BP candidate · exact record required",
+        url: "https://nlsp.nasa.gov/search/data/details/IDP-LSDA_HARDWARE-0000000000000561?dataType=HARDWARE"
+      },
+      {
+        id: "NLSP-3.1.2",
+        name: "Orthostatic intolerance mechanisms · ambulatory monitoring and baroreflex",
+        provider: "NASA Life Sciences Portal (NLSP) / NASA-Mir Program",
+        environment: "STS-71 and Mir 18 · long-duration spaceflight research",
+        domain: "Cardiovascular and pulmonary physiology",
+        measures: ["Continuous 24-hour ECG / Holter", "Heart rate and rhythm", "Automated BP every 20 min awake / 30 min asleep", "Baroreflex and Valsalva measurements"],
+        evidenceStatus: "OPEN_TIMETABLE_RESTRICTED_PHYSIOLOGY_VARIABLES",
+        statusLabel: "One timetable public · ECG/BP restricted",
+        accessNote: "This is experiment 3.1.2, not DSO 602. Its NLSP record lists one open-access data-collection timetable and seven restricted-access variable groups, including blood pressure and ECG. The record describes continuous Holter ECG and automated BP sampling; no raw physiological values have been retrieved for ASTRA.",
+        role: "Public protocol/timetable audit · measurements require authorized access",
         url: "https://nlsp.nasa.gov/search/data/details/f8e3f755-5caa-522c-b628-7153cfe446f5?dataType=EXPERIMENTS"
       },
       {
