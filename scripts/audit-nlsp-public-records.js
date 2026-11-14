@@ -281,6 +281,114 @@ async function requestAndPreserve(url, outputName) {
     return { result, payload: null };
   }
 }
+async function downloadBRSMACTFileInventory(fileRecords) {
+  const output = [];
+  const downloadDir = path.join(OUTPUT_DIR, "downloads");
+  await fs.mkdir(downloadDir, { recursive: true });
+  for (const fileRecord of fileRecords) {
+    const values = fileRecord && fileRecord.values ? fileRecord.values : {};
+    const originalName = String(values.__original_file_name || values.file_name || "").trim();
+    const expectedMd5 = String(values.__file_md5sum || "").trim().toLowerCase();
+    const expectedBytes = Number(values.file_size);
+    const identifiers = [
+      ["id", values.id],
+      ["__dirid", values.__dirid],
+      ["guid_id", values.guid_id],
+      ["__s3_file_guid", values.__s3_file_guid]
+    ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== "");
+    const uniqueIdentifiers = [];
+    const seenIdentifiers = new Set();
+    for (const [field, value] of identifiers) {
+      const normalized = String(value).trim();
+      if (!seenIdentifiers.has(normalized)) {
+        seenIdentifiers.add(normalized);
+        uniqueIdentifiers.push({ field, value: normalized });
+      }
+    }
+    const result = {
+      original_file_name: originalName,
+      expected_file_size: Number.isFinite(expectedBytes) ? expectedBytes : null,
+      expected_md5: expectedMd5,
+      candidate_identifiers: uniqueIdentifiers,
+      attempts: [],
+      verified: false,
+      measurement_file_downloaded: false
+    };
+    if (!originalName || !/^[a-f0-9]{32}$/.test(expectedMd5) || !Number.isFinite(expectedBytes) || expectedBytes <= 0) {
+      result.error = "SOURCE_FILE_RECORD_MISSING_FILENAME_SIZE_OR_VALID_MD5";
+      output.push(result);
+      continue;
+    }
+    for (const candidate of uniqueIdentifiers) {
+      const url = API_BASE + "/files/" + encodeURIComponent(candidate.value) + "/download";
+      const attempt = {
+        identifier_field: candidate.field,
+        requested_url: url
+      };
+      try {
+        const response = await fetch(url, {
+          headers: {
+            accept: "application/octet-stream,text/csv,text/plain,*/*",
+            "user-agent": "ASTRA-NLSP-Public-Record-Audit/1.0"
+          },
+          redirect: "follow",
+          signal: AbortSignal.timeout(60000)
+        });
+        const bytes = Buffer.from(await response.arrayBuffer());
+        const finalUrl = new URL(response.url);
+        const finalHostAllowed = finalUrl.protocol === "https:" &&
+          (finalUrl.origin === ORIGIN || finalUrl.hostname.endsWith(".amazonaws.com"));
+        const actualMd5 = crypto.createHash("md5").update(bytes).digest("hex");
+        const actualSha256 = sha256(bytes);
+        attempt.final_url = response.url;
+        attempt.final_host = finalUrl.hostname;
+        attempt.http_status = response.status;
+        attempt.content_type = response.headers.get("content-type");
+        attempt.content_disposition = response.headers.get("content-disposition");
+        attempt.byte_length = bytes.byteLength;
+        attempt.md5 = actualMd5;
+        attempt.sha256 = actualSha256;
+        attempt.final_host_allowed = finalHostAllowed;
+        attempt.expected_size_match = bytes.byteLength === expectedBytes;
+        attempt.expected_md5_match = actualMd5 === expectedMd5;
+        attempt.verified = response.ok && finalHostAllowed &&
+          attempt.expected_size_match && attempt.expected_md5_match;
+        if (attempt.verified) {
+          const safeFilename = path.basename(originalName).replace(/[^A-Za-z0-9._-]/g, "_");
+          const destination = path.join(downloadDir, safeFilename);
+          await fs.writeFile(destination, bytes);
+          attempt.artifact_path = path.relative(process.cwd(), destination);
+          result.verified = true;
+          result.measurement_file_downloaded = /\.(csv|tsv|txt)$/i.test(originalName);
+          result.actual_file_size = bytes.byteLength;
+          result.actual_md5 = actualMd5;
+          result.actual_sha256 = actualSha256;
+          result.content_type = attempt.content_type;
+          result.artifact_path = attempt.artifact_path;
+          if (/\.csv$/i.test(originalName) || /\.txt$/i.test(originalName)) {
+            const text = bytes.toString("utf8").replace(/^\uFEFF/, "");
+            const lines = text.split(/\r\n|\n|\r/).filter((line) => line.length > 0);
+            result.text_inspection = {
+              utf8_decodable: true,
+              line_count: lines.length,
+              first_line: lines[0] ? lines[0].slice(0, 2000) : "",
+              first_data_line: lines[1] ? lines[1].slice(0, 1000) : ""
+            };
+          }
+          result.attempts.push(attempt);
+          break;
+        }
+      } catch (error) {
+        attempt.error = error.message;
+      }
+      result.attempts.push(attempt);
+    }
+    if (!result.verified) result.error = "NO_RETURNED_FILE_IDENTIFIER_PASSED_SOURCE_SIZE_AND_MD5_CHECKS";
+    output.push(result);
+  }
+  return output;
+}
+
 async function run() {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   const searchResults = [];
@@ -386,6 +494,12 @@ async function run() {
     }
   }
 
+  const bresmactDetail = detailResults.find((item) => item.query_record.type === "DATASETS" &&
+    item.query_record.id === "e26501eb-7d7a-5012-8c8e-c5bdb3eecaf6");
+  const bresmactDownloads = await downloadBRSMACTFileInventory(
+    bresmactDetail && Array.isArray(bresmactDetail.related_data_files) ? bresmactDetail.related_data_files : []
+  );
+
   const successfulSearches = searchResults.filter((item) => item.request.response_ok && item.request.json_valid);
   const returnedRecords = searchResults.flatMap((item) => item.records.map((record) => Object.assign({ query: item.query.term }, record)));
   const detailHints = detailResults.flatMap((item) => item.file_access_hints || []);
@@ -393,8 +507,11 @@ async function run() {
     /(file|download|remote.?url|attachment)/i.test(item.key) &&
     (item.value_type === "URL_STRING" || item.value_type === "FILENAME_LIKE_STRING")
   );
+  const verifiedBRSMACTFiles = bresmactDownloads.filter((item) => item.verified);
+  const verifiedMeasurementFiles = verifiedBRSMACTFiles.filter((item) => item.measurement_file_downloaded);
   let decision = "NO_VERIFIED_MATCHING_RECORD";
   if (successfulSearches.length === 0) decision = "API_SEARCH_UNAVAILABLE_OR_REQUIRES_AUTH";
+  else if (verifiedMeasurementFiles.length > 0) decision = "BRSMACT_MEASUREMENT_FILES_DOWNLOADED_AND_HASH_VERIFIED_REQUIRES_SCHEMA_AND_TERMS_QA";
   else if (returnedRecords.length > 0 && hasExplicitFileEvidence) decision = "RECORDS_AND_FILE_METADATA_FOUND_REQUIRES_FILE_LEVEL_QA";
   else if (returnedRecords.length > 0) decision = "RECORDS_FOUND_FILE_INVENTORY_REVIEW_REQUIRED";
   else decision = "API_SEARCH_RETURNED_NO_MATCHING_RECORDS";
@@ -458,6 +575,9 @@ async function run() {
     dataset_file_explorer_api_path_literals: datasetFileExplorer.apiPathLiterals || [],
     dataset_file_explorer_key_assignments: datasetFileExplorer.keyAssignments || [],
     dataset_file_explorer_api_client: datasetFileExplorer.apiClient || null,
+    bresmact_file_download_audit: bresmactDownloads,
+    measurement_files_downloaded: verifiedMeasurementFiles.length,
+    file_bytes_downloaded: verifiedBRSMACTFiles.reduce((sum, item) => sum + (item.actual_file_size || 0), 0),
     detail_records: detailResults.map((item) => ({
       query_record: item.query_record,
       http_status: item.request.http_status ?? null,
