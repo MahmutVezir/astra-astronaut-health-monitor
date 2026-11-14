@@ -62,6 +62,16 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
 
     sample_ids = []
     source_ids = []
+    metadata_indices = {
+        name: index for index, name in enumerate(headers)
+        if re.search(
+            r"(sample name|sample id|geo accession|organism|spaceflight|factor value\\[time\\]|study subject)",
+            name,
+            re.I,
+        )
+    }
+    metadata_preview = []
+    row_key_preview = []
     row_count = 0
     malformed_rows = 0
     numeric_cells = 0
@@ -96,6 +106,13 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
             value = row[source_index].strip()
             if value:
                 source_ids.append(value)
+        if row_count <= 10:
+            metadata_preview.append({
+                name: row[index].strip()
+                for name, index in metadata_indices.items()
+                if index < len(row) and row[index].strip()
+            })
+            row_key_preview.append([value.strip() for value in row[:2]])
         if row_count <= 20:
             for value in row[1:]:
                 candidate_numeric_cells += 1
@@ -120,6 +137,9 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         "row_count": row_count,
         "column_count": len(headers),
         "headers": headers[:80],
+        "header_preview_lines": lines[header_index:header_index + 2],
+        "metadata_preview": metadata_preview,
+        "row_key_preview_first_10": row_key_preview,
         "malformed_row_count": malformed_rows,
         "sample_id_field_values": sorted(set(sample_ids))[:500],
         "source_id_field_values": sorted(set(source_ids))[:500],
