@@ -59,6 +59,21 @@ test("extracts application data-service strings and request contexts for review"
   assert.ok(contexts.some((item) => /fetch\(/.test(item.snippet)));
 });
 
+test("recursive asset discovery considers shared lookup and query hook modules", () => {
+  const paths = [
+    "https://nlsp.nasa.gov/assets/SearchDataPage.js",
+    "https://nlsp.nasa.gov/assets/lookupHooks.js",
+    "https://nlsp.nasa.gov/assets/useQuery.js",
+    "https://nlsp.nasa.gov/assets/vendor.js"
+  ];
+  const selected = paths.filter((url) =>
+    /SearchDataPage|ResearchDetailsPage|DatasetFileExplorer|ExplorePage|ExploreContainer|FilterSection|DataRequest|lookupHooks|useQuery|useMutation|RecordDetail|RelatedData|index-/i.test(url)
+  );
+  assert.ok(selected.some((url) => url.includes("lookupHooks")));
+  assert.ok(selected.some((url) => url.includes("useQuery")));
+  assert.equal(selected.some((url) => url.endsWith("vendor.js")), false);
+});
+
 test("resolves first-party relative modules against their parent JavaScript bundle", () => {
   assert.equal(
     resolveAssetReference("./SearchApi.js", "https://nlsp.nasa.gov/assets/SearchDataPage.js", "https://nlsp.nasa.gov/explore"),

@@ -369,7 +369,7 @@ async function run() {
   }));
   const allAssetResults = [...assetResults, ...nestedAssetResults];
   const recursiveParents = nestedAssetResults.filter((asset) =>
-    /SearchDataPage|ResearchDetailsPage|DatasetFileExplorer|ExplorePage|ExploreContainer|FilterSection|DataRequest/i.test(asset.url || "")
+    /SearchDataPage|ResearchDetailsPage|DatasetFileExplorer|ExplorePage|ExploreContainer|FilterSection|DataRequest|lookupHooks|useQuery|useMutation|RecordDetail|RelatedData|index-/i.test(asset.url || "")
   );
   const tertiaryAssetUrls = [...new Set(recursiveParents.flatMap((parent) =>
     (parent.asset_references || [])
@@ -386,7 +386,7 @@ async function run() {
       };
       return score(left) - score(right) || left.localeCompare(right);
     })
-    .slice(0, 35);
+    .slice(0, 65);
   const tertiaryAssetResults = await Promise.all(tertiaryAssetUrls.map(async (url, indexNumber) => {
     try {
       const result = await fetchBytes(url, MAX_SCRIPT_BYTES);
@@ -449,6 +449,7 @@ async function run() {
     nested_app_bundles_inspected: nestedAssetResults.filter((asset) => asset.http_status === 200 && !asset.error).length,
     second_level_app_bundles_found: tertiaryAssetUrls.length,
     second_level_app_bundles_inspected: tertiaryAssetResults.filter((asset) => asset.http_status === 200 && !asset.error).length,
+    second_level_parent_modules_inspected: recursiveParents.length,
     candidate_links: candidateLinks,
     index_evidence_snippets: indexSnippets,
     script_evidence_snippets: scriptSnippets,
