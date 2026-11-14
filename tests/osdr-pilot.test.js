@@ -867,6 +867,7 @@ test("when the exact transformed CSV has a real catalog remote_url, the fetch au
     }
   }
   const bytes = Buffer.from(rows.join("\n") + "\n", "utf8");
+  fileRecord.file_size = bytes.length;
   const expectedDigest = sha256(bytes);
 
   try {
@@ -965,7 +966,6 @@ test("end-to-end audit uses the documented unversioned catalog fallback and anal
   const fileRecord = {
     file_name: fileName,
     remote_url: "/geode-py/ws/studies/OSD-575/download?source=datamanager&file=" + encodeURIComponent(fileName),
-    file_size: 256,
     category: "Transformed Data",
     restricted: false
   };
