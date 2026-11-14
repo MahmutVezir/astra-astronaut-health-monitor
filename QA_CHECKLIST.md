@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype · main commit `d7668e188bc49431fdf240d354deacc9a2cea3b4`  
+**Build:** 0.1 prototype · main commit `a492284096a3e687d67047972b94182748089bcc`  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -51,12 +51,13 @@ Run `npm test` with Node.js 18+.
 
 ## Current automated validation evidence — 14 November 2026
 
-- Main commit: `d7668e188bc49431fdf240d354deacc9a2cea3b4`.
-- GitHub Actions validation + deployment: [run 43630833614](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43630833614).
+- Main commit: `a492284096a3e687d67047972b94182748089bcc`.
+- GitHub Actions validation + deployment: [run 43632725370](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43632725370).
 - JavaScript syntax checks: passed.
-- Automated test suite: **98 passed, 0 failed, 0 skipped**.
+- Automated test suite: **99 passed, 0 failed, 0 skipped**.
 - Research Mode integration: passed against the committed NASA OSD-575 files; source SHA-256, 28/28 sample mapping, nine-analyte normalization, participant charts/table, and fibrinogen warning were verified.
-- Service Worker tests: passed for initial Research Mode precaching, offline navigation fallback, same-origin cache writes, cache-version cleanup limited to ASTRA, and request pass-through.
+- Service Worker tests: passed for initial Research Mode precaching (including the app icon), offline navigation fallback, same-origin cache writes, cache-version cleanup limited to ASTRA, and request pass-through.
+- PWA static checks: passed for manifest identity, standalone display, declared 192×192 and 512×512 SVG icon entries, and local icon-file existence.
 - GitHub Pages deployment: successful for this main commit.
 - NLSP DSO-470 discovery: [run 43615678402](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678402) succeeded; discovery artifact preserved; zero measurement files downloaded.
 - Initial NASA OSD-575 acquisition: [run #9 (43612460864)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
@@ -86,6 +87,7 @@ The team still needs to perform and record the manual real-browser checks below.
 | QA-14 | NASA source panel | Open Sources & limits | OSD-575 details and NASA source links are visible | Not yet recorded |
 | QA-15 | Mobile layout | Test a narrow viewport | Tabs remain usable, cards stack, and page has no horizontal overflow | Not yet recorded |
 | QA-16 | Offline shell | Load once online, then disable network and reload on localhost/HTTPS | App shell is served from cache; external links are unavailable offline | Not yet recorded |
+| QA-18 | PWA installation | Open the deployed app in the target Chromium browser and inspect its install UI; install only on a test device | Browser recognizes the manifest and shows ASTRA icon/name; app opens in standalone mode | Not yet recorded |
 
 ## Defect report template
 
