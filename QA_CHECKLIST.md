@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype · main commit `eab2fe78` (validation commit below)  
+**Build:** 0.1 prototype · main commit `0e47ee5a` (validation commit below)  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -50,11 +50,12 @@ Run `npm test` with Node.js 18+.
 
 ## Current automated validation evidence — 14 November 2026
 
-- Commit: `eab2fe786f92609027e5986aeea8312f4cac1e30`
-- GitHub Actions run: [43615678290](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678290)
+- Commit: `0e47ee5acaebbcaf0fbf2b3d3c74a841a6b5fa59`
+- GitHub Actions run: [43616190629](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43616190629)
 - JavaScript syntax checks: passed.
 - Automated test suite: **72 passed, 0 failed, 0 skipped**.
 - End-to-end Research Mode integration: passed against the committed NASA OSD-575 files; source hash, 28/28 sample mapping, nine-analyte normalization, participant charts/table, and fibrinogen flag behavior were verified.
+- DSO-470 UI source card test: passed with the updated audit status; it does not present unverified files as integrated.
 - GitHub Pages deployment: successful.
 - NLSP DSO-470 discovery: [run 43615678402](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678402) succeeded; discovery artifact preserved; zero measurement files downloaded.
 - NASA live acquisition: [run 43612460864](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
