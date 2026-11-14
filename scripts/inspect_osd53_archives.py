@@ -44,6 +44,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
     header_index = None
     headers = None
 
+    group_headers = None
     for index, line in enumerate(lines[:1000]):
         stripped = line.strip()
         if not stripped or stripped.startswith(("!", "#")):
@@ -55,6 +56,18 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         if len(fields) >= 2:
             header_index = index
             headers = [field.strip().lstrip("\ufeff") for field in fields]
+            if index + 1 < len(lines):
+                try:
+                    next_fields = next(csv.reader([lines[index + 1]], delimiter=delimiter))
+                except csv.Error:
+                    next_fields = []
+                normalized_next = [field.strip() for field in next_fields]
+                if normalized_next and normalized_next[0].upper() == "ID_REF" and any(
+                    value.upper() in {"PREFLIGHT", "POSTFLIGHT"} for value in normalized_next
+                ):
+                    group_headers = headers
+                    headers = normalized_next
+                    header_index = index + 1
             break
 
     if header_index is None or headers is None:
@@ -65,7 +78,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
     metadata_indices = {
         name: index for index, name in enumerate(headers)
         if re.search(
-            r"(sample name|sample id|geo accession|organism|spaceflight|factor value\[time\]|study subject)",
+            r"(sample name|sample id|geo accession|organism|spaceflight|factor value\[time\]|study subject|sample description|sample title|sample source name)",
             name,
             re.I,
         )
@@ -90,6 +103,13 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         name for name in headers[1:]
         if re.match(r"^(GSM\d+|C\d{3}|S\d+)", name, re.I)
     ]
+    combined_headers = []
+    for index, header in enumerate(headers):
+        group = group_headers[index].strip() if group_headers and index < len(group_headers) else ""
+        if group and header:
+            combined_headers.append(group + " | " + header)
+        else:
+            combined_headers.append(header or "unnamed_column_" + str(index + 1))
 
     reader = csv.reader(lines[header_index + 1:], delimiter=delimiter)
     for row in reader:
@@ -129,6 +149,12 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         and len(headers) >= 3
         and (len(matrix_sample_columns) >= 2 or len(geo_accessions) >= 2)
     )
+    is_differential_expression_results = (
+        normalized_first == "id_ref"
+        and group_headers is not None
+        and any("log2 ratio" in name.lower() for name in headers)
+        and any("p-value" in name.lower() for name in headers)
+    )
 
     return {
         "member": member_name,
@@ -136,7 +162,8 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
         "header_row_1based": header_index + 1,
         "row_count": row_count,
         "column_count": len(headers),
-        "headers": headers[:80],
+        "headers": combined_headers[:80],
+        "group_headers": group_headers[:80] if group_headers else None,
         "header_preview_lines": lines[header_index:header_index + 2],
         "metadata_preview": metadata_preview,
         "row_key_preview_first_10": row_key_preview,
@@ -151,6 +178,7 @@ def parse_delimited_text(member_name: str, raw: bytes) -> dict | None:
             numeric_cells / candidate_numeric_cells if candidate_numeric_cells else None
         ),
         "is_expression_matrix_candidate": is_expression_matrix,
+        "is_differential_expression_results_candidate": is_differential_expression_results,
         "parse_status": "RECTANGULAR" if malformed_rows == 0 else "RAGGED_ROWS_FOUND",
     }
 
