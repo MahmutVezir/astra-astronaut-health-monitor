@@ -540,3 +540,207 @@ test("catalog pagination uses total_hits when page_total is omitted", async () =
   assert.equal(urls.length, 2);
   assert.ok(urls[1].includes("page=1"));
 });
+
+
+function makeOsd575MetadataPayload(fileName = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv") {
+  const assayKey = "a_OSD-575_immunoassay_multiplex_Eve Technologies Panel HDCVD9-txt";
+  return {
+    study: {
+      "OSD-575": {
+        version: 3,
+        studies: [{
+          identifier: "OSD-575",
+          title: "SpaceX Inspiration4 Blood Serum Metabolic Panel and Immune/Cardiac Cytokine Arrays",
+          assays: [{
+            filename: assayKey.replace(/-txt$/, ".txt"),
+            dataFiles: [{ name: "Not Available", type: "Raw Data File" }],
+            processSequence: [
+              {},
+              {},
+              { parameterValues: [{ value: "LSDS-8_Multiplex_serum.cardiovascular.EvePanel_SUBMITTED.csv" }, { value: fileName }] }
+            ]
+          }]
+        }],
+        additionalInformation: {
+          samples: {
+            "s_OSD-575-txt": {
+              header: [
+                { title: "Source Name", field: "source" },
+                { title: "Sample Name", field: "sample" },
+                { title: "Factor Value: Time", field: "time" }
+              ],
+              raw: [{ source: "C001", sample: "C001_serum_L-3", time: "Launch minus 3" }]
+            }
+          },
+          assays: {
+            [assayKey]: {
+              header: [
+                { title: "Raw Data File", field: "rawFile" },
+                { title: "Protocol REF", field: "protocolA" },
+                { title: "Protocol REF", field: "protocolB" },
+                { title: "Parameter Value: Transformed Files", field: "transformedFile" }
+              ],
+              raw: [{
+                rawFile: "Not Available",
+                protocolA: "Sample Preparation",
+                protocolB: "ALSDA Transformed Data",
+                transformedFile: fileName
+              }]
+            }
+          }
+        }
+      }
+    }
+  };
+}
+
+function fakeJsonResponse(url, body) {
+  return {
+    ok: true,
+    status: 200,
+    url,
+    text: async () => JSON.stringify(body)
+  };
+}
+
+test("OSD-575 metadata filename references are extracted from the observed meta/575 ISA fields, without inventing URLs", () => {
+  const { extractMetadataFileReferences } = require("../scripts/fetch-osd575.js");
+  const references = extractMetadataFileReferences(makeOsd575MetadataPayload());
+
+  assert.equal(references.file_name, "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv");
+  assert.equal(references.occurrences.length, 2);
+  assert.ok(references.occurrences.some((item) =>
+    item.source_path.includes("additionalInformation.assays") &&
+    item.source_path.endsWith(".raw[0].transformedFile")
+  ));
+  assert.ok(references.occurrences.some((item) =>
+    item.source_path.includes(".studies[0].assays[0].processSequence[2].parameterValues[1].value")
+  ));
+  assert.deepEqual(references.download_urls, []);
+});
+
+test("empty files/575.3 response writes raw JSON and an INSUFFICIENT_EVIDENCE artifact instead of throwing", async () => {
+  const fs = require("node:fs/promises");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { main } = require("../scripts/fetch-osd575.js");
+  const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "osd575-empty-catalog-"));
+  const metadata = makeOsd575MetadataPayload();
+  const catalog = {
+    hits: 0,
+    input: "575.3",
+    page_number: 0,
+    page_size: 25,
+    page_total: 1,
+    studies: {},
+    success: true,
+    total_hits: 1,
+    valid_input: ["575"]
+  };
+  const fetchCalls = [];
+
+  try {
+    const result = await main({
+      outputDir,
+      logger: { log() {}, warn() {}, error() {} },
+      fetchImpl: async (url) => {
+        fetchCalls.push(String(url));
+        if (String(url).includes("/meta/575")) return fakeJsonResponse(String(url), metadata);
+        if (String(url).includes("/files/575.3/")) return fakeJsonResponse(String(url), catalog);
+        throw new Error("Unexpected network request: " + url);
+      }
+    });
+
+    assert.equal(result.decision, "INSUFFICIENT_EVIDENCE");
+    assert.equal(result.manifest.file_sha256, null);
+    assert.equal(result.manifest.file_download_url, null);
+    assert.equal(result.manifest.file_catalog_record_found, false);
+    assert.equal(result.pilotReport.trace_contract.decision, "INSUFFICIENT_EVIDENCE");
+    assert.equal(
+      result.pilotReport.trace_contract.decision_reasons[0].code,
+      "METADATA_FILE_REFERENCE_WITHOUT_CATALOG_DOWNLOAD_RECORD"
+    );
+    assert.ok(fetchCalls.some((url) => url.includes("/meta/575")));
+    assert.ok(fetchCalls.some((url) => url.includes("/files/575.3/")));
+
+    const metadataArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "metadata-response.json"), "utf8"));
+    const catalogArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "file-catalog-response.json"), "utf8"));
+    const reportArtifact = JSON.parse(await fs.readFile(path.join(outputDir, "pilot-report.json"), "utf8"));
+    assert.ok(metadataArtifact[0].raw_response_text.includes("LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv"));
+    assert.deepEqual(catalogArtifact[0].body.studies, {});
+    assert.equal(catalogArtifact[0].body.total_hits, 1);
+    assert.equal(reportArtifact.trace_contract.decision, "INSUFFICIENT_EVIDENCE");
+    assert.equal(reportArtifact.file_sha256, null);
+    await assert.rejects(fs.access(path.join(outputDir, "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv")));
+  } finally {
+    await fs.rm(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("when the exact transformed CSV has a real catalog remote_url, the fetch audit hashes bytes and runs the OSD-575 pilot", async () => {
+  const fs = require("node:fs/promises");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { main } = require("../scripts/fetch-osd575.js");
+  const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "osd575-download-success-"));
+  const metadata = makeOsd575MetadataPayload();
+  const fileName = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
+  const fileRecord = {
+    file_name: fileName,
+    remote_url: "/osd/data/osd/download/" + encodeURIComponent(fileName)
+  };
+  const catalog = {
+    hits: 1,
+    input: "575.3",
+    page_number: 0,
+    page_size: 25,
+    page_total: 1,
+    studies: { "OSD-575.3": { study_files: [fileRecord] } },
+    success: true,
+    total_hits: 1,
+    valid_input: ["575"]
+  };
+  const timepoints = ["L-92", "L-44", "L-3", "R+1", "R+45", "R+82", "R+194"];
+  const rows = ["Source Name,Sample Name,Factor Value: Time,IL-6"];
+  for (let participant = 1; participant <= 4; participant += 1) {
+    for (const timepoint of timepoints) {
+      rows.push("C00" + participant + ",C00" + participant + "_serum_" + timepoint + "," + timepoint + "," + (participant * 10));
+    }
+  }
+  const bytes = Buffer.from(rows.join("\n") + "\n", "utf8");
+  const expectedDigest = sha256(bytes);
+
+  try {
+    const result = await main({
+      outputDir,
+      logger: { log() {}, warn() {}, error() {} },
+      fetchImpl: async (url) => {
+        const address = String(url);
+        if (address.includes("/meta/575")) return fakeJsonResponse(address, metadata);
+        if (address.includes("/files/575.3/")) return fakeJsonResponse(address, catalog);
+        if (address.includes("/osd/data/osd/download/")) {
+          return {
+            ok: true,
+            status: 200,
+            url: address,
+            headers: {
+              get: (name) => name.toLowerCase() === "content-length" ? String(bytes.length) : "text/csv"
+            },
+            arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+          };
+        }
+        throw new Error("Unexpected network request: " + address);
+      }
+    });
+
+    assert.equal(result.manifest.file_sha256, expectedDigest);
+    assert.equal(result.manifest.raw_bytes_preserved, true);
+    assert.equal(result.pilotReport.file_sha256, expectedDigest);
+    assert.ok(result.pilotReport.trace_contract);
+    assert.equal(result.pilotReport.trace_contract.file_sha256, expectedDigest);
+    const savedBytes = await fs.readFile(path.join(outputDir, fileName));
+    assert.equal(sha256(savedBytes), expectedDigest);
+  } finally {
+    await fs.rm(outputDir, { recursive: true, force: true });
+  }
+});
