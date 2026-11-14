@@ -178,4 +178,4 @@ jobs:
             exit 0
           fi
           git commit -m "Import verified NASA OSD-575 HDCVD9 source data"
-          git push origin HEAD:feat/osd575-research-data-dashboard
+          git push origin HEAD:feat/osd575-research-mode-dashboard
