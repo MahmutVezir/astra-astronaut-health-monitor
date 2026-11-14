@@ -43,13 +43,14 @@ class OSD53ArchiveInspectionTests(unittest.TestCase):
             "samples.tsv",
             (
                 "Sample Name\tCharacteristics[Organism]\tFactor Value[Spaceflight]\t"
-                "Factor Value[Time]\tCharacteristics[Study Subject]\n"
-                "GSM100\tHomo sapiens\tSpace Flight\tL-30\tAstronaut A\n"
+                "Factor Value[Time]\tCharacteristics[Study Subject]\tArray Design REF\n"
+                "GSM100\tHomo sapiens\tSpace Flight\tL-30\tAstronaut A\tGPLTEST\n"
             ).encode("utf-8"),
         )
         self.assertEqual(report["metadata_preview"][0]["Sample Name"], "GSM100")
         self.assertEqual(report["metadata_preview"][0]["Factor Value[Time]"], "L-30")
         self.assertEqual(report["metadata_preview"][0]["Characteristics[Study Subject]"], "Astronaut A")
+        self.assertEqual(report["metadata_preview"][0]["Array Design REF"], "GPLTEST")
 
     def test_detects_three_row_differential_expression_headers(self):
         raw = (
