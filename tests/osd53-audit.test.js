@@ -6,7 +6,10 @@ const {
   getStudyRecord,
   isNumericVersion,
   findExplicitLicense,
-  summarizeFiles
+  summarizeFiles,
+  selectExactPublicFile,
+  EXPECTED_FILES,
+  MAX_ARCHIVE_BYTES
 } = require("../scripts/audit-osd53.js");
 
 test("requires the exact OSD-53 identifier in NASA metadata", () => {
@@ -43,4 +46,26 @@ test("summarizes public, restricted and unknown file access separately", () => {
   assert.equal(result.restricted_count, 1);
   assert.equal(result.unknown_access_count, 1);
   assert.equal(result.files[2].file_size_bytes, null);
+});
+
+test("expected OSD-53 archive names are unique", () => {
+  assert.equal(new Set(EXPECTED_FILES).size, EXPECTED_FILES.length);
+  assert.equal(EXPECTED_FILES.length, 3);
+});
+
+test("selects only one exact catalog filename explicitly marked public", () => {
+  const expected = EXPECTED_FILES[0];
+  const record = { file_name: expected, restricted: false, file_size: 100, remote_url: "https://osdr.nasa.gov/download" };
+  assert.equal(selectExactPublicFile([record], expected), record);
+  assert.throws(() => selectExactPublicFile([], expected), /found 0/);
+  assert.throws(() => selectExactPublicFile([record, { ...record }], expected), /found 2/);
+});
+
+test("refuses restricted, unknown, oversized and URL-less OSD-53 files", () => {
+  const expected = EXPECTED_FILES[0];
+  const base = { file_name: expected, restricted: false, file_size: 100, remote_url: "https://osdr.nasa.gov/download" };
+  assert.throws(() => selectExactPublicFile([{ ...base, restricted: true }], expected), /not explicitly mark it unrestricted/);
+  assert.throws(() => selectExactPublicFile([{ ...base, restricted: null }], expected), /not explicitly mark it unrestricted/);
+  assert.throws(() => selectExactPublicFile([{ ...base, file_size: MAX_ARCHIVE_BYTES + 1 }], expected), /exceeds the 25 MiB audit limit/);
+  assert.throws(() => selectExactPublicFile([{ ...base, remote_url: null }], expected), /no remote URL/);
 });
