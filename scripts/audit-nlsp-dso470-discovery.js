@@ -96,6 +96,46 @@ function resolveSameOriginUrl(candidate, baseUrl) {
   }
 }
 
+function extractCodeReferences(source, limit = 120) {
+  const pattern = /["'\x60]([^"'\x60\r\n]{1,240})["'\x60]/g;
+  const references = [];
+  for (const match of String(source).matchAll(pattern)) {
+    const value = match[1].trim();
+    if (/^(?:https?:\/\/|\/)/i.test(value) ||
+        /api|search|experiment|dataset|download|file|study|nlsp|graphql/i.test(value)) {
+      references.push(value);
+    }
+  }
+  return [...new Set(references)].slice(0, limit);
+}
+
+function extractNetworkContexts(source, limit = 30) {
+  const patterns = [
+    /workspace-dev\.insight\.nasa\.gov/gi,
+    /nlsp-comm\.dev\.ndc\.nasa\.gov/gi,
+    /\bfetch\s*\(/gi,
+    /\baxios\b/gi,
+    /graphql/gi,
+    /sourceMappingURL/gi
+  ];
+  const contexts = [];
+  const seen = new Set();
+  for (const pattern of patterns) {
+    for (const match of String(source).matchAll(pattern)) {
+      const start = Math.max(0, match.index - 240);
+      const end = Math.min(String(source).length, match.index + match[0].length + 320);
+      const snippet = String(source).slice(start, end);
+      const key = snippet.slice(0, 180);
+      if (!seen.has(key)) {
+        seen.add(key);
+        contexts.push({ term: match[0], snippet });
+      }
+      if (contexts.length >= limit) return contexts;
+    }
+  }
+  return contexts;
+}
+
 async function fetchBytes(url, maxBytes) {
   const response = await fetch(url, {
     headers: {
@@ -163,7 +203,9 @@ async function run() {
         byte_length: result.bytes.byteLength,
         sha256: sha256(result.bytes),
         evidence_snippets: extractEvidenceSnippets(source, 20),
-        api_hints: extractApiHints(source)
+        api_hints: extractApiHints(source),
+        code_references: extractCodeReferences(source),
+        network_contexts: extractNetworkContexts(source)
       };
     } catch (error) {
       return { url, error: error && error.message ? error.message : String(error) };
@@ -194,7 +236,13 @@ async function run() {
     index_evidence_snippets: indexSnippets,
     script_evidence_snippets: scriptSnippets,
     api_hints: apiHints,
-    asset_results: assetResults.map(({ evidence_snippets, api_hints: hints, ...rest }) => rest),
+    asset_code_references: assetResults.flatMap((asset) =>
+      (asset.code_references || []).map((reference) => ({ asset: asset.file_name, reference }))
+    ).slice(0, 160),
+    asset_network_contexts: assetResults.flatMap((asset) =>
+      (asset.network_contexts || []).map((context) => ({ asset: asset.file_name, ...context }))
+    ).slice(0, 60),
+    asset_results: assetResults.map(({ evidence_snippets, api_hints: hints, code_references, network_contexts, ...rest }) => rest),
     measurement_files_downloaded: 0,
     decision: candidateLinks.length || indexSnippets.length || scriptSnippets.length || apiHints.length
       ? "DISCOVERY_REFERENCES_FOUND_REQUIRES_EXACT_RECORD_REVIEW"
@@ -219,5 +267,7 @@ module.exports = {
   extractAnchorLinks,
   extractEvidenceSnippets,
   extractApiHints,
+  extractCodeReferences,
+  extractNetworkContexts,
   resolveSameOriginUrl
 };

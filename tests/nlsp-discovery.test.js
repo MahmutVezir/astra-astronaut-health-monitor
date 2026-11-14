@@ -7,6 +7,8 @@ const {
   extractAnchorLinks,
   extractEvidenceSnippets,
   extractApiHints,
+  extractCodeReferences,
+  extractNetworkContexts,
   resolveSameOriginUrl
 } = require("../scripts/audit-nlsp-dso470-discovery.js");
 
@@ -40,6 +42,16 @@ test("extracts API hints as references but does not treat them as verified data 
   assert.ok(hints.some((item) => item === "/api/search"));
   assert.ok(hints.some((item) => item === "/graphql"));
   assert.ok(hints.some((item) => item.includes("/search/data/details/record-123")));
+});
+
+test("extracts application data-service strings and request contexts for review", () => {
+  const source = 'const base="https://workspace-dev.insight.nasa.gov"; const path="/api/search/experiments"; fetch(path);';
+  const references = extractCodeReferences(source);
+  assert.ok(references.includes("https://workspace-dev.insight.nasa.gov"));
+  assert.ok(references.includes("/api/search/experiments"));
+  const contexts = extractNetworkContexts(source);
+  assert.ok(contexts.some((item) => /workspace-dev\.insight\.nasa\.gov/.test(item.snippet)));
+  assert.ok(contexts.some((item) => /fetch\(/.test(item.snippet)));
 });
 
 test("rejects third-party scripts from same-origin discovery", () => {
