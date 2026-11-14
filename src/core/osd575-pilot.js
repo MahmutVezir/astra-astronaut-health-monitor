@@ -27,6 +27,89 @@ function buildRecord(fileSha256, decision, decisionReasons) {
   });
 }
 
+function analyzeOsd575FileBytes(options = {}) {
+  const bytes = Buffer.from(options.bytes || []);
+  if (bytes.length === 0) {
+    return {
+      trace: buildRecord(null, "INSUFFICIENT_EVIDENCE", [{
+        code: "NO_VERIFIED_FILE_BYTES",
+        message: "No non-empty downloaded file bytes were supplied to the analysis layer."
+      }]),
+      integrity: null,
+      parsed: null,
+      evidence: null,
+      columnMap: options.columnMap || null,
+      fileSha256: null,
+      byteLength: 0
+    };
+  }
+
+  const integrity = verifySha256(bytes, options.expectedSha256 || null);
+  if (integrity.verified && !integrity.matches) {
+    return {
+      trace: buildRecord(integrity.actualSha256, "INVALID_DATA", [{
+        code: "SHA256_MISMATCH",
+        message: "Downloaded bytes do not match the frozen reference SHA-256 " + integrity.expectedSha256 + "."
+      }]),
+      integrity,
+      parsed: null,
+      evidence: null,
+      columnMap: options.columnMap || null,
+      fileSha256: integrity.actualSha256,
+      byteLength: bytes.length
+    };
+  }
+
+  let parsed;
+  try {
+    parsed = parseCsv(bytes.toString("utf8"));
+  } catch (error) {
+    return {
+      trace: buildRecord(integrity.actualSha256, "INVALID_DATA", [{
+        code: "CSV_PARSE_FAILED",
+        message: "The downloaded file cannot be parsed as a rectangular CSV table: " + error.message
+      }]),
+      integrity,
+      parsed: null,
+      evidence: null,
+      columnMap: options.columnMap || null,
+      fileSha256: integrity.actualSha256,
+      byteLength: bytes.length
+    };
+  }
+
+  const columnMap = options.columnMap || null;
+  const evidence = evaluateEvidence({
+    rows: parsed.rows,
+    headers: parsed.headers,
+    columnMap,
+    expectedParticipantCount: OSD575.participant_count,
+    expectedSampleCount: OSD575.sample_count,
+    minIndependentParticipants: options.minIndependentParticipants || 10,
+    rawDataAvailable: options.rawDataAvailable === true
+  });
+
+  const decisionReasons = evidence.decision_reasons.slice();
+  let decision = evidence.decision;
+  if (!integrity.verified) {
+    decisionReasons.push({
+      code: "SHA256_NOT_PINNED",
+      message: "A SHA-256 digest was calculated, but no independently frozen reference digest was supplied for comparison. Save this digest in a reviewed manifest before treating later downloads as reproducible."
+    });
+    if (decision === "ANALYZABLE") decision = "LIMITED_EVIDENCE";
+  }
+
+  return {
+    trace: buildRecord(integrity.actualSha256, decision, decisionReasons),
+    integrity,
+    parsed,
+    evidence,
+    columnMap,
+    fileSha256: integrity.actualSha256,
+    byteLength: bytes.length
+  };
+}
+
 async function runOsd575Pilot(options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const fileName = options.fileName || "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv";
@@ -84,45 +167,14 @@ async function runOsd575Pilot(options = {}) {
     }]);
   }
 
-  const integrity = verifySha256(downloaded.bytes, expectedSha256);
-  if (integrity.verified && !integrity.matches) {
-    return buildRecord(integrity.actualSha256, "INVALID_DATA", [{
-      code: "SHA256_MISMATCH",
-      message: `Downloaded bytes do not match the frozen reference SHA-256 ${integrity.expectedSha256}.`
-    }]);
-  }
-
-  let parsed;
-  try {
-    parsed = parseCsv(downloaded.bytes.toString("utf8"));
-  } catch (error) {
-    return buildRecord(integrity.actualSha256, "INVALID_DATA", [{
-      code: "CSV_PARSE_FAILED",
-      message: `The downloaded file cannot be parsed as a rectangular CSV table: ${error.message}`
-    }]);
-  }
-
-  const evidence = evaluateEvidence({
-    rows: parsed.rows,
-    headers: parsed.headers,
+  const analysis = analyzeOsd575FileBytes({
+    bytes: downloaded.bytes,
+    expectedSha256,
     columnMap,
-    expectedParticipantCount: OSD575.participant_count,
-    expectedSampleCount: OSD575.sample_count,
-    minIndependentParticipants: options.minIndependentParticipants || 10,
-    rawDataAvailable: false
+    minIndependentParticipants: options.minIndependentParticipants,
+    rawDataAvailable: options.rawDataAvailable === true
   });
-
-  const decisionReasons = evidence.decision_reasons.slice();
-  let decision = evidence.decision;
-  if (!integrity.verified) {
-    decisionReasons.push({
-      code: "SHA256_NOT_PINNED",
-      message: "A SHA-256 digest was calculated, but no independently frozen reference digest was supplied for comparison. Save this digest in a reviewed manifest before treating later downloads as reproducible."
-    });
-    if (decision === "ANALYZABLE") decision = "LIMITED_EVIDENCE";
-  }
-
-  return buildRecord(integrity.actualSha256, decision, decisionReasons);
+  return analysis.trace;
 }
 
-module.exports = { OSD575, runOsd575Pilot };
+module.exports = { OSD575, analyzeOsd575FileBytes, runOsd575Pilot };
