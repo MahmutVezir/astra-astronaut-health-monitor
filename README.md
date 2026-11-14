@@ -60,6 +60,10 @@ For each signal, the engine:
 
 The bands currently configured in `health-engine.js` are fictional example settings for demonstrating software behavior. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
 
+## AI assistance disclosure
+
+ChatGPT (OpenAI) was used during the hackathon to help draft and review application code, test cases, and documentation. The team is responsible for reviewing, testing, and explaining the submitted work. No AI model or external LLM API is integrated into the running application; the dashboard uses transparent deterministic rules. Simulated values are labelled and are not presented as NASA observations.
+
 ## Privacy and safety
 
 - The app stores its demo/manual entries in the current browser's local storage.
