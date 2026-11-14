@@ -86,7 +86,7 @@
 
       <section class="view" id="view-signals" hidden>
         <div class="section-heading">
-          <div><p class="eyebrow">MANUAL TELEMETRY ENTRY</p><h2>Health signals</h2><p class="section-copy">Enter a reading to compare it with this demo crew member's illustrative personal reference band.</p></div>
+          <div><p class="eyebrow">MANUAL TELEMETRY ENTRY</p><h2>Health signals</h2><p class="section-copy">Enter a reading, then configure reference bands for this demo profile. Default bands are illustrative settings only.</p></div>
         </div>
         <div class="panel">
           <form id="signals-form">
@@ -98,6 +98,20 @@
             </div>
             <div class="form-footer"><p class="fine-print">Blank fields remain “No data”. Inputs are checked for basic format and plausible range only; those checks are not medical thresholds.</p><button class="button button-primary" type="submit">Save readings & assess</button></div>
             <p class="form-message" id="signals-message" role="status"></p>
+          </form>
+        </div>
+        <div class="panel baseline-panel">
+          <div class="panel-heading"><div><p class="eyebrow">CONFIGURABLE REFERENCE RANGES</p><h3>Reference band settings</h3></div></div>
+          <p class="section-copy">Adjust the lower and upper comparison bounds for this local demo profile. Use only values supplied by an approved mission medical protocol in a real operational setting. These demo defaults are not medical guidance.</p>
+          <form id="baseline-form">
+            <div class="baseline-grid">
+              <fieldset class="baseline-group"><legend>Heart rate · BPM</legend><label>Lower <input id="band-heart-rate-lower" type="number" min="30" max="220" step="1" required></label><label>Upper <input id="band-heart-rate-upper" type="number" min="30" max="220" step="1" required></label></fieldset>
+              <fieldset class="baseline-group"><legend>Blood oxygen · %</legend><label>Lower <input id="band-spo2-lower" type="number" min="50" max="100" step="0.1" required></label><label>Upper <input id="band-spo2-upper" type="number" min="50" max="100" step="0.1" required></label></fieldset>
+              <fieldset class="baseline-group"><legend>Body temperature · °C</legend><label>Lower <input id="band-temperature-lower" type="number" min="30" max="45" step="0.1" required></label><label>Upper <input id="band-temperature-upper" type="number" min="30" max="45" step="0.1" required></label></fieldset>
+              <fieldset class="baseline-group"><legend>Sleep duration · hours</legend><label>Lower <input id="band-sleep-lower" type="number" min="0" max="24" step="0.1" required></label><label>Upper <input id="band-sleep-upper" type="number" min="0" max="24" step="0.1" required></label></fieldset>
+            </div>
+            <div class="form-footer"><p class="fine-print">A saved range changes only the software comparison. It does not validate the range medically.</p><button class="button button-secondary" type="submit">Save reference bands</button></div>
+            <p class="form-message" id="baseline-message" role="status"></p>
           </form>
         </div>
       </section>
