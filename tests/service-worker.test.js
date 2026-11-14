@@ -90,7 +90,7 @@ test("install pre-caches all assets required to reopen NASA Research Mode offlin
   });
   await installPromise;
 
-  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v1"), true);
+  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v2"), true);
   assert.equal(worker.calls.skippedWaiting, 1);
   for (const asset of [
     "./index.html",
@@ -111,6 +111,7 @@ test("activation deletes only ASTRA caches and preserves unrelated application c
       "astra-shell-v2",
       "astra-shell-another-app",
       "astra-astronaut-health-monitor-shell-v0",
+      "astra-astronaut-health-monitor-shell-v1",
       "other-app-cache"
     ]
   });
@@ -124,7 +125,8 @@ test("activation deletes only ASTRA caches and preserves unrelated application c
 
   assert.deepEqual(worker.calls.deleted, [
     "astra-shell-v2",
-    "astra-astronaut-health-monitor-shell-v0"
+    "astra-astronaut-health-monitor-shell-v0",
+    "astra-astronaut-health-monitor-shell-v1"
   ]);
   assert.equal(worker.calls.claimed, 1);
 });
