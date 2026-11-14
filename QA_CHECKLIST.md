@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype · main commit `a492284096a3e687d67047972b94182748089bcc`  
+**Build:** 0.1 prototype · main commit `a37fd4d997df97dd4a1728c833a12cba84b3df30`  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -51,13 +51,15 @@ Run `npm test` with Node.js 18+.
 
 ## Current automated validation evidence — 14 November 2026
 
-- Main commit: `a492284096a3e687d67047972b94182748089bcc`.
-- GitHub Actions validation + deployment: [run 43632725370](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43632725370).
+- Main commit: `a37fd4d997df97dd4a1728c833a12cba84b3df30`.
+- GitHub Actions validation + deployment: [run 43634892374](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43634892374).
 - JavaScript syntax checks: passed.
-- Automated test suite: **99 passed, 0 failed, 0 skipped** (confirmed from the test job log; run duration about 542 ms).
+- Automated test suite: **101 passed, 0 failed, 0 skipped** (confirmed from the test job log).
 - Research Mode integration: passed against the committed NASA OSD-575 files; source SHA-256, 28/28 sample mapping, nine-analyte normalization, participant charts/table, and fibrinogen warning were verified.
+- New regression test verifies the Research Mode metadata status is derived from the actual imported `metadata_sample_join` audit field and the browser's 28/28 sample-map result.
+- New regression test verifies partial saved demo records do not fill absent readings with nominal example values.
+- Mission-log CSV test verifies the CSV MIME type, filename, content, empty-log fallback, and delayed object-URL cleanup.
 - Service Worker tests: passed for initial Research Mode precaching, offline navigation fallback, same-origin cache writes, cache-version cleanup limited to ASTRA, and request pass-through.
-- Mission-log CSV export: automated UI test verifies MIME type, filename, saved records, wellbeing entry, URL cleanup, and empty-log fallback.
 - GitHub Pages deployment: successful for this main commit.
 - NLSP DSO-470 discovery: [run 43615678402](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43615678402) succeeded; discovery artifact preserved; zero measurement files downloaded.
 - Initial NASA OSD-575 acquisition: [run #9 (43612460864)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
@@ -87,6 +89,9 @@ The team still needs to perform and record the manual real-browser checks below.
 | QA-15 | Mobile layout | Test a narrow viewport | Tabs remain usable, cards stack, and page has no horizontal overflow | Not yet recorded |
 | QA-16 | Offline shell | Load once online, then disable network and reload on localhost/HTTPS | App shell is served from cache; external links are unavailable offline | Not yet recorded |
 | QA-18 | PWA installation | Open the deployed app in the target Chromium browser and inspect its install UI; install only on a test device | Browser recognizes the manifest and shows ASTRA icon/name; app opens in standalone mode | Not yet recorded |
+| QA-19 | NASA metadata status | Wait until Research Mode verification completes | The audit panel reads Verified with 28/28 ISA matches; it must not simultaneously show “Not verified” with “Data + analysis verified” | Not yet recorded |
+| QA-20 | Partial saved state | On a clean test browser, restore a saved demo record with one signal and missing remaining fields | Missing signals remain “No data”; no nominal values are silently inserted | Automated regression passed; manual browser check not yet recorded |
+| QA-21 | CSV download timing | Export the mission log and open the downloaded CSV | File downloads and opens before its temporary object URL is revoked | Automated regression passed; manual browser check not yet recorded |
 
 ## Defect report template
 
