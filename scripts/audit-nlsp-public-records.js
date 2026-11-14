@@ -155,8 +155,31 @@ async function fetchObservedDatasetFileExplorerBundle() {
       count += 1;
     }
   }
+  const downloadCalls = [];
+  for (const match of source.matchAll(/_e\\(/g)) {
+    const index = match.index;
+    downloadCalls.push({
+      offset: index,
+      snippet: source.slice(Math.max(0, index - 1100), Math.min(source.length, index + 1500))
+    });
+    if (downloadCalls.length >= 30) break;
+  }
+  const requestCalls = [];
+  for (const match of source.matchAll(/Mt\\(\\{method:/g)) {
+    const index = match.index;
+    requestCalls.push({
+      offset: index,
+      snippet: source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1100))
+    });
+    if (requestCalls.length >= 30) break;
+  }
+  const imports = Array.from(source.matchAll(/from["']([^"']+\\.js)["']/g), (match) => match[1]);
+  const apiPathLiterals = Array.from(source.matchAll(/["'`]((?:\\/api\\/v1|\\/api|\\/explore|\\/data|\\/files)[^"'`]{1,240})["'`]/g), (match) => match[1]);
   result.matches = contexts.length;
-  return { result, contexts };
+  result.download_call_count = downloadCalls.length;
+  result.request_call_count = requestCalls.length;
+  result.import_count = imports.length;
+  return { result, contexts, downloadCalls, requestCalls, imports: [...new Set(imports)], apiPathLiterals: [...new Set(apiPathLiterals)] };
 }
 
 async function requestAndPreserve(url, outputName) {
@@ -358,6 +381,10 @@ async function run() {
     returned_search_records: returnedRecords,
     dataset_file_explorer_bundle: datasetFileExplorer.result,
     dataset_file_explorer_contexts: datasetFileExplorer.contexts || [],
+    dataset_file_explorer_download_calls: datasetFileExplorer.downloadCalls || [],
+    dataset_file_explorer_request_calls: datasetFileExplorer.requestCalls || [],
+    dataset_file_explorer_imports: datasetFileExplorer.imports || [],
+    dataset_file_explorer_api_path_literals: datasetFileExplorer.apiPathLiterals || [],
     detail_records: detailResults.map((item) => ({
       query_record: item.query_record,
       http_status: item.request.http_status ?? null,
