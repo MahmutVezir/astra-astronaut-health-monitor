@@ -153,3 +153,12 @@ h3 { font-size: 16px; margin: 0; }
   .assessment-state { grid-column: 2; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+
+.research-timeline { margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: rgba(7,17,29,.28); }
+.timeline-heading { margin: 0 0 12px; color: var(--text); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.timeline-track { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
+.timeline-point { position: relative; display: grid; gap: 5px; padding: 10px 7px; border-top: 2px solid var(--cyan); background: rgba(103,215,209,.06); border-radius: 0 0 7px 7px; }
+.timeline-code { color: var(--text); font-size: 12px; font-weight: 800; }
+.timeline-phase { color: var(--muted); font-size: 9px; }
+.timeline-note { color: var(--muted); font-size: 9px; line-height: 1.5; margin: 10px 0 0; }
+@media (max-width: 560px) { .timeline-track { grid-template-columns: repeat(3, 1fr); } }
