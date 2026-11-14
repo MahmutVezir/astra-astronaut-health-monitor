@@ -210,18 +210,22 @@
     if (stateLabel) {
       stateLabel.textContent = researchEvidence
         ? "DATA + ANALYSIS VERIFIED"
-        : sourceAuditPassed
-          ? "SOURCE AUDIT PASSED · BROWSER CHECK"
-          : "POST-MAP QA PENDING";
+        : researchEvidenceError
+          ? "BROWSER VERIFICATION FAILED"
+          : sourceAuditPassed
+            ? "SOURCE AUDIT PASSED · BROWSER CHECK"
+            : "POST-MAP QA PENDING";
       stateLabel.className = "state-label " + (researchEvidence ? "state-good" : "state-limited");
     }
     const modeIndicator = $("mode-indicator");
     if (modeIndicator) {
       modeIndicator.textContent = researchEvidence
         ? "NASA RESEARCH MODE · SHA-256 + SAMPLE MAP VERIFIED"
-        : sourceAuditPassed
-          ? "NASA RESEARCH MODE · SOURCE AUDIT PASSED · BROWSER CHECK REQUIRED"
-          : "NASA RESEARCH MODE · POST-MAP DATA QA PENDING";
+        : researchEvidenceError
+          ? "NASA RESEARCH MODE · BROWSER VERIFICATION FAILED"
+          : sourceAuditPassed
+            ? "NASA RESEARCH MODE · SOURCE AUDIT PASSED · BROWSER CHECK REQUIRED"
+            : "NASA RESEARCH MODE · POST-MAP DATA QA PENDING";
     }
   }
 
