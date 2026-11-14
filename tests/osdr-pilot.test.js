@@ -862,9 +862,9 @@ test("when the exact transformed CSV has a real catalog remote_url, the fetch au
     assert.equal(result.manifest.file_sha256, expectedDigest);
     assert.equal(result.manifest.raw_bytes_preserved, true);
     assert.equal(result.manifest.download_response.final_host, "osdr.nasa.gov");
-    assert.equal(result.manifest.download_response.final_path, "/geode-py/ws/studies/OSD-575/download");
+    assert.equal(result.manifest.download_response.final_path, "/osd/data/osd/download/" + fileName);
     assert.equal(result.manifest.download_response.redirected, false);
-    assert.equal(result.pilotReport.download_response.final_url, "https://osdr.nasa.gov/geode-py/ws/studies/OSD-575/download");
+    assert.equal(result.pilotReport.download_response.final_url, "https://osdr.nasa.gov/osd/data/osd/download/" + fileName);
     assert.equal(result.pilotReport.file_sha256, expectedDigest);
     assert.ok(result.pilotReport.trace_contract);
     assert.equal(result.pilotReport.trace_contract.file_sha256, expectedDigest);
