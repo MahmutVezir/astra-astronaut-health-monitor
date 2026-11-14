@@ -87,9 +87,14 @@ function buildFixture() {
   const audit = {
     dataset_id: "OSD-575",
     dataset_version: "3",
+    file_name: "source.csv",
+    file_bytes: csvBytes.length,
     sha256,
     sha256_is_project_maintained_pin_not_nasa_signature: true,
     metadata_sample_join: "PASS",
+    mapped_participants: 4,
+    mapped_samples: 28,
+    mapped_timepoints: 7,
     normalization_audit: { status: "PASS", analyte_count: 9 },
     scientific_decision: "LIMITED_EVIDENCE"
   };
