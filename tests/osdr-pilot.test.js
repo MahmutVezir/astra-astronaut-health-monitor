@@ -281,3 +281,37 @@ test("missing study entry in metadata API produces a reasoned abstention", async
   assert.equal(record.decision, "INSUFFICIENT_EVIDENCE");
   assert.equal(record.decision_reasons[0].code, "OSDR_STUDY_METADATA_UNAVAILABLE");
 });
+
+
+test("CSV parser preserves NASA-style missing-value tokens without inventing nulls", () => {
+  const parsed = parseCsv(
+    "participant_id,sample_name,timepoint,marker_a,marker_b\n" +
+    "C001,C001_serum_L-3,L-3,NA,\n" +
+    "C001,C001_serum_R+194,R+194,1.25,NaN\n"
+  );
+  assert.equal(parsed.rows[0].marker_a, "NA");
+  assert.equal(parsed.rows[0].marker_b, "");
+  assert.equal(parsed.rows[1].timepoint, "R+194");
+  assert.equal(parsed.rows[1].marker_b, "NaN");
+});
+
+test("OSD-575 R+194 is retained as a distinct timepoint label", () => {
+  const { OSD575 } = require("../src/core/osd575-pilot.js");
+  assert.ok(OSD575.timepoints.includes("R+194"));
+  assert.equal(new Set(OSD575.timepoints).size, OSD575.timepoints.length);
+});
+
+test("live fetch mapping recognizes OSDR sample identifiers and only numeric measurement columns", () => {
+  const { inferColumnMap } = require("../scripts/fetch-osd575.js");
+  const headers = ["Source Name", "Sample Name", "Factor Value: Time", "IL-6", "Protocol REF"];
+  const rows = [
+    { "Source Name": "C001", "Sample Name": "C001_serum_L-3", "Factor Value: Time": "Launch minus 3 day", "IL-6": "1.2", "Protocol REF": "Sample Preparation" },
+    { "Source Name": "C001", "Sample Name": "C001_serum_R+194", "Factor Value: Time": "Return plus 194 day", "IL-6": "NA", "Protocol REF": "Assay Information" }
+  ];
+  assert.deepEqual(inferColumnMap(headers, rows), {
+    participant: "Source Name",
+    sample: "Sample Name",
+    timepoint: "Factor Value: Time",
+    measurement: ["IL-6"]
+  });
+});
