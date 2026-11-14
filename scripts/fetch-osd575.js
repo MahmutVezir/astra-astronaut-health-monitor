@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 
-const { fetchStudyMetadata, listStudyFiles, selectStudyFile, getCsvFileCandidates, downloadStudyFile } = require("../src/core/osdr-client.js");
+const { fetchStudyMetadata, listStudyFiles, selectStudyFile, getCsvFileCandidates, getRemoteUrl, downloadStudyFile } = require("../src/core/osdr-client.js");
 const { parseCsv } = require("../src/core/csv.js");
 const { OSD575, runOsd575Pilot } = require("../src/core/osd575-pilot.js");
 const { createTraceRecord } = require("../src/core/trace-contract.js");
@@ -488,7 +488,7 @@ async function main(options = {}) {
             return itemPage === page;
           });
           return jsonResponse(
-            snapshot ? snapshot.status : 200,
+            snapshot ? snapshot.status >= 200 && snapshot.status < 300 : true,
             snapshot ? snapshot.status : 200,
             snapshot ? snapshot.body : { studies: {} },
             snapshot ? snapshot.url : address
