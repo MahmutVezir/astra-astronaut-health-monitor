@@ -26,7 +26,7 @@ concurrency:
 jobs:
   fetch-and-audit:
     if: ${{ github.event_name == 'push' || inputs.confirm_download == 'yes' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - name: Check out repository
