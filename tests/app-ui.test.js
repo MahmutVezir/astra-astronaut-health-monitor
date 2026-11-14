@@ -78,7 +78,8 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistenc
   assert.equal(study.timepoints.length, 7);
   assert.ok(study.timepoints.some((point) => point.label === "R+194"));
   assert.equal(study.acquisitionAudit.decision, "LIMITED_EVIDENCE");
-  assert.equal(study.acquisitionAudit.runNumber, 9);
+  assert.equal(study.acquisitionAudit.runNumber, 10);
+  assert.equal(study.acquisitionAudit.runId, 43616651617);
   assert.equal(study.acquisitionAudit.analysisCompleted, true);
   assert.equal(study.acquisitionAudit.csvDownloaded, true);
   assert.equal(study.acquisitionAudit.fileSha256, "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c");
@@ -88,7 +89,7 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistenc
   assert.equal(get("research-participants").textContent, "4");
   assert.equal(get("research-samples").textContent, "28");
   assert.equal(get("research-timepoint-count").textContent, "7");
-  assert.equal(get("research-run-status").textContent, "Run #9 · post-download audit passed");
+  assert.equal(get("research-run-status").textContent, "Run #10 · post-download audit passed");
   assert.match(get("mode-indicator").textContent, /SOURCE AUDIT PASSED · BROWSER CHECK REQUIRED/);
   assert.match(get("research-timeline").innerHTML, /R\+194/);
   const sources = researchWindow.AstraResearch.sources;
