@@ -107,13 +107,19 @@ async function run() {
     throw new Error("NASA metadata did not expose a numeric " + DATASET_ID + " version.");
   }
 
-  const files = await listStudyFiles(DATASET_ID + "." + version, {
-    fetchImpl: captureFetch,
-    bareFirstPage: true,
-    pageSize: 25,
-    maxPages: 100,
-    allFiles: true
-  });
+  let files = [];
+  let catalogError = null;
+  try {
+    files = await listStudyFiles(DATASET_ID + "." + version, {
+      fetchImpl: captureFetch,
+      bareFirstPage: true,
+      pageSize: 25,
+      maxPages: 100,
+      allFiles: true
+    });
+  } catch (error) {
+    catalogError = error && error.message ? error.message : String(error);
+  }
   const license = findExplicitLicense(metadata);
   const catalog = summarizeFiles(files);
 
@@ -136,8 +142,11 @@ async function run() {
     sample_metadata_tables: Object.keys((study.additionalInformation && study.additionalInformation.samples) || {}),
     assay_metadata_tables: Object.keys((study.additionalInformation && study.additionalInformation.assays) || {}),
     catalog,
+    catalog_error: catalogError,
     measurement_file_downloads: 0,
-    decision: license && catalog.public_count > 0
+    decision: catalogError
+      ? "DEFER_CATALOG_RETRIEVAL_FAILED_RAW_RESPONSES_PRESERVED"
+      : license && catalog.public_count > 0
       ? "METADATA_AND_PUBLIC_FILE_CANDIDATES_FOUND_REQUIRES_FILE_LEVEL_QA"
       : "DEFER_INTEGRATION_PENDING_LICENSE_OR_PUBLIC_FILE_EVIDENCE",
     limitations: [
