@@ -1,5 +1,5 @@
 const CACHE_NAME = "astra-shell-v1";
-const APP_SHELL = ["./", "./index.html", "./styles.css", "./health-engine.js", "./app.js", "./manifest.webmanifest"];
+const APP_SHELL = ["./", "./index.html", "./styles.css", "./health-engine.js", "./app.js", "./research-data.js", "./manifest.webmanifest"];
 
 self.addEventListener("install", function (event) {
   event.waitUntil(caches.open(CACHE_NAME).then(function (cache) { return cache.addAll(APP_SHELL); }));
