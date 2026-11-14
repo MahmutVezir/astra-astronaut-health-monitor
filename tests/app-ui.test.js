@@ -10,6 +10,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 function createDom() {
   const elements = new Map();
+  const createdElements = [];
   const makeElement = (id) => ({
     id,
     value: "",
@@ -37,14 +38,36 @@ function createDom() {
         return elements.get(id);
       },
       querySelectorAll() { return []; },
-      createElement() { return makeElement("dynamic"); },
+      createElement() {
+        const element = makeElement("dynamic");
+        createdElements.push(element);
+        return element;
+      },
       body: { appendChild() {} }
-    }
+    },
+    createdElements
   };
 }
 
-test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistence work", function () {
+test("dashboard scenarios, manual entry, custom bands, wellbeing, export, and persistence work", function () {
   const storage = new Map();
+  const exportedBlobs = [];
+  const revokedObjectUrls = [];
+  class TestBlob {
+    constructor(parts, options) {
+      this.parts = parts;
+      this.type = options && options.type;
+    }
+  }
+  const testUrl = {
+    createObjectURL(blob) {
+      exportedBlobs.push(blob);
+      return "blob:astra-export-" + exportedBlobs.length;
+    },
+    revokeObjectURL(url) {
+      revokedObjectUrls.push(url);
+    }
+  };
   const localStorage = {
     getItem(key) { return storage.get(key) || null; },
     setItem(key, value) { storage.set(key, value); }
@@ -63,6 +86,8 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistenc
       document: dom.document,
       window,
       localStorage,
+      Blob: TestBlob,
+      URL: testUrl,
       navigator: {},
       location: { protocol: "file:" }
     });
@@ -147,4 +172,23 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistenc
   assert.equal(String(reloaded.get("heart-rate").value), "72");
   assert.equal(Number(reloaded.get("band-heart-rate-lower").value), 75);
   assert.match(reloaded.get("log-list").innerHTML, /WELLBEING CHECK-IN/);
+
+  reloaded.get("export-csv").click();
+  assert.equal(exportedBlobs.length, 1);
+  assert.equal(exportedBlobs[0].type, "text/csv;charset=utf-8");
+  const exportLink = reloaded.createdElements[0];
+  assert.equal(exportLink.download, "astra-local-demo-log.csv");
+  assert.equal(exportLink.href, "blob:astra-export-1");
+  const csv = exportedBlobs[0].parts.join("");
+  assert.match(csv, /^"recorded_at","record_type","heart_rate_bpm","spo2_percent","temperature_c","sleep_hours","note"/);
+  assert.match(csv, /"WELLBEING CHECK-IN"/);
+  assert.match(csv, /"Self-report saved:/);
+  assert.deepEqual(revokedObjectUrls, ["blob:astra-export-1"]);
+
+  reloaded.get("clear-log").click();
+  reloaded.get("export-csv").click();
+  assert.equal(exportedBlobs.length, 2);
+  const emptyLogCsv = exportedBlobs[1].parts.join("");
+  assert.match(emptyLogCsv, /"CURRENT DEMO STATE"/);
+  assert.match(emptyLogCsv, /"Simulated or manually entered; not a medical record"/);
 });
