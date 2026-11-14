@@ -1,0 +1,173 @@
+name: Import verified NASA OSD-575 source data
+
+on:
+  workflow_run:
+    workflows: ["Fetch and audit NASA OSD-575"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: osd575-artifact-import
+  cancel-in-progress: false
+
+jobs:
+  import-verified-source:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out research dashboard branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/osd575-research-data-dashboard
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download the audit artifact from the completed NASA workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: osd575-live-audit-${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: /tmp/osd575-audit
+
+      - name: Verify exact NASA bytes and metadata join before import
+        run: |
+          python - <<'PY'
+          import csv
+          import hashlib
+          import json
+          import pathlib
+          import shutil
+
+          root = pathlib.Path("/tmp/osd575-audit")
+          target_name = "LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv"
+          expected_sha = "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c"
+          manifest = json.loads((root / "manifest.json").read_text())
+          pilot = json.loads((root / "pilot-report.json").read_text())
+          csv_path = root / target_name
+          if not csv_path.is_file():
+              raise SystemExit("Exact HDCVD9 transformed CSV is missing from the audit artifact.")
+          raw = csv_path.read_bytes()
+          actual_sha = hashlib.sha256(raw).hexdigest()
+          if actual_sha != expected_sha or manifest.get("file_sha256") != expected_sha:
+              raise SystemExit("Source CSV SHA-256 does not match the reviewed project pin.")
+          if len(raw) != 6207 or manifest.get("byte_length") != 6207 or not manifest.get("raw_bytes_preserved"):
+              raise SystemExit("Source CSV byte length or raw-byte preservation check failed.")
+          if manifest.get("catalog_access_state") != "FILE_DOWNLOADED_AND_HASHED":
+              raise SystemExit("NASA file-catalog/download state is not verified.")
+          if manifest.get("file_catalog_record_found") is not True:
+              raise SystemExit("Exact NASA catalog record was not verified.")
+          record = manifest.get("file_catalog_record") or {}
+          if record.get("file_name") != target_name or record.get("restricted") is not False:
+              raise SystemExit("NASA catalog record does not match the exact public HDCVD9 file.")
+          redirect = manifest.get("download_response") or {}
+          if redirect.get("http_status") != 200 or redirect.get("final_host") != "genelab-alsda-repo-prod.s3.amazonaws.com":
+              raise SystemExit("Final NASA/ALSDA download response is not the reviewed HTTPS object.")
+          if redirect.get("final_path") != "/alsda-data/LSDS-8/Multiplex/" + target_name:
+              raise SystemExit("Final ALSDA object path does not match the reviewed HDCVD9 file.")
+
+          gate = pilot.get("analysis_gate") or {}
+          mapping = pilot.get("row_mapping_provenance") or {}
+          normalization = pilot.get("baseline_percent_normalization_audit") or {}
+          if gate.get("data_pipeline_completed") is not True:
+              raise SystemExit("Updated analysis code did not complete the data pipeline.")
+          if mapping.get("full_study_sample_coverage") is not True or mapping.get("complete_csv_row_match") is not True:
+              raise SystemExit("CSV sample names do not map completely to the NASA ISA sample table.")
+          if normalization.get("status") != "PASS" or normalization.get("analyte_count") != 9:
+              raise SystemExit("The nine-analyte baseline-percent normalization audit did not pass.")
+          if (pilot.get("trace_contract") or {}).get("decision") != "LIMITED_EVIDENCE":
+              raise SystemExit("The expected conservative LIMITED_EVIDENCE decision was not recorded.")
+
+          with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
+              reader = csv.DictReader(handle)
+              rows = list(reader)
+              headers = reader.fieldnames or []
+          if len(rows) != 28 or len(headers) != 19:
+              raise SystemExit("Expected exactly 28 sample rows and 19 CSV columns.")
+          sample_names = [row.get("Sample Name", "").strip() for row in rows]
+          if len(set(sample_names)) != 28 or any(not name for name in sample_names):
+              raise SystemExit("Sample names are blank or duplicated.")
+
+          metadata_payload = json.loads((root / "metadata-response.json").read_text())
+          if isinstance(metadata_payload, list):
+              metadata_payload = next((item.get("body") for item in metadata_payload if isinstance(item, dict) and isinstance(item.get("body"), dict)), None)
+          if not isinstance(metadata_payload, dict):
+              raise SystemExit("NASA metadata response did not expose the expected body.")
+          study = (metadata_payload.get("study") or {}).get("OSD-575") or {}
+          sample_tables = ((study.get("additionalInformation") or {}).get("samples") or {}).values()
+          sample_table = next((table for table in sample_tables if isinstance(table, dict) and isinstance(table.get("header"), list) and isinstance(table.get("raw"), list) and {"Source Name", "Sample Name", "Factor Value: Time"}.issubset({item.get("title") for item in table["header"] if isinstance(item, dict)})), None)
+          if sample_table is None:
+              raise SystemExit("NASA ISA sample table with Source Name, Sample Name and Factor Value: Time was not found.")
+          field_map = {item["title"]: item["field"] for item in sample_table["header"] if isinstance(item, dict) and item.get("title") and item.get("field")}
+          records = []
+          for row in sample_table["raw"]:
+              records.append({
+                  "source_name": str(row.get(field_map["Source Name"], "")).strip(),
+                  "sample_name": str(row.get(field_map["Sample Name"], "")).strip(),
+                  "time_label": str(row.get(field_map["Factor Value: Time"], "")).strip()
+              })
+          metadata_names = [item["sample_name"] for item in records]
+          if len(records) != 28 or len(set(metadata_names)) != 28 or set(metadata_names) != set(sample_names):
+              raise SystemExit("CSV and NASA ISA sample table do not form a complete one-to-one sample join.")
+          if {item["source_name"] for item in records} != {"C001", "C002", "C003", "C004"}:
+              raise SystemExit("Unexpected independent participant identifiers in the NASA sample table.")
+
+          output = pathlib.Path("data/osdr/OSD-575")
+          output.mkdir(parents=True, exist_ok=True)
+          shutil.copyfile(csv_path, output / target_name)
+          sample_map = {
+              "dataset_id": "OSD-575",
+              "dataset_version": "3",
+              "source": "NASA OSDR meta/575 ISA sample table",
+              "source_url": "https://osdr.nasa.gov/osdr/data/osd/meta/575",
+              "extraction_fields": {
+                  "participant": "Source Name",
+                  "sample": "Sample Name",
+                  "timepoint": "Factor Value: Time"
+              },
+              "sample_count": len(records),
+              "records": records
+          }
+          (output / "isa-sample-map.json").write_text(json.dumps(sample_map, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+          audit = {
+              "workflow_run_id": int(__import__("os").environ["SOURCE_RUN_ID"]),
+              "workflow_run_url": "https://github.com/" + __import__("os").environ["GITHUB_REPOSITORY"] + "/actions/runs/" + __import__("os").environ["SOURCE_RUN_ID"],
+              "dataset_id": "OSD-575",
+              "dataset_version": "3",
+              "file_name": target_name,
+              "file_bytes": len(raw),
+              "sha256": actual_sha,
+              "sha256_is_project_maintained_pin_not_nasa_signature": True,
+              "metadata_sample_join": "PASS",
+              "mapped_participants": 4,
+              "mapped_samples": 28,
+              "mapped_timepoints": 7,
+              "normalization_audit": normalization,
+              "scientific_decision": "LIMITED_EVIDENCE",
+              "raw_assay_data": "Not Available"
+          }
+          (output / "source-audit.json").write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+          print("Imported exact source CSV:", len(raw), "bytes; SHA-256:", actual_sha)
+          print("NASA ISA join:", len(records), "samples; all sample identifiers matched.")
+          print("Normalization audit: PASS across nine analytes.")
+          PY
+        env:
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Commit verified source data to the dashboard branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/osdr/OSD-575
+          if git diff --cached --quiet; then
+            echo "Verified OSD-575 source data are already current."
+            exit 0
+          fi
+          git commit -m "Import verified NASA OSD-575 HDCVD9 source data"
+          git push origin HEAD:feat/osd575-research-data-dashboard
