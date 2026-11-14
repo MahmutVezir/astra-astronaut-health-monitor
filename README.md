@@ -52,48 +52,6 @@ The app distinguishes source-derived research metadata from simulated or user-en
 
 The Research Mode also records a NASA source portfolio: OSD-575 (Inspiration4 serum biospecimens), NLSP BRSMACT (bed-rest actigraphy), NLSP BRSMCF (bed-rest cardiovascular-function assessments), DSO 602 (in-flight Holter ECG and arterial-pressure protocol documented in NASA's EDOMP report; its exact NLSP data record remains to be found), experiment 3.1.2 (a distinct NASA-Mir study with a public collection timetable but restricted ECG/BP variables), DSO 603 (event-phase cardiovascular monitoring around entry/landing; exact files unverified), and DSO 470 (in-flight cerebral blood-flow and cardiovascular candidate). Catalogue or experiment-page visibility is not treated as file validation: each source remains clearly marked until its exact downloadable files, reuse terms, byte hashes, schema, units, and scientific scope have been inspected. See [the source portfolio and acquisition gates](docs/nasa-research-data-portfolio-2026-11-14.md). See the [detailed in-flight cardiovascular source audit](docs/nasa-inflight-cardiovascular-source-audit-2026-11-14.md) for the NASA protocol and access review.
 
-**Current OSD-575 evidence status (14 November 2026):** the NASA metadata API verifies study version 3, four participants, 28 serum samples, and the HDCVD9 transformed-file name. The version-specific file-catalog response returned HTTP 200 but contained zero file records (`hits=0`, `total_hits=1`, empty `studies`). The transformed CSV was not downloaded; therefore no source-file SHA-256 or biomarker analysis exists yet. NASA Research Mode displays this limitation explicitly and abstains from rendering unverified measurements. See [the latest audit run](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43596179113).
-This is the **last live data-access audit**, not a result from the revised acquisition code. The current `main` branch tests three NASA-documented catalog request forms (versioned paginated, versioned bare, and unversioned bare), but that updated sequence has **not yet been run against NASA live services**. There is still no verified HDCVD9 download, source-file hash, actual column map, or biomarker analysis. Separately, the software test/deploy workflow for commit `b40e3fac167e31851964c5c4c4d92233081ad244` completed successfully (47 tests passed and GitHub Pages deployment succeeded); software CI success does not prove NASA data acquisition. [Open CI run #68](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43599747660).
+**Current OSD-575 evidence status (14 November 2026):** live audit run #5 verified the metadata for OSD-575 version 3 and found the exact HDCVD9 transformed CSV in NASA's versioned bare file-catalog response (/files/575.3). The response contained nine study-file records; the exact target record declared 6,207 bytes and restricted=false, and supplied a catalog remote_url. The subsequent download was not accepted because the final redirect host fell outside the downloader's strict NASA HTTPS allowlist. The file was **not** saved: there is still no source-file SHA-256, actual column map, observed measurement table, or biomarker analysis. ASTRA continues to abstain from rendering unverified measurements. [Open live audit run #5](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43600280830).
 
-NASA's EDOMP report documents DSO 602 as a 12-astronaut in-flight Holter/arterial-pressure study, with 24-hour ECG and automatic blood-pressure measurements at 20-minute intervals while awake and 30-minute intervals during sleep; the exact experiment-specific data listing remains unresolved. Separately, NLSP experiment 3.1.2 (not DSO 602) describes a similar monitoring protocol and exposes one public collection timetable while listing ECG/BP variables as restricted. DSO 603 documented continuous ECG with HR and arterial-pressure outputs at 2-minute intervals during launch/entry/landing phases in a 34-subject study. None of these has been integrated as a raw data source. See the [source audit and access gates](docs/nasa-research-data-portfolio-2026-11-14.md).
-
-## Transparent assessment logic
-
-For each signal, the engine:
-1. Distinguishes a blank field from a numeric value.
-2. Rejects non-numeric or out-of-app-range entries.
-3. Compares valid values with that signal's illustrative demo reference band.
-4. Returns **Within baseline**, **Review**, or **No data** for that individual signal.
-5. Makes the overall assessment **Limited** when readings are missing; missing information is never silently treated as normal.
-
-The initial reference bands are fictional example settings. Users can configure different lower/upper values locally for the demo profile, but this does not clinically validate them. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
-
-## AI assistance disclosure
-
-ChatGPT (OpenAI) was used during the hackathon to help draft and review application code, test cases, and documentation. The team is responsible for reviewing, testing, and explaining the submitted work. No AI model or external LLM API is integrated into the running application; the dashboard uses transparent deterministic rules. Simulated values are labelled and are not presented as NASA observations.
-
-## Privacy and safety
-
-- The app stores its demo/manual entries in the current browser's local storage.
-- The app has no account system, server database, encryption layer, wearable connection, or remote telemetry service.
-- Do not enter real, identifiable, or sensitive health information.
-- CSV exports should be treated as local user data and handled carefully.
-- Any real mission deployment would require medical, human-factors, cybersecurity, privacy, and operational validation.
-
-## Team roles
-
-- **Mahmut:** project lead, application integration, data model, and technical explanation.
-- **Teammate 1:** interface review, usability, and responsive-browser testing.
-- **Teammate 2 (if present):** NASA source verification, QA execution, documentation, and demo.
-
-## Project structure
-
-- `index.html` — application views and forms
-- `styles.css` — responsive visual system
-- `app.js` — application state, local persistence, scenarios, and CSV export
-- `health-engine.js` — pure, testable assessment rules
-- `research-data.js` — NASA OSDR study metadata used by the research timeline
-- `sw.js` and `manifest.webmanifest` — app-shell cache and install metadata
-- `tests/health-engine.test.js` — automated rule tests
-
-ASTRA is an independent student project created for the NASA Space Apps Challenge. It is not an official NASA product and is not endorsed by NASA.
+This supersedes the earlier run #4 observation where the paginated catalog response had hits=0; the bare versioned endpoint exposed the file record. Software CI and live data acquisition remain separate gates: a passing test suite does not establish that NASA bytes were downloaded.
