@@ -281,6 +281,137 @@ async function requestAndPreserve(url, outputName) {
     return { result, payload: null };
   }
 }
+function parseCsvTable(input) {
+  const source = String(input).replace(/^\uFEFF/, "");
+  const records = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (quoted) {
+      if (char === '"') {
+        if (source[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        field += char;
+      }
+    } else if (char === '"' && field.length === 0) {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && source[index + 1] === "\n") index += 1;
+      row.push(field);
+      field = "";
+      if (row.some((value) => value !== "")) records.push(row);
+      row = [];
+    } else {
+      field += char;
+    }
+  }
+  if (quoted) throw new Error("Downloaded BRSMACT CSV has an unterminated quoted field.");
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    if (row.some((value) => value !== "")) records.push(row);
+  }
+  if (records.length < 2) throw new Error("Downloaded BRSMACT CSV contains no data rows.");
+  const headers = records.shift().map((value) => value.trim());
+  if (headers.some((value) => !value) || new Set(headers).size !== headers.length) {
+    throw new Error("Downloaded BRSMACT CSV has blank or duplicate headers.");
+  }
+  const rows = records.map((values, rowIndex) => {
+    if (values.length !== headers.length) {
+      throw new Error("Downloaded BRSMACT CSV row " + (rowIndex + 2) + " has an unexpected column count.");
+    }
+    return Object.fromEntries(headers.map((header, index) => [header, values[index]]));
+  });
+  return { headers, rows };
+}
+
+function parseClockDurationMinutes(value) {
+  const match = String(value || "").trim().match(/^(\d{1,3}):(\d{2})(?::(\d{2}(?:\.\d+)?))?$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = match[3] === undefined ? 0 : Number(match[3]);
+  if (![hours, minutes, seconds].every(Number.isFinite) || minutes >= 60 || seconds >= 60) return null;
+  return hours * 60 + minutes + seconds / 60;
+}
+
+function summarizeActigraphyCsv(input) {
+  const parsed = parseCsvTable(input);
+  const lowerHeaders = parsed.headers.map((value) => value.toLowerCase());
+  const findHeader = (pattern) => parsed.headers[lowerHeaders.findIndex((value) => pattern.test(value))] || null;
+  const subjectField = findHeader(/^subject$/);
+  const phaseField = findHeader(/test[_ ]phase/i);
+  const dateField = findHeader(/^date$/);
+  const dayField = findHeader(/br[_ ]day/i);
+  const latencyField = findHeader(/sleep latency/i);
+  const durationField = findHeader(/sleep duration/i);
+  const efficiencyField = findHeader(/sleep efficiency/i);
+  const distinct = (field) => field ? [...new Set(parsed.rows.map((row) => String(row[field] || "").trim()).filter(Boolean))].sort() : [];
+  const countMissing = (field) => field ? parsed.rows.filter((row) => {
+    const value = String(row[field] ?? "").trim();
+    return !value || /^na$/i.test(value) || /^n\/a$/i.test(value);
+  }).length : null;
+  const summarizeClock = (field) => {
+    if (!field) return null;
+    const values = parsed.rows.map((row) => parseClockDurationMinutes(row[field])).filter((value) => value !== null);
+    return values.length ? {
+      source_field: field,
+      valid_count: values.length,
+      missing_or_unparsed_count: parsed.rows.length - values.length,
+      minimum_minutes: Math.min(...values),
+      maximum_minutes: Math.max(...values)
+    } : { source_field: field, valid_count: 0 };
+  };
+  const efficiencyValues = efficiencyField
+    ? parsed.rows.map((row) => Number(String(row[efficiencyField] || "").replace(/%$/, "").trim())).filter(Number.isFinite)
+    : [];
+  const dateValues = distinct(dateField);
+  const phaseCounts = {};
+  if (phaseField) {
+    parsed.rows.forEach((row) => {
+      const phase = String(row[phaseField] || "").trim() || "MISSING";
+      phaseCounts[phase] = (phaseCounts[phase] || 0) + 1;
+    });
+  }
+  const subjectDateKeys = subjectField && dateField
+    ? parsed.rows.map((row) => String(row[subjectField] || "").trim() + "|" + String(row[dateField] || "").trim())
+    : [];
+  return {
+    row_count: parsed.rows.length,
+    column_count: parsed.headers.length,
+    headers: parsed.headers,
+    participant_count: distinct(subjectField).length,
+    participant_ids: distinct(subjectField).slice(0, 100),
+    phase_counts: phaseCounts,
+    date_field: dateField,
+    observed_date_values_count: dateValues.length,
+    earliest_date_string: dateValues[0] || null,
+    latest_date_string: dateValues[dateValues.length - 1] || null,
+    br_day_field: dayField,
+    br_day_values: distinct(dayField).slice(0, 100),
+    missing_counts: Object.fromEntries(parsed.headers.map((header) => [header, countMissing(header)])),
+    sleep_latency: summarizeClock(latencyField),
+    sleep_duration: summarizeClock(durationField),
+    sleep_efficiency: efficiencyValues.length ? {
+      source_field: efficiencyField,
+      valid_count: efficiencyValues.length,
+      missing_or_unparsed_count: parsed.rows.length - efficiencyValues.length,
+      minimum_percent: Math.min(...efficiencyValues),
+      maximum_percent: Math.max(...efficiencyValues)
+    } : efficiencyField ? { source_field: efficiencyField, valid_count: 0 } : null,
+    duplicate_subject_date_pairs: subjectDateKeys.length - new Set(subjectDateKeys.filter((value) => !value.startsWith("|") && !value.endsWith("|"))).size
+  };
+}
+
 async function downloadBRSMACTFileInventory(fileRecords) {
   const output = [];
   const downloadDir = path.join(OUTPUT_DIR, "downloads");
@@ -359,7 +490,7 @@ async function downloadBRSMACTFileInventory(fileRecords) {
           await fs.writeFile(destination, bytes);
           attempt.artifact_path = path.relative(process.cwd(), destination);
           result.verified = true;
-          result.measurement_file_downloaded = /\.(csv|tsv|txt)$/i.test(originalName);
+          result.measurement_file_downloaded = /\.(csv|tsv|edf|dat)$/i.test(originalName);
           result.actual_file_size = bytes.byteLength;
           result.actual_md5 = actualMd5;
           result.actual_sha256 = actualSha256;
@@ -371,9 +502,11 @@ async function downloadBRSMACTFileInventory(fileRecords) {
             result.text_inspection = {
               utf8_decodable: true,
               line_count: lines.length,
-              first_line: lines[0] ? lines[0].slice(0, 2000) : "",
-              first_data_line: lines[1] ? lines[1].slice(0, 1000) : ""
+              first_lines: lines.slice(0, 12).map((line) => line.slice(0, 2000))
             };
+            if (/\.csv$/i.test(originalName)) {
+              result.schema_analysis = summarizeActigraphyCsv(text);
+            }
           }
           result.attempts.push(attempt);
           break;
@@ -577,6 +710,7 @@ async function run() {
     dataset_file_explorer_api_client: datasetFileExplorer.apiClient || null,
     bresmact_file_download_audit: bresmactDownloads,
     measurement_files_downloaded: verifiedMeasurementFiles.length,
+    supporting_files_downloaded: verifiedBRSMACTFiles.length - verifiedMeasurementFiles.length,
     file_bytes_downloaded: verifiedBRSMACTFiles.reduce((sum, item) => sum + (item.actual_file_size || 0), 0),
     detail_records: detailResults.map((item) => ({
       query_record: item.query_record,
