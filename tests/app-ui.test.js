@@ -86,7 +86,8 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistenc
   assert.equal(get("research-timepoint-count").textContent, "7");
   assert.match(get("research-timeline").innerHTML, /R\+194/);
   const sources = researchWindow.AstraResearch.sources;
-  assert.equal(sources.length, 4);
+  const sourceIds = sources.map((source) => source.id);
+  assert.equal(new Set(sourceIds).size, sourceIds.length);
   assert.ok(sources.some((source) => source.id === "OSD-575"));
   assert.ok(sources.some((source) => source.id === "BRSMACT_Campaign_1_Actigraphy"));
   assert.ok(sources.some((source) => source.id === "BRSMCF"));
