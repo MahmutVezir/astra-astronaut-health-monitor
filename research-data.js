@@ -14,6 +14,18 @@
       doi: "10.26030/mc5d-p710",
       assay: "Eve Technologies Panel HDCVD9",
       measurementContext: "Human serum multiplex immunoassay; transformed assay values, not continuous vital-sign telemetry.",
+      evidenceData: {
+        csvPath: "./data/osdr/OSD-575/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
+        metadataPath: "./data/osdr/OSD-575/isa-sample-map.json",
+        auditPath: "./data/osdr/OSD-575/source-audit.json",
+        sha256: "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c",
+        byteLength: 6207,
+        expectedRows: 28,
+        expectedColumns: 19,
+        expectedParticipants: 4,
+        expectedTimepoints: 7,
+        expectedConcentrationMarkers: 9
+      },
       timepoints: [
         { label: "L−92", phase: "Pre-flight" },
         { label: "L−44", phase: "Pre-flight" },
@@ -24,10 +36,10 @@
         { label: "R+194", phase: "Post-flight" }
       ],
       acquisitionAudit: {
-        runNumber: 6,
-        runId: 43607599347,
-        auditedAt: "2026-11-14T14:58:14.856Z",
-        decision: "INSUFFICIENT_EVIDENCE",
+        runNumber: 7,
+        runId: 43608345184,
+        auditedAt: "2026-11-14T15:06:24.271Z",
+        decision: "ANALYSIS_AWAITING_POST_MAPPING_AUDIT",
         metadataVerified: true,
         transformedFileReferencedInMetadata: true,
         catalogHttpStatus: 200,
@@ -38,9 +50,11 @@
         catalogFileSizeBytes: 6207,
         catalogFileRestricted: false,
         catalogLookupForm: "VERSIONED_DOCUMENTED_BARE_ENDPOINT",
-        csvDownloaded: false,
-        fileSha256: null,
-        note: "Live run #6 found the exact HDCVD9 transformed CSV in the versioned bare /files/575.3 catalog response (9 study files; exact record size 6,207 bytes; restricted=false). The NASA download route redirected to the observed ALSDA S3 host and exact object path, which the current allowlist did not yet include. The downloader correctly abstained. No CSV bytes, SHA-256, column map, or biomarker measurements were obtained."
+        csvDownloaded: true,
+        fileSha256: "fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c",
+        byteLength: 6207,
+        analysisCompleted: false,
+        note: "Live run #7 downloaded the exact public HDCVD9 transformed CSV (6,207 bytes, HTTP 200 after the recorded ALSDA redirect). The bytes and SHA-256 were independently verified. That run preceded the metadata-backed join and normalization audit; its INSUFFICIENT_EVIDENCE result reflected the old unmapped-column gate, not a scientific assessment of the mapped samples. Research measurements remain hidden until a post-mapping live audit artifact passes every integrity and normalization gate."
       },
       source: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
     },
@@ -52,9 +66,9 @@
         environment: "Commercial spaceflight · human biospecimens",
         domain: "Immune and cardiovascular-related serum proteins",
         measures: ["HDCVD9 multiplex assay", "Transformed serum measurements"],
-        evidenceStatus: "CATALOG_MATCH_DOWNLOAD_UNVERIFIED",
-        statusLabel: "Catalog found · download pending",
-        accessNote: "Live run #6 found the exact HDCVD9 transformed CSV in NASA's versioned bare file catalog (6,207 bytes; restricted=false). The NASA download route redirected to the observed host genelab-alsda-repo-prod.s3.amazonaws.com and exact object path /alsda-data/LSDS-8/Multiplex/ plus the catalog filename. The run rejected it because that host was not yet allowlisted. PR #22 adds only this exact host/path rule; live byte download, SHA-256, CSV parsing and measurement verification are still pending.",
+        evidenceStatus: "LIVE_FILE_RETRIEVED_POST_MAPPING_AUDIT_PENDING",
+        statusLabel: "File downloaded · post-map audit pending",
+        accessNote: "Run #7 downloaded the exact 6,207-byte HDCVD9 transformed CSV from the NASA catalog URL, followed the observed ALSDA S3 redirect, and preserved the original bytes. Its SHA-256 was independently recalculated. That run used the previous parser, so the participant/timepoint join and baseline-percent checks must be re-run with the updated code before values are displayed. The latest imported source-audit.json is the gate for Research Mode.",
         role: "Primary spaceflight research source",
         url: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
       },
