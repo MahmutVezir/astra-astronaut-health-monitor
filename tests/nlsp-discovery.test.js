@@ -9,6 +9,8 @@ const {
   extractApiHints,
   extractCodeReferences,
   extractNetworkContexts,
+  extractApiContexts,
+  extractAssetReferences,
   resolveSameOriginUrl
 } = require("../scripts/audit-nlsp-dso470-discovery.js");
 
@@ -52,6 +54,21 @@ test("extracts application data-service strings and request contexts for review"
   const contexts = extractNetworkContexts(source);
   assert.ok(contexts.some((item) => /workspace-dev\.insight\.nasa\.gov/.test(item.snippet)));
   assert.ok(contexts.some((item) => /fetch\(/.test(item.snippet)));
+});
+
+test("extracts lazy-loaded NLSP feature bundles referenced by the main application", () => {
+  const source = 'const details="assets/ResearchDetailsPage-D4Z_MSMq.js"; const search="assets/SearchDataPage-BYc8sLuE.js";';
+  assert.deepEqual(extractAssetReferences(source), [
+    "assets/ResearchDetailsPage-D4Z_MSMq.js",
+    "assets/SearchDataPage-BYc8sLuE.js"
+  ]);
+});
+
+test("extracts versioned API route context without calling a guessed endpoint", () => {
+  const source = 'const base="/api/v1"; client.get(base + "/search/experiments");';
+  const contexts = extractApiContexts(source);
+  assert.ok(contexts.some((item) => item.term === "/api/v1"));
+  assert.ok(contexts.some((item) => /search\/experiments/.test(item.snippet)));
 });
 
 test("rejects third-party scripts from same-origin discovery", () => {

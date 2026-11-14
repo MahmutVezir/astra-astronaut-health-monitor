@@ -74,6 +74,39 @@ function extractEvidenceSnippets(source, limit = 30) {
   return results;
 }
 
+function extractAssetReferences(source, limit = 40) {
+  const pattern = /["'\x60](assets\/[A-Za-z0-9_.-]+\.js(?:\?[^"'\x60\s]*)?)["'\x60]/g;
+  return [...new Set(Array.from(String(source).matchAll(pattern), (match) => match[1]))].slice(0, limit);
+}
+
+function extractApiContexts(source, limit = 40) {
+  const patterns = [
+    /\/api\/v1/gi,
+    /workspace-dev\.insight\.nasa\.gov/gi,
+    /nlsp-comm\.dev\.ndc\.nasa\.gov/gi,
+    /baseURL/gi,
+    /axios\.create/gi,
+    /fetch\s*\(/gi
+  ];
+  const text = String(source);
+  const contexts = [];
+  const seen = new Set();
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const start = Math.max(0, match.index - 260);
+      const end = Math.min(text.length, match.index + match[0].length + 360);
+      const snippet = text.slice(start, end);
+      const key = snippet.slice(0, 200);
+      if (!seen.has(key)) {
+        seen.add(key);
+        contexts.push({ term: match[0], snippet });
+      }
+      if (contexts.length >= limit) return contexts;
+    }
+  }
+  return contexts;
+}
+
 function extractApiHints(source, limit = 60) {
   const value = String(source);
   const patterns = [
@@ -205,24 +238,65 @@ async function run() {
         evidence_snippets: extractEvidenceSnippets(source, 20),
         api_hints: extractApiHints(source),
         code_references: extractCodeReferences(source),
-        network_contexts: extractNetworkContexts(source)
+        network_contexts: extractNetworkContexts(source),
+        api_contexts: extractApiContexts(source),
+        asset_references: extractAssetReferences(source)
       };
     } catch (error) {
       return { url, error: error && error.message ? error.message : String(error) };
     }
   }));
 
+  const nestedAssetUrls = [...new Set(assetResults.flatMap((asset) => asset.asset_references || [])
+    .map((reference) => resolveSameOriginUrl(reference, index.response.url))
+    .filter(Boolean))].slice(0, 25);
+  const nestedAssetResults = await Promise.all(nestedAssetUrls.map(async (url, indexNumber) => {
+    try {
+      const result = await fetchBytes(url, MAX_SCRIPT_BYTES);
+      const contentType = result.response.headers.get("content-type");
+      if (!result.response.ok || result.tooLarge) {
+        return {
+          url,
+          http_status: result.response.status,
+          content_type: contentType,
+          byte_length: result.bytes.byteLength,
+          error: result.tooLarge ? "ASSET_EXCEEDED_5_MIB_LIMIT" : "ASSET_HTTP_ERROR"
+        };
+      }
+      const fileName = "nested-app-asset-" + String(indexNumber + 1).padStart(2, "0") + ".js";
+      await fs.writeFile(path.join(OUTPUT_DIR, fileName), result.bytes);
+      const source = result.bytes.toString("utf8");
+      return {
+        url,
+        file_name: fileName,
+        http_status: result.response.status,
+        content_type: contentType,
+        byte_length: result.bytes.byteLength,
+        sha256: sha256(result.bytes),
+        evidence_snippets: extractEvidenceSnippets(source, 20),
+        api_hints: extractApiHints(source),
+        code_references: extractCodeReferences(source),
+        network_contexts: extractNetworkContexts(source),
+        api_contexts: extractApiContexts(source),
+        asset_references: extractAssetReferences(source)
+      };
+    } catch (error) {
+      return { url, error: error && error.message ? error.message : String(error) };
+    }
+  }));
+  const allAssetResults = [...assetResults, ...nestedAssetResults];
+
   const anchors = extractAnchorLinks(indexHtml);
   const candidateLinks = anchors.filter((link) =>
     /DSO[\s-]?470|Space Adaptation Syndrome|cerebral.{0,80}blood|heart rate|diastolic/i.test(link.text + " " + link.href)
   );
   const indexSnippets = extractEvidenceSnippets(indexHtml);
-  const scriptSnippets = assetResults.flatMap((asset) =>
+  const scriptSnippets = allAssetResults.flatMap((asset) =>
     (asset.evidence_snippets || []).map((item) => ({ asset: asset.file_name, ...item }))
   );
   const apiHints = [...new Set([
     ...extractApiHints(indexHtml),
-    ...assetResults.flatMap((asset) => asset.api_hints || [])
+    ...allAssetResults.flatMap((asset) => asset.api_hints || [])
   ])].slice(0, 100);
 
   const summary = {
@@ -232,6 +306,8 @@ async function run() {
     index: indexMetadata,
     scripts_found_in_index: scriptUrls.length,
     same_origin_scripts_inspected: assetResults.length,
+    nested_app_bundles_found: nestedAssetUrls.length,
+    nested_app_bundles_inspected: nestedAssetResults.filter((asset) => asset.http_status === 200 && !asset.error).length,
     candidate_links: candidateLinks,
     index_evidence_snippets: indexSnippets,
     script_evidence_snippets: scriptSnippets,
@@ -239,10 +315,14 @@ async function run() {
     asset_code_references: assetResults.flatMap((asset) =>
       (asset.code_references || []).map((reference) => ({ asset: asset.file_name, reference }))
     ).slice(0, 160),
-    asset_network_contexts: assetResults.flatMap((asset) =>
+    asset_network_contexts: allAssetResults.flatMap((asset) =>
       (asset.network_contexts || []).map((context) => ({ asset: asset.file_name, ...context }))
     ).slice(0, 60),
-    asset_results: assetResults.map(({ evidence_snippets, api_hints: hints, code_references, network_contexts, ...rest }) => rest),
+    api_route_contexts: allAssetResults.flatMap((asset) =>
+      (asset.api_contexts || []).map((context) => ({ asset: asset.file_name, ...context }))
+    ).slice(0, 80),
+    discovered_nested_asset_references: nestedAssetUrls,
+    asset_results: allAssetResults.map(({ evidence_snippets, api_hints: hints, code_references, network_contexts, api_contexts, asset_references, ...rest }) => rest),
     measurement_files_downloaded: 0,
     decision: candidateLinks.length || indexSnippets.length || scriptSnippets.length || apiHints.length
       ? "DISCOVERY_REFERENCES_FOUND_REQUIRES_EXACT_RECORD_REVIEW"
@@ -269,5 +349,7 @@ module.exports = {
   extractApiHints,
   extractCodeReferences,
   extractNetworkContexts,
+  extractApiContexts,
+  extractAssetReferences,
   resolveSameOriginUrl
 };
