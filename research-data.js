@@ -40,7 +40,7 @@
         catalogLookupForm: "VERSIONED_DOCUMENTED_BARE_ENDPOINT",
         csvDownloaded: false,
         fileSha256: null,
-        note: "Live run #5 found the exact HDCVD9 transformed CSV in the versioned bare /files/575.3 catalog response (9 study files; exact record size 6,207 bytes; restricted=false). The catalog-provided NASA download URL redirected to a host outside the current strict NASA HTTPS allowlist, so the downloader correctly abstained. No CSV bytes, SHA-256, column map, or biomarker measurements were obtained."
+        note: "Live run #6 found the exact HDCVD9 transformed CSV in the versioned bare /files/575.3 catalog response (9 study files; exact record size 6,207 bytes; restricted=false). The NASA download route redirected to the observed ALSDA S3 host and exact object path, which the current allowlist did not yet include. The downloader correctly abstained. No CSV bytes, SHA-256, column map, or biomarker measurements were obtained."
       },
       source: "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
     },
