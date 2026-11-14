@@ -1,0 +1,43 @@
+name: Discover NASA NLSP DSO-470 data references
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-nlsp-dso470.yml"
+      - "scripts/audit-nlsp-dso470-discovery.js"
+      - "tests/nlsp-discovery.test.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nlsp-dso470-discovery
+  cancel-in-progress: false
+
+jobs:
+  discover-public-record:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out ASTRA repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate discovery script syntax
+        run: node --check scripts/audit-nlsp-dso470-discovery.js
+      - name: Run parser tests
+        run: node --test tests/nlsp-discovery.test.js
+      - name: Fetch the official NLSP index and inspect same-origin application assets
+        run: node scripts/audit-nlsp-dso470-discovery.js
+      - name: Preserve raw discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nlsp-dso470-discovery-${{ github.run_id }}
+          path: artifacts/nlsp-dso470-discovery/
+          if-no-files-found: warn
+          retention-days: 30

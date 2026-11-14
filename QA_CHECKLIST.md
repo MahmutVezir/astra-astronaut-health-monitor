@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype · main commit `804faeeb` (validation commit below)  
+**Build:** 0.1 prototype · main commit `6e33f8a2` (validation commit below)  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -38,15 +38,16 @@ Run `npm test` with Node.js 18+.
 
 ## Current automated validation evidence — 14 November 2026
 
-- Commit: `804faeeb4136849c4319fe7cacfc7aa3d68ac133`
-- GitHub Actions run: [43613264031](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43613264031)
+- Commit: `6e33f8a2376543a553385755ee71738665b9c030`
+- GitHub Actions run: [43613561533](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43613561533)
 - JavaScript syntax checks: passed.
-- Automated test suite at this commit: **58 passed, 0 failed, 0 skipped**.
+- Automated test suite: **59 passed, 0 failed, 0 skipped**.
+- End-to-end Research Mode integration: passed against the committed NASA files; the test verifies source fetching, SHA-256, 28/28 sample matching, nine-analyte normalization, four participant trajectories, the descriptive table, and fibrinogen flag behavior.
 - GitHub Pages deployment: successful.
 - NASA live acquisition: [run 43612460864](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
 - Verified source import: [run 43612482985](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612482985).
 
-The integration test added after this commit will raise the suite count by one and must pass before its code is accepted. The team still needs to perform and record the manual real-browser checks below. CI success is not a substitute for that visual QA.
+The team still needs to perform and record the manual real-browser checks below. CI success is not a substitute for that visual QA.
 
 ## Browser functional tests
 
