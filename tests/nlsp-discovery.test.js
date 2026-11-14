@@ -10,6 +10,7 @@ const {
   extractCodeReferences,
   extractNetworkContexts,
   extractApiContexts,
+  extractApiEndpointReferences,
   extractAssetReferences,
   resolveSameOriginUrl
 } = require("../scripts/audit-nlsp-dso470-discovery.js");
@@ -62,6 +63,14 @@ test("extracts lazy-loaded NLSP feature bundles referenced by the main applicati
     "assets/ResearchDetailsPage-D4Z_MSMq.js",
     "assets/SearchDataPage-BYc8sLuE.js"
   ]);
+});
+
+test("extracts concrete API endpoint references from observed bundle strings", () => {
+  const source = 'const search="/api/v1/search/data"; const detail="/api/v1/research/details/"; const path="/search/data/details/";';
+  const endpoints = extractApiEndpointReferences(source);
+  assert.ok(endpoints.includes("/api/v1/search/data"));
+  assert.ok(endpoints.includes("/api/v1/research/details/"));
+  assert.ok(endpoints.includes("/search/data/details/"));
 });
 
 test("extracts versioned API route context without calling a guessed endpoint", () => {

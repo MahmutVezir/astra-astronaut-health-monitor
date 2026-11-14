@@ -79,6 +79,19 @@ function extractAssetReferences(source, limit = 40) {
   return [...new Set(Array.from(String(source).matchAll(pattern), (match) => match[1]))].slice(0, limit);
 }
 
+function extractApiEndpointReferences(source, limit = 120) {
+  const text = String(source);
+  const patterns = [
+    /["'\x60](\/api\/v1\/[A-Za-z0-9_./?&=:$-]{1,180})["'\x60]/g,
+    /["'\x60](\/search\/data\/[A-Za-z0-9_./?&=:$-]{1,180})["'\x60]/g,
+    /\/api\/v1\/[A-Za-z0-9_./?&=:$-]{1,180}/g
+  ];
+  const values = patterns.flatMap((pattern) =>
+    Array.from(text.matchAll(pattern), (match) => match[1] || match[0])
+  );
+  return [...new Set(values)].slice(0, limit);
+}
+
 function extractApiContexts(source, limit = 40) {
   const patterns = [
     /\/api\/v1/gi,
@@ -240,6 +253,7 @@ async function run() {
         code_references: extractCodeReferences(source),
         network_contexts: extractNetworkContexts(source),
         api_contexts: extractApiContexts(source),
+        api_endpoint_references: extractApiEndpointReferences(source),
         asset_references: extractAssetReferences(source)
       };
     } catch (error) {
@@ -249,7 +263,23 @@ async function run() {
 
   const nestedAssetUrls = [...new Set(assetResults.flatMap((asset) => asset.asset_references || [])
     .map((reference) => resolveSameOriginUrl(reference, index.response.url))
-    .filter(Boolean))].slice(0, 25);
+    .filter(Boolean))]
+    .sort((left, right) => {
+      const priority = [
+        "SearchDataPage-",
+        "searchStore-",
+        "ResearchDetailsPage-",
+        "DatasetFileExplorer-",
+        "RecordDetailContext-",
+        "RelatedDataTable-"
+      ];
+      const leftRank = priority.findIndex((token) => left.includes(token));
+      const rightRank = priority.findIndex((token) => right.includes(token));
+      const a = leftRank < 0 ? priority.length : leftRank;
+      const b = rightRank < 0 ? priority.length : rightRank;
+      return a - b || left.localeCompare(right);
+    })
+    .slice(0, 40);
   const nestedAssetResults = await Promise.all(nestedAssetUrls.map(async (url, indexNumber) => {
     try {
       const result = await fetchBytes(url, MAX_SCRIPT_BYTES);
@@ -320,7 +350,10 @@ async function run() {
     ).slice(0, 60),
     api_route_contexts: allAssetResults.flatMap((asset) =>
       (asset.api_contexts || []).map((context) => ({ asset: asset.file_name, ...context }))
-    ).slice(0, 80),
+    ).slice(0, 100),
+    api_endpoint_references: allAssetResults.flatMap((asset) =>
+      (asset.api_endpoint_references || []).map((reference) => ({ asset: asset.file_name, reference }))
+    ).slice(0, 200),
     discovered_nested_asset_references: nestedAssetUrls,
     asset_results: allAssetResults.map(({ evidence_snippets, api_hints: hints, code_references, network_contexts, api_contexts, asset_references, ...rest }) => rest),
     measurement_files_downloaded: 0,
@@ -350,6 +383,7 @@ module.exports = {
   extractCodeReferences,
   extractNetworkContexts,
   extractApiContexts,
+  extractApiEndpointReferences,
   extractAssetReferences,
   resolveSameOriginUrl
 };
