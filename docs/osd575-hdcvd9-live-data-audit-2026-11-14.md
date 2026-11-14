@@ -71,3 +71,27 @@ After the revised live pipeline report passes, the defensible next analysis is a
 
 - NASA OSDR OSD-575 study description, sample table, assay methods and license: https://osdr.nasa.gov/bio/repo/data/studies/OSD-575
 - Eve Technologies HDCVD9 assay description and serum fibrinogen caveat: https://www.evetechnologies.com/product/human-cardiovascular-disease-panel-3-9-plex-discovery-assay-array-hdcvd9/
+
+
+## Production repeat audit — live run #9 (14 November 2026)
+
+The follow-up live workflow [run 43612460864](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864) executed the updated metadata-backed analysis and completed successfully. Its artifact `osd575-live-audit-43612460864` was imported by [verified-source import run 43612482985](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612482985).
+
+The production audit independently recorded:
+
+- Exact file: `LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv`
+- Byte length: **6,207**
+- Project-maintained SHA-256: `fdba6c3ce45401c12ca9b699fa375303793959aa0391e2f3c722f354d9cfc75c`
+- CSV shape: **28 rows × 19 columns**
+- NASA ISA mapping: **28/28** unique sample names matched one-to-one
+- Participants: **4** (C001–C004), with **7** collection timepoints each
+- Normalization: **PASS** for all **9** concentration/percentage pairs, using the mean of the 12 all-crew pre-flight samples as denominator
+- Maximum absolute difference between recorded percentages and recomputed percentages: approximately **4.98 × 10⁻⁸**
+- Scientific decision: **LIMITED_EVIDENCE**
+- Raw assay data: **Not Available**
+
+The source-level import stores the original CSV bytes, the derived ISA sample map, the raw NASA metadata/catalog response envelopes, the manifest, the pilot report and the structured source-audit record under `data/osdr/OSD-575/`. The SHA-256 is a reproducibility pin maintained by this project; NASA did not publish it as a signature.
+
+The Research Mode browser loader performs a second gate over the committed files. It verifies the exact SHA-256 and byte length, parses the 28 × 19 CSV, checks the 28-sample join and four participant IDs, confirms all seven timepoints and verifies all nine numeric concentration/percentage pairs before biomarker plots are displayed. If any of these checks fail, measurements remain hidden.
+
+This update supersedes the earlier statement above that the live mapping/normalization gate was still pending. It does **not** change the scientific limitations: the study has four independent participants, observations are repeated serum samples, raw assay data are unavailable, and fibrinogen remains flagged because of the vendor's serum suitability statement. OSD-575 is not a source of continuous heart-rate, blood-pressure, SpO₂, temperature or sleep telemetry.

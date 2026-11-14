@@ -140,6 +140,7 @@
     const study = window.AstraResearch && window.AstraResearch.inspiration4;
     if (!study) return;
     const audit = researchEvidence ? researchEvidence.audit : (study.acquisitionAudit || {});
+    const sourceAuditPassed = audit.decision === "LIMITED_EVIDENCE" && audit.analysisCompleted === true;
     const setText = function (id, value) {
       const target = $(id);
       if (target) target.textContent = value === null || value === undefined || value === ""
@@ -152,36 +153,48 @@
     setText("research-samples", study.sampleCountListed);
     setText("research-timepoint-count", study.timepoints.length);
     setText("research-assay", study.assay || "Not reported");
-    setText("research-decision", researchEvidence ? "LIMITED EVIDENCE" : "DATA QA PENDING");
-    setText("research-metadata-status", study.acquisitionAudit.metadataVerified ? "Verified" : "Not verified");
+    setText("research-decision", researchEvidence || sourceAuditPassed ? "LIMITED EVIDENCE" : "DATA QA PENDING");
+    setText("research-metadata-status", audit.metadataVerified ? "Verified" : "Not verified");
     setText("research-catalog-status", researchEvidence
       ? "HTTP 200 · exact HDCVD9 record matched"
-      : "HTTP 200 · target file downloaded; mapped audit pending");
-    setText("research-file-status", researchEvidence
-      ? "Downloaded · " + researchEvidence.fileBytes.toLocaleString() + " bytes"
-      : "Downloaded in run #7 · post-map audit pending");
-    setText("research-hash-status", researchEvidence
-      ? researchEvidence.sha256.slice(0, 12) + "…" + researchEvidence.sha256.slice(-8)
-      : (study.acquisitionAudit.fileSha256
-        ? study.acquisitionAudit.fileSha256.slice(0, 12) + "…" + study.acquisitionAudit.fileSha256.slice(-8)
-        : "Not calculated"));
+      : audit.catalogFileFound
+        ? "HTTP " + audit.catalogHttpStatus + " · exact HDCVD9 record matched"
+        : "Catalog record not verified");
+    const sourceBytes = researchEvidence ? researchEvidence.fileBytes : (audit.byteLength || study.evidenceData?.byteLength);
+    setText("research-file-status", sourceBytes
+      ? "Downloaded · " + Number(sourceBytes).toLocaleString() + " bytes"
+      : "Not downloaded");
+    const sourceHash = researchEvidence ? researchEvidence.sha256 : audit.fileSha256;
+    setText("research-hash-status", sourceHash
+      ? sourceHash.slice(0, 12) + "…" + sourceHash.slice(-8)
+      : "Not calculated");
     setText("research-run-status", researchEvidence
       ? "Run ID " + audit.workflow_run_id
-      : "Run #7 · awaiting updated mapping audit");
+      : audit.runNumber
+        ? "Run #" + audit.runNumber + " · post-download audit passed"
+        : "No completed source audit");
     setText("research-audit-note", researchEvidence
-      ? "The exact NASA source bytes pass the reviewed SHA-256 pin. All 28 CSV sample names join one-to-one to the NASA ISA table, and all nine transformed percentage columns reproduce the all-crew pre-flight normalization. The scientific decision remains LIMITED_EVIDENCE: four independent participants, with raw assay data unavailable."
-      : (study.acquisitionAudit.note || "No file-acquisition result has been recorded."));
+      ? "The browser rechecked the exact imported NASA bytes against the project-maintained SHA-256 pin. All 28 CSV sample names join one-to-one to the NASA ISA table, and all nine transformed percentage columns reproduce the all-crew pre-flight normalization. The scientific decision remains LIMITED_EVIDENCE: four independent participants, with raw assay data unavailable."
+      : sourceAuditPassed
+        ? (audit.note || "The source-level join and normalization audit passed.") + " Browser-side SHA-256, file-shape, sample-join and normalization checks still run before biomarker measurements are rendered."
+        : (audit.note || "No completed file-acquisition and mapping audit has been recorded."));
 
     const stateLabel = $("research-data-state");
     if (stateLabel) {
-      stateLabel.textContent = researchEvidence ? "DATA + ANALYSIS VERIFIED" : "POST-MAP QA PENDING";
+      stateLabel.textContent = researchEvidence
+        ? "DATA + ANALYSIS VERIFIED"
+        : sourceAuditPassed
+          ? "SOURCE AUDIT PASSED · BROWSER CHECK"
+          : "POST-MAP QA PENDING";
       stateLabel.className = "state-label " + (researchEvidence ? "state-good" : "state-limited");
     }
     const modeIndicator = $("mode-indicator");
     if (modeIndicator) {
       modeIndicator.textContent = researchEvidence
         ? "NASA RESEARCH MODE · SHA-256 + SAMPLE MAP VERIFIED"
-        : "NASA RESEARCH MODE · POST-MAP DATA QA PENDING";
+        : sourceAuditPassed
+          ? "NASA RESEARCH MODE · SOURCE AUDIT PASSED · BROWSER CHECK REQUIRED"
+          : "NASA RESEARCH MODE · POST-MAP DATA QA PENDING";
     }
   }
 
@@ -281,8 +294,14 @@
     const error = $("research-evidence-error");
     const select = $("research-marker-select");
     if (!researchEvidence) {
+      const audit = window.AstraResearch?.inspiration4?.acquisitionAudit || {};
+      const sourceAuditPassed = audit.decision === "LIMITED_EVIDENCE" && audit.analysisCompleted === true;
       if (status) {
-        status.textContent = researchEvidenceError ? "SOURCE VERIFICATION FAILED" : "POST-MAP AUDIT PENDING";
+        status.textContent = researchEvidenceError
+          ? "SOURCE VERIFICATION FAILED"
+          : sourceAuditPassed
+            ? "SOURCE AUDIT PASSED · BROWSER CHECK REQUIRED"
+            : "POST-MAP AUDIT PENDING";
         status.className = "state-label state-limited";
       }
       [rows, matches, people, normalization].forEach(function (item) {
