@@ -102,7 +102,7 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, and persistenc
   assert.equal(actigraphy.evidenceStatus, "PUBLIC_LISTING_FILE_QA_PENDING");
   assert.match(actigraphy.accessNote, /not live astronaut telemetry/);
   const dso470 = sources.find((source) => source.id === "DSO-470");
-  assert.equal(dso470.evidenceStatus, "PUBLIC_INDEX_CANDIDATE_DETAIL_QA_PENDING");
+  assert.equal(dso470.evidenceStatus, "INDEX_AND_APP_AUDITED_NO_DATA_FILE_ENDPOINT_VERIFIED");
   assert.match(get("research-source-grid").innerHTML, /BRSMACT_Campaign_1_Actigraphy/);
   assert.match(get("research-source-grid").innerHTML, /DSO-470/);
   assert.match(get("mode-indicator").textContent, /NASA RESEARCH MODE/);
