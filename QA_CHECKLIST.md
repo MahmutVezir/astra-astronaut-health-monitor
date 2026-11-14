@@ -8,12 +8,13 @@
 Run `npm test` with Node.js 18+.
 
 - Blank and missing values return `NO_DATA`.
-- Personal reference-band endpoints are inclusive.
-- Values outside the illustrative bands return `REVIEW`.
+- Configured reference-band endpoints are inclusive.
+- Values outside the configured bands return `REVIEW`.
 - Non-numeric and out-of-input-range values return `INVALID`.
 - Missing readings cause an overall `LIMITED` assessment.
 - Fully populated out-of-band readings produce `REVIEW`.
 - The nominal demo scenario produces `WITHIN`.
+- Custom reference bands are respected and invalid lower/upper pairs are rejected.
 - Static integration tests verify that app.js element IDs exist in index.html and all referenced offline-shell assets exist.
 
 ## Browser functional tests
@@ -27,7 +28,8 @@ Run `npm test` with Node.js 18+.
 | QA-05 | Manual entry | Enter valid values and submit | Cards, assessment, timestamp, trend, and log update | Not yet recorded |
 | QA-06 | Missing manual value | Clear one field and submit | Field remains “No data”; assessment becomes “Limited” | Not yet recorded |
 | QA-07 | Invalid entry | Enter text or a value outside the field's input range | Entry is rejected with a correction message | Not yet recorded |
-| QA-08 | Boundaries | Enter exact lower and upper demo-band values | Both endpoints are labelled “Within baseline” | Not yet recorded |
+| QA-08 | Boundaries | Enter exact lower and upper configured-band values | Both endpoints are labelled “Within configured band” | Not yet recorded |
+| QA-17 | Configure bands | Set a lower value at or above the upper value and submit | The form rejects the invalid pair; a valid pair is saved locally | Not yet recorded |
 | QA-09 | Wellbeing | Move all four sliders and save | Confirmation appears and values persist after reload | Not yet recorded |
 | QA-10 | Persistence | Save readings and reload | The saved local state returns without invented readings | Not yet recorded |
 | QA-11 | CSV export | Export mission log | A CSV downloads and contains the recorded entries | Not yet recorded |
