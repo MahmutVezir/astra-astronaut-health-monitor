@@ -41,9 +41,9 @@ ASTRA cites these pages as research context for mission hazards and the relevanc
 
 ## AI assistance and model scope
 
-- ChatGPT (OpenAI) assisted with code review, tests and documentation drafting. This use is disclosed in the README.
-- ASTRA-SYNTH-MLP-1 is a project-trained model created from generated synthetic telemetry feature windows. It was not downloaded from Hugging Face or Kaggle and was not trained on NASA or clinical participant data.
-- No external LLM service is called by the running application. Mission replay and model inference run locally in the browser.
+- ChatGPT (OpenAI) assisted with research synthesis, code drafting/modification, debugging, code review, test design, data/analysis interpretation and documentation. AI-assisted output was reviewed and tested by the project lead; details are disclosed in the README.
+- ASTRA-SYNTH-MLP-2 is the active project-trained model created from generated synthetic telemetry feature windows. ASTRA-SYNTH-MLP-1 is retained only as a historical artifact and is not loaded by the app. It was not downloaded from Hugging Face or Kaggle and was not trained on NASA or clinical participant data.
+- No external LLM service is called by the running application. Mission replay and MLP v2 inference run locally in the browser. No Hugging Face model/Space, Kaggle notebook/dataset, or third-party inference service is integrated in this submission.
 
 ## User privacy and media
 
