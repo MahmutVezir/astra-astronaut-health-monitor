@@ -125,6 +125,7 @@ test("activation deletes only ASTRA caches and preserves unrelated application c
   await activationPromise;
 
   assert.deepEqual(worker.calls.deleted, [
+    "astra-shell-v1",
     "astra-shell-v2",
     "astra-astronaut-health-monitor-shell-v0",
     "astra-astronaut-health-monitor-shell-v1",
