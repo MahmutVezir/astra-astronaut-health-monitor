@@ -2,7 +2,7 @@
 
 **Know your baseline. Notice the change. Act with evidence.**
 
-ASTRA is an offline-first astronaut health-monitoring prototype with clearly separated research and demonstration workflows. **NASA Research Mode** uses the preserved NASA OSDR OSD-575 Version 3 HDCVD9 transformed serum-assay file and its official ISA sample map to build retrospective participant-level biomarker profiles after source-integrity and analysis checks pass. **Demo & Manual Mode** keeps simulated or manually entered vital-sign indicators separate from NASA observations. OSD-575 is a biospecimen study, not a continuous heart-rate, SpO₂, blood-pressure, temperature, or sleep feed.
+ASTRA is an offline-first astronaut health-monitoring research and demonstration workspace with three distinct evidence modes. **NASA Research Mode** uses the preserved NASA OSDR OSD-575 Version 3 HDCVD9 transformed serum-assay file and its official ISA sample map to build retrospective participant-level biomarker profiles after source-integrity and analysis checks pass. **Demo & Manual Mode** keeps simulated or manually entered indicators separate from NASA observations. **Mission Replay** plays back a deterministic, 30-day synthetic mission profile and runs an experimental MLP locally in the browser. OSD-575 is a biospecimen study, not a continuous heart-rate, SpO₂, blood-pressure, temperature, or sleep feed.
 
 > **Important:** ASTRA is a student prototype, not a validated medical device. It does not diagnose, predict an event, prescribe treatment, or replace a flight surgeon or mission medical protocol. All readings in the demo are simulated or manually entered. The reference bands are demonstration settings, not medical thresholds or NASA standards.
 
@@ -16,6 +16,9 @@ ASTRA is an offline-first astronaut health-monitoring prototype with clearly sep
 - A cross-domain review note surfaces when baseline deviations and wellbeing self-report flags co-occur. It does not calculate a composite medical risk score or infer causation.
 - Heart-rate history plots only saved readings; one reading is shown as one point and is never duplicated to imply a trend.
 - Local mission log, browser persistence, and CSV export.
+- Mission Replay with seven deterministic 30-day synthetic scenarios: nominal, cardiovascular departure, oxygen-signal departure, sleep/fatigue co-occurrence, temperature drift, multi-signal deviation, and sensor dropout. Playback supports pause, step, restart, speed control, daily charts, a seven-day data-quality window, and full replay CSV export.
+- An offline, browser-local MLP pattern screen that evaluates nine features from the rolling seven-day synthetic replay. It abstains when history or data completeness is insufficient and displays the largest standardized feature departures as descriptive inputs, not causal explanations.
+- The MLP was trained on generated synthetic windows only: 16,000 nominal and 16,000 deviation training windows, with a separate 5,000 + 5,000 synthetic hold-out set. Its validation metrics apply only to that generator and do not estimate real astronaut or clinical performance. See the [model card](docs/mission-ml-model-card.md) and [reproducible training script](scripts/train_mission_model.py).
 - Research Mode with the exact downloaded OSD-575 HDCVD9 transformed CSV, a preserved NASA ISA sample map, SHA-256 pin, 28/28 sample join, and nine-analyte baseline-normalization audit.
 - Participant-level descriptive biomarker trends across seven reported collection timepoints; browser-side checks re-verify the local CSV bytes, schema, sample map, and normalization before any measurements are rendered.
 - A clear LIMITED_EVIDENCE decision: four independent participants, 28 repeated samples, raw assay data unavailable, and fibrinogen flagged for assay-suitability review.
@@ -30,7 +33,8 @@ No third-party JavaScript packages or build step are required.
 1. Clone or download this repository.
 2. In the project folder, run `python -m http.server 8000` (Python 3) or use another local static web server.
 3. Open `http://localhost:8000` in a browser.
-4. Try all three demo scenarios, edit readings under **Health signals**, save a wellbeing check-in, and export the mission log.
+4. Try the three Demo & Manual scenarios, edit readings under **Health signals**, save a wellbeing check-in, and export the mission log.
+5. Open **Mission replay**, select each synthetic scenario, use Play / Next day / Restart, inspect the rolling model/data-quality panels, and export the replay CSV. All replay values are synthetic.
 
 Opening `index.html` directly also allows the core interface to run, but service-worker caching requires an HTTP(S) origin such as localhost or GitHub Pages.
 
@@ -85,7 +89,7 @@ All fixed bands, comparison tolerances, and self-report rules are illustrative s
 
 ## AI assistance disclosure
 
-ChatGPT (OpenAI) was used during the hackathon to help draft and review application code, test cases, and documentation. The team is responsible for reviewing, testing, and explaining the submitted work. No AI model or external LLM API is integrated into the running application; the dashboard uses transparent deterministic rules. Simulated values are labelled and are not presented as NASA observations.
+ChatGPT (OpenAI) was used during the hackathon to assist with code review, test design, and documentation. The team is responsible for reviewing, testing, and explaining the submitted work. ASTRA includes a project-trained, browser-local MLP, but that model was trained only on generated synthetic telemetry windows; it was not trained on NASA participant records or clinical datasets. The MLP has no external inference API and is not a medical model. No external LLM is called by the running application. NASA research data, synthetic replay data, and manually entered values remain clearly separated.
 
 ## Privacy and safety
 
@@ -106,7 +110,11 @@ Only confirmed team members and their actual contributions should be added here;
 - `index.html` — application views and forms
 - `styles.css` — responsive visual system
 - `app.js` — application state, local persistence, scenarios, and CSV export
-- `health-engine.js` — pure, testable assessment rules
+- `health-engine.js` — pure, testable demo assessment rules
+- `mission-engine.js` and `mission-replay-ui.js` — deterministic synthetic mission generation, rolling data-quality analysis, local MLP inference and replay interface
+- `data/models/mission-anomaly-mlp-v1.json` and `.js` — model weights, training metadata and offline browser bundle
+- `scripts/train_mission_model.py`, `requirements-model-training.txt` and `docs/mission-ml-model-card.md` — reproducible synthetic-only model training, pinned development dependencies and model limitations
+- `THIRD_PARTY_NOTICES.md` — license and source register for NASA data, challenge research pages, project code and training tools
 - `research-data.js` — NASA OSDR study metadata, verified source paths, and research-source status registry
 - `research-data-loader.js` — browser-side SHA-256, NASA ISA sample-join, CSV-schema, and normalization gates before Research Mode renders biomarker values
 - `data/osdr/OSD-575/` — exact downloaded NASA source CSV, NASA ISA sample map, and post-download audit record (imported only after the live artifact passes strict validation)
