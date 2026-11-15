@@ -49,6 +49,7 @@
         <button class="tab" data-view="wellbeing" type="button">Wellbeing</button>
         <button class="tab" data-view="log" type="button">Mission log</button>
         <button class="tab" data-view="sources" type="button">Sources & limits</button>
+        <button class="tab" data-view="telemetry" type="button">Mission Telemetry AI</button>
       </nav>
 
       <section class="view active" id="view-research">
@@ -272,12 +273,97 @@
         <article class="panel limitation-panel"><h3>What ASTRA does — and does not — claim</h3><ul><li>All dashboard readings and crew entries in this demonstration are simulated or manually entered by the user.</li><li>OSD-575 is referenced as a real NASA open research study; its biospecimen assay data are not used to fabricate vital-sign readings.</li><li>Personal reference bands are illustrative demo settings, not NASA standards or medical thresholds.</li><li>ASTRA does not diagnose, predict a medical event, prescribe treatment, or replace a flight surgeon or mission medical protocol.</li><li>No wearable, spacecraft telemetry, or remote medical connection is implemented.</li><li>Local browser storage is not an encrypted medical-record system. Do not enter real, identifiable, or sensitive health information.</li></ul></article>
       </section>
 
+      <section class="view" id="view-telemetry" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">SIMULATED MISSION WINDOW · LOCAL ML INFERENCE</p>
+            <h2>Mission telemetry review</h2>
+            <p class="section-copy">Replay a deterministic 12-checkpoint mission scenario. The local decision-tree model reviews signal changes and telemetry quality, then shows the exact feature path behind its pattern label.</p>
+          </div>
+          <span class="state-label state-limited" id="mission-ai-model-status">LOADING LOCAL MODEL</span>
+        </div>
+
+        <article class="panel mission-controls">
+          <div class="mission-controls-grid">
+            <label class="field"><span>MISSION SCENARIO</span>
+              <select id="mission-scenario">
+                <option value="nominal">Nominal monitoring</option>
+                <option value="drift">Multi-signal drift</option>
+                <option value="dropouts">Missing / delayed telemetry</option>
+                <option value="wellbeing">Wellbeing-context changes</option>
+                <option value="mixed">Mixed drift and telemetry issues</option>
+              </select>
+            </label>
+            <div class="mission-actions">
+              <button class="button button-primary" id="run-mission-simulation" type="button">Run scenario</button>
+              <button class="button button-secondary" id="analyze-saved-telemetry" type="button">Analyze saved entries</button>
+            </div>
+          </div>
+          <p class="fine-print">All checkpoints generated here are labelled SIMULATED. “Analyze saved entries” uses only local Demo &amp; Manual records; NASA Research Mode data is never passed into this model.</p>
+          <p class="form-message" id="mission-ai-message" role="status"></p>
+        </article>
+
+        <div class="mission-metrics">
+          <article class="research-metric"><span>WINDOW CHECKPOINTS</span><strong id="mission-checkpoint-count">—</strong><small>2-hour illustrative intervals</small></article>
+          <article class="research-metric"><span>MISSING VALUES</span><strong id="mission-missing-rate">—</strong><small>Share of expected signal values</small></article>
+          <article class="research-metric"><span>STALE CHECKPOINTS</span><strong id="mission-stale-rate">—</strong><small>Latency over 120 seconds</small></article>
+          <article class="research-metric"><span>FLATLINE RATE</span><strong id="mission-flatline-rate">—</strong><small>Adjacent unchanged pairs</small></article>
+        </div>
+
+        <div class="content-grid mission-results-grid">
+          <article class="panel mission-pattern-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">MODEL OUTPUT · NOT A HEALTH SCORE</p><h3>Pattern classification</h3></div>
+              <span class="state-label state-limited" id="mission-ai-status">AWAITING DATA</span>
+            </div>
+            <h3 class="mission-pattern-title" id="mission-ai-label">No mission window analyzed</h3>
+            <p class="assessment-summary" id="mission-ai-summary">Run a simulated scenario or analyze enough saved Demo &amp; Manual entries to begin.</p>
+            <div class="mission-confidence-row">
+              <span>MODEL SUPPORT</span>
+              <strong id="mission-ai-confidence">—</strong>
+            </div>
+            <p class="fine-print" id="mission-ai-confidence-note">Leaf class share from synthetic training; not a calibrated probability or medical risk.</p>
+            <div class="mission-path" id="mission-ai-path" aria-live="polite">
+              <p class="insight-empty">The decision path will appear here after a supported window is analyzed.</p>
+            </div>
+          </article>
+          <article class="panel mission-chart-panel">
+            <div class="panel-heading"><div><p class="eyebrow">SIGNAL HISTORY</p><h3>Heart-rate checkpoints</h3></div><span class="mini-label">BPM · SIMULATED</span></div>
+            <div class="chart-wrap">
+              <svg id="mission-heart-rate-chart" viewBox="0 0 560 190" role="img" aria-label="Simulated heart-rate readings across mission checkpoints">
+                <line x1="28" y1="22" x2="28" y2="158" class="chart-axis"></line>
+                <line x1="28" y1="158" x2="540" y2="158" class="chart-axis"></line>
+                <polyline id="mission-heart-rate-line" points="" class="chart-line"></polyline>
+                <g id="mission-heart-rate-points"></g>
+                <text x="34" y="15" class="chart-label">BPM</text>
+              </svg>
+            </div>
+            <p class="chart-caption" id="mission-chart-caption">No simulated window loaded.</p>
+          </article>
+        </div>
+
+        <article class="panel mission-observations-panel">
+          <div class="panel-heading"><div><p class="eyebrow">WINDOW INSPECTION</p><h3>Checkpoint observations</h3></div><span class="mini-label" id="mission-source-label">NO DATA SOURCE</span></div>
+          <div class="mission-table-wrap" id="mission-observation-table">
+            <p class="insight-empty">No checkpoints are loaded.</p>
+          </div>
+        </article>
+
+        <article class="panel mission-model-note">
+          <h3>How the AI works and where it stops</h3>
+          <p class="section-copy">ASTRA uses a locally executed, interpretable decision tree. It evaluates eight features: four signal changes, missing-data rate, stale-data rate, flatline rate, and wellbeing self-report flags. The model was trained and holdout-tested only on simulator-generated synthetic examples. A model-support value describes the class share in the reached training leaf; it is not a clinical probability.</p>
+          <p class="fine-print">The system abstains when a window is too short, signal coverage is inadequate, a feature is outside the supported envelope, or leaf support is below 65%. Model output is separate from fixed reference-band and personal-reference checks. It does not diagnose, predict a medical event, recommend treatment, or establish flight readiness.</p>
+          <a href="./docs/mission-pattern-model-card.md" target="_blank" rel="noopener noreferrer">Read the complete model card ↗</a>
+        </article>
+      </section>
+
       <footer class="footer"><span>ASTRA · Independent student prototype</span><span>Not an official NASA product · Not for clinical use</span></footer>
     </main>
   </div>
   <script src="research-data.js"></script>
   <script src="research-data-loader.js"></script>
   <script src="health-engine.js"></script>
+  <script src="mission-ai.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
