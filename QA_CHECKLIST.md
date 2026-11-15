@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** 0.1 prototype · main commit `0e0f955303865e5837dc4cfc8b96c05f50241093`  
+**Build:** 0.2 development candidate · branch `feature/crew-context-review` · 15 November 2026  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Automated logic tests
@@ -15,7 +15,19 @@ Run `npm test` with Node.js 18+.
 - Fully populated out-of-band readings produce `REVIEW`.
 - The nominal demo scenario produces `WITHIN`.
 - Custom reference bands are respected and invalid lower/upper pairs are rejected.
+- Personal-baseline capture requires a complete, valid saved reading set; current values are compared with the captured baseline using documented demonstration tolerances.
+- Missing current readings remain missing in baseline comparison; they are not imputed.
+- Saved wellbeing self-reports trigger separate, inspectable flags; combined context is reported only when both baseline and wellbeing evidence exist.
+- A one-point heart-rate history is not duplicated or presented as a time trend.
 - Static integration tests verify that app.js element IDs exist in index.html and all referenced offline-shell assets exist.
+
+## Latest main-branch CI result before this development branch — 15 November 2026
+
+- Main commit: `134c368e5ba7be6eebd235380bb409d25e7398dc`.
+- Workflow run [43707514759](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43707514759) failed.
+- Automated tests: **103 passed, 1 failed out of 104**.
+- Failure: the Service Worker activation test expected the old `astra-shell-v1` cache to be retained, but production code correctly deleted it as a legacy ASTRA cache. The development branch updates the test expectation to match the cleanup behaviour.
+- Deployment was skipped after the test job failed. The current development branch must pass a fresh workflow before it is considered deployable.
 
 ## NASA OSD-575 Research Mode gates
 
@@ -49,7 +61,9 @@ Run `npm test` with Node.js 18+.
 - [ ] Confirm file access/reuse terms, exact source URL, bytes, SHA-256, schema, units, cohort and sampling cadence.
 - [ ] Only after those gates pass, implement a separate DSO-470 data loader and tests.
 
-## Current automated validation evidence — 14 November 2026
+## Historical automated validation evidence — 14 November 2026
+
+The 104/104 result below belongs to the earlier prototype commit and predates the Service Worker v3 change and the baseline/wellbeing integration branch. It is historical evidence, not validation of the current development candidate.
 
 - Main application commit: `0e0f955303865e5837dc4cfc8b96c05f50241093`.
 - GitHub Actions validation + deployment: [run 43636079917](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43636079917).
@@ -70,20 +84,35 @@ Run `npm test` with Node.js 18+.
 
 The team still needs to perform and record the manual real-browser checks below. CI success is not a substitute for that visual QA.
 
+## User-reported manual smoke test — 15 November 2026
+
+The project owner reported these checks on the previously deployed build before the current baseline/wellbeing development branch was created. The browser and device were not recorded, and the new decision-engine changes have not yet been manually re-tested.
+
+| ID | Reported check | User-reported result | Scope note |
+|---|---|---|---|
+| MR-01 | NASA Research Mode opens and OSD-575 panels load | PASS | Research view and study panels opened |
+| MR-02 | OSD-575 validation and biomarker charts | PASS | User reported 28/28 sample matching and 9/9 normalization checks before chart display |
+| MR-03 | Demo & Manual Mode navigation | PASS | Crew overview and scenario controls opened |
+| MR-04 | Nominal, Baseline Shift and Incomplete Data scenarios | PASS | Cards and summaries changed; the new personal-baseline delta calculation still requires re-test |
+| MR-05 | Manual vital-sign entry | PASS | User reported that the assessment badge and summary changed after saving |
+| MR-06 | Mission Log CSV export | PASS | User reported a downloaded file containing 5 data rows and 7 columns |
+
+These are user-reported results, not independently reproduced by the CI runner. Repeat them on the final candidate build and record device, browser and evidence before submission.
+
 ## Browser functional tests
 
 | ID | Test | Steps | Expected result | Actual result |
 |---|---|---|---|---|
 | QA-01 | Initial load | Open app in a fresh browser profile | Nominal simulated readings appear; demo label is visible | Not yet recorded |
 | QA-02 | Nominal scenario | Load “Nominal day” | Four signals are inside their illustrative bands | Not yet recorded |
-| QA-03 | Baseline shift | Load “Baseline shift” | Four signals show “Review”; explanation names the demo band | Not yet recorded |
+| QA-03 | Baseline shift | Load “Baseline shift” | Fixed-band status and personal-baseline deltas update separately; the scenario baseline is explicitly identified as simulated | Not yet recorded |
 | QA-04 | Incomplete data | Load “Incomplete data” | Two signals show “No data”; overall assessment is “Limited” | Not yet recorded |
 | QA-05 | Manual entry | Enter valid values and submit | Cards, assessment, timestamp, trend, and log update | Not yet recorded |
 | QA-06 | Missing manual value | Clear one field and submit | Field remains “No data”; assessment becomes “Limited” | Not yet recorded |
 | QA-07 | Invalid entry | Enter text or a value outside the field's input range | Entry is rejected with a correction message | Not yet recorded |
 | QA-08 | Boundaries | Enter exact lower and upper configured-band values | Both endpoints are labelled “Within configured band” | Not yet recorded |
 | QA-17 | Configure bands | Set a lower value at or above the upper value and submit | The form rejects the invalid pair; a valid pair is saved locally | Not yet recorded |
-| QA-09 | Wellbeing | Move all four sliders and save | Confirmation appears and values persist after reload | Not yet recorded |
+| QA-09 | Wellbeing | Move all four sliders and save | Check-in persists; the wellbeing context panel reports only the applicable illustrative self-report flags and does not alter the physiological status | Not yet recorded |
 | QA-10 | Persistence | Save readings and reload | The saved local state returns without invented readings | Not yet recorded |
 | QA-11 | CSV export | Export mission log | A CSV downloads and contains the recorded entries | Not yet recorded |
 | QA-12 | Clear log | Clear the log | Log empties; current readings remain unchanged | Not yet recorded |
@@ -95,6 +124,9 @@ The team still needs to perform and record the manual real-browser checks below.
 | QA-19 | NASA ISA sample-map status | Observe the audit panel before and after Research Mode verification, then simulate a failed source fetch | Before verification it says pending; on success it says Verified · 28/28 ISA matches and DATA + ANALYSIS VERIFIED; on failure it says Browser verification failed and never claims verified analysis | Not yet recorded |
 | QA-20 | Partial saved state | On a clean test browser, restore a saved demo record with one signal and missing remaining fields | Missing signals remain “No data”; no nominal values are silently inserted | Automated regression passed; manual browser check not yet recorded |
 | QA-21 | CSV download timing | Export the mission log and open the downloaded CSV | File downloads and opens before its temporary object URL is revoked | Automated regression passed; manual browser check not yet recorded |
+| QA-22 | One-point trend | Record one heart-rate reading and inspect Signal history | One point is shown; the line is empty and the caption states that a trend cannot be inferred from one reading | Not yet recorded |
+| QA-23 | Personal-baseline capture | Try capture before saving data, then save four valid readings and capture | Initial/default unsaved values are rejected; only a complete saved reading set can become the personal baseline | Not yet recorded |
+| QA-24 | Combined context | Capture a baseline, save shifted readings and a wellbeing check-in that triggers a flag | The panel reports co-occurring flags without claiming correlation, causation, diagnosis or medical risk | Not yet recorded |
 
 ## Defect report template
 
