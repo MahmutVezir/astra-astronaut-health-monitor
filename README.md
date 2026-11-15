@@ -124,3 +124,7 @@ Only confirmed team members and their actual contributions should be added here;
 - `tests/health-engine.test.js`, `tests/osdr-pilot.test.js`, `tests/research-data-loader.test.js`, `tests/osd575-source-data.test.js`, and `tests/research-dashboard-integration.test.js` — deterministic logic, acquisition, integrity, mapping, normalization, and an end-to-end test that renders the committed NASA source in Research Mode (missing source files fail closed)
 
 ASTRA is an independent student project created for the NASA Space Apps Challenge. It is not an official NASA product and is not endorsed by NASA.
+
+## Project presentation
+
+The public seven-slide project presentation is available at [ASTRA — NASA Space Apps Challenge 2026](https://mahmutvezir.github.io/astra-astronaut-health-monitor/presentation/). It is a browser-based, keyboard-navigable deck; no login or password is required. An editable PowerPoint copy is also provided with the project submission materials.
