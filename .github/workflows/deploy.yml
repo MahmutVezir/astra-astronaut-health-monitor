@@ -30,7 +30,7 @@ jobs:
           node --check health-engine.js
           node --check mission-engine.js
           node --check mission-replay-ui.js
-          node --check data/models/mission-anomaly-mlp-v1.js
+          node --check data/models/mission-anomaly-mlp-v2.js
           node --check research-data.js
       - name: Run automated tests
         run: npm test
