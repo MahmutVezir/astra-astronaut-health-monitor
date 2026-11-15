@@ -55,7 +55,7 @@
     const scenario = scenarioId || "nominal";
     const settings = options || {};
     const seed = Number.isInteger(settings.seed) ? settings.seed : 20261115;
-    const days = Number.isInteger(settings.days) ? clamp(settings.days, 7, 60) : 30;
+    const days = Number.isInteger(settings.days) ? clamp(settings.days, 1, 60) : 30;
     const random = makeRandom(seed);
     const normal = makeNormal(random);
     const records = [];
