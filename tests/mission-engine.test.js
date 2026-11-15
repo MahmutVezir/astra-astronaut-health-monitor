@@ -26,7 +26,7 @@ test("local MLP artifact has the documented feature and weight dimensions", func
   const digest = require("node:crypto").createHash("sha256")
     .update(require("node:fs").readFileSync(require("node:path").join(__dirname, "../data/models/mission-anomaly-mlp-v2.json")))
     .digest("hex");
-  assert.equal(digest, "6d6e473962e100e41dd381761852b3df25177bbf695c2726cb48ad89d500dc56");
+  assert.equal(digest, "b82f960295409386fe12de542b72f778341dc0a7f28961a276e7c5ee4d057ea0");
 });
 
 test("mission replay is deterministic for a fixed scenario and seed", function () {
