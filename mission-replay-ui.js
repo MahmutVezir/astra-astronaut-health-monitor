@@ -13,7 +13,7 @@
     "sleep-fatigue": "Sleep and fatigue co-occurrence",
     "temperature-drift": "Temperature drift pattern",
     "multi-signal": "Multi-signal deviation",
-    "sensor-dropout": "Sensor dropout and missing data"
+    "sensor-dropout": "DATA LOSS TEST — Sensor dropout (model abstains)"
   };
   const SIGNALS = [
     { key: "heartRate", label: "Heart rate", unit: "BPM", digits: 1, baseline: 72 },
@@ -255,7 +255,9 @@
     cursor = 0;
     $("replay-play").textContent = "Play replay";
     $("replay-progress-fill").style.width = "3%";
-    setMessage("Replay reset. This scenario is deterministic and reproducible.");
+    setMessage($("replay-scenario").value === "sensor-dropout"
+      ? "Sensor dropout begins on mission day 10. Advance to day 30 to inspect the final seven-day window; missing readings remain blank and the model abstains when coverage is insufficient."
+      : "Replay reset. This scenario is deterministic and reproducible.");
     render();
   }
 
