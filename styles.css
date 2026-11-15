@@ -296,3 +296,37 @@ h3 { font-size: 16px; margin: 0; }
   .research-evidence-metrics article { padding: 9px; }
   .research-evidence-metrics strong { font-size: 17px; }
 }
+
+
+/* Mission telemetry simulator and local pattern classifier */
+.mission-controls { margin-bottom: 14px; }
+.mission-controls-grid { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: end; gap: 16px; }
+.mission-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mission-actions .button { min-width: 142px; }
+.mission-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.mission-results-grid { margin-top: 0; }
+.mission-pattern-title { font-size: 22px; line-height: 1.2; margin: 4px 0 10px; }
+.mission-confidence-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 6px; border-top: 1px solid rgba(143,163,185,.14); }
+.mission-confidence-row span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .1em; }
+.mission-confidence-row strong { color: var(--cyan); font-size: 18px; font-variant-numeric: tabular-nums; }
+.mission-path { display: grid; gap: 7px; margin-top: 10px; }
+.mission-path-step { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 8px 10px; border: 1px solid rgba(143,163,185,.14); border-radius: 8px; background: rgba(7,17,29,.24); }
+.mission-path-step strong { font-size: 10px; }
+.mission-path-step span { color: var(--muted); font-size: 10px; text-align: right; }
+.mission-table-wrap { width: 100%; overflow-x: auto; border: 1px solid rgba(143,163,185,.15); border-radius: 9px; }
+.mission-observation-table { width: 100%; min-width: 720px; border-collapse: collapse; }
+.mission-observation-table th, .mission-observation-table td { padding: 9px 10px; border-bottom: 1px solid rgba(143,163,185,.12); text-align: right; font-size: 10px; white-space: nowrap; }
+.mission-observation-table th:first-child, .mission-observation-table td:first-child { text-align: left; }
+.mission-observation-table th { color: var(--muted); background: rgba(143,163,185,.06); font-weight: 800; }
+.mission-observation-table td { color: #d6e2ec; font-variant-numeric: tabular-nums; }
+.mission-observation-table .missing-cell { color: var(--amber); }
+.mission-model-note { margin-top: 14px; }
+.mission-model-note a { display: inline-block; margin-top: 10px; color: var(--cyan); font-size: 10px; font-weight: 800; text-decoration: none; }
+@media (max-width: 850px) {
+  .mission-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mission-controls-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .mission-actions { width: 100%; }
+  .mission-actions .button { flex: 1 1 100%; }
+}
