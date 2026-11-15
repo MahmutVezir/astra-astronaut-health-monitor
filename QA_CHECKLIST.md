@@ -1,11 +1,11 @@
 # ASTRA — QA Checklist
 
-**Build:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · Service Worker v6 · `main` commit `cf5303b8639055f0ba5c1bd7dd3a1f92f66e1b51` · 15 November 2026  
+**Build:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · Service Worker v7 · UI cleanup from `main` baseline `a524123ec68c1047c0ce3c9c81a28604bf2a1cc6` · 15 November 2026  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Current validation state
 
-The MLP v2 runtime, DATA LOSS TEST UI, and Service Worker v6 cache refresh are merged in PRs #43, #44, and #47. The initial PR #44 release changed cache-first app-shell files without bumping the v5 cache key; the resulting stale-shell behavior could hide the new replay label on existing installations. PR #47 bumps the shell cache to v6 and removes older ASTRA caches. GitHub Actions run [43725376992](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43725376992) completed successfully: **128/128 automated tests passed** and GitHub Pages deployment succeeded. The owner must still manually reopen and retest the final v6 browser build.
+The MLP v2 runtime and DATA LOSS TEST UI are merged in PRs #43, #44, and #47. PR #47 corrected the stale v5 app-shell cache. This UI cleanup removes the unrelated static DEMO DAY 042 label and bumps the app-shell cache to v7 so existing installations receive the corrected header. The v7 PR must pass automated tests and Pages deployment; the owner must still manually reopen the deployed v7 build and execute QA-28.
 
 ## Automated logic tests
 
@@ -25,12 +25,12 @@ Run `npm test` with Node.js 18+.
 - A one-point heart-rate history is not duplicated or presented as a time trend.
 - Static integration tests verify that app.js element IDs exist in index.html and all referenced offline-shell assets exist.
 
-## Service Worker v5 → v6 stale-app-shell correction — 15 November 2026
+## Service Worker v5/v6 → v7 app-shell refresh — 15 November 2026
 
 - The DATA LOSS TEST label and help text were added to `index.html` and `mission-replay-ui.js`, but the cache-first Service Worker still used shell cache `v5`.
 - Existing installations could therefore keep the earlier index and replay UI even though GitHub Pages contained the new files. This explains why the owner did not see the full updated label.
-- The correction bumps the app-shell cache to `v6`, installs a fresh shell, deletes older ASTRA shell caches (including v5), and claims existing clients.
-- Automated tests cover opening v6, pre-caching the new app shell assets, removing v5, and checking the current DATA LOSS TEST text. A human must still re-open the deployed app and confirm the label and abstention display.
+- The v6 stale-shell correction was followed by a v7 UI refresh; v7 installs the current shell, deletes older ASTRA shell caches (including v6), and claims existing clients.
+- Automated tests cover opening v7, pre-caching the app shell assets, removing v6, checking the DATA LOSS TEST helper text, and ensuring the misleading DEMO DAY label is absent. A human must still re-open the deployed app and confirm the sensor-dropout label and abstention display.
 
 ## Mission Replay and synthetic ML
 
@@ -165,9 +165,9 @@ The project owner tested the deployed MLP v2 build after commit `ce7556c1f088118
 | QA-25 | Mission Replay repeatability | Select a scenario, restart twice with the fixed seed, and compare the exported records | The same selected scenario generates identical 30-day records; all rows say SIMULATED | Not yet recorded |
 | QA-26 | Nominal ML window | Advance the nominal replay to day 7 and inspect the model panel | Seven-day completeness gate passes and the model output is labelled synthetic-pattern similarity, not health clearance | User-reported PASS on 15 Nov 2026; device/browser not recorded |
 | QA-27 | Multi-signal synthetic scenario | Select Multi-signal deviation and advance until the seven-day window includes the deviation period | The model can flag the generated deviation pattern; UI does not label it a diagnosis or risk probability | User-reported PASS on 15 Nov 2026; device/browser not recorded |
-| QA-28 | Sensor dropout abstention | Select DATA LOSS TEST — Sensor dropout and advance to day 30 | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | Not yet executed on v6; PR #47 fixes the stale v5 shell, awaiting manual re-test |
+| QA-28 | Sensor dropout abstention | Select DATA LOSS TEST — Sensor dropout and advance to day 30 | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | Not yet executed on v7; awaiting manual re-test |
 | QA-29 | Replay CSV export | Export the full mission replay and inspect the CSV | Thirty data rows, expected nine columns, SIMULATED source and selected scenario are present | Not yet recorded |
-| QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the current v6 app-shell cache; no external model service is required | Not yet recorded |
+| QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the current v7 app-shell cache; no external model service is required | Not yet recorded |
 
 ## Defect report template
 
