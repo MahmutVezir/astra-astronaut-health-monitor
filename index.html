@@ -178,7 +178,25 @@
                 <g id="trend-points"></g>
               </svg>
             </div>
-            <p class="chart-caption">Illustrative trend only. It does not show a clinical threshold.</p>
+            <p class="chart-caption" id="trend-caption">No saved heart-rate readings yet. A trend will appear after multiple readings are recorded.</p>
+          </article>
+        </div>
+        <div class="insight-grid" aria-live="polite">
+          <article class="panel insight-panel">
+            <div class="panel-heading"><div><p class="eyebrow">INDIVIDUAL COMPARISON</p><h3>Personal baseline</h3></div><span class="state-label state-limited" id="baseline-assessment-status">No baseline</span></div>
+            <p class="insight-source" id="baseline-source-label">No baseline captured</p>
+            <p class="assessment-summary" id="baseline-assessment-summary">Save a complete set of readings as a baseline to compare future changes.</p>
+            <div class="assessment-list" id="baseline-assessment-list"></div>
+          </article>
+          <article class="panel insight-panel">
+            <div class="panel-heading"><div><p class="eyebrow">CREW SELF-REPORT</p><h3>Wellbeing context</h3></div><span class="state-label state-limited" id="wellbeing-assessment-status">No check-in</span></div>
+            <p class="assessment-summary" id="wellbeing-assessment-summary">No wellbeing check-in has been saved.</p>
+            <div class="assessment-list" id="wellbeing-assessment-list"></div>
+          </article>
+          <article class="panel insight-panel">
+            <div class="panel-heading"><div><p class="eyebrow">CROSS-DOMAIN SUMMARY</p><h3>Combined context</h3></div><span class="state-label state-limited" id="context-assessment-status">Limited</span></div>
+            <p class="assessment-summary" id="context-assessment-summary">Combined context requires a baseline comparison and a saved wellbeing check-in.</p>
+            <p class="fine-print">Co-occurring flags are a prompt for human review, not evidence of cause, correlation or a medical condition.</p>
           </article>
         </div>
         <div class="bottom-note"><strong>DATA STATUS</strong><span id="data-completeness">0 of 4 signals available</span><span class="note-divider"></span><span id="storage-status">Stored on this device only</span></div>
@@ -200,9 +218,15 @@
             <p class="form-message" id="signals-message" role="status"></p>
           </form>
         </div>
+        <div class="panel baseline-capture-panel">
+          <div class="panel-heading"><div><p class="eyebrow">PERSONAL REFERENCE CAPTURE</p><h3>Set current readings as baseline</h3></div></div>
+          <p class="section-copy">Save a complete set of valid readings as this local profile's personal comparison baseline. The app will compare subsequent readings against these values. The baseline is user-defined and is not a medical standard.</p>
+          <button class="button button-secondary" id="capture-baseline" type="button">Capture current saved readings as baseline</button>
+          <p class="form-message" id="baseline-capture-message" role="status"></p>
+        </div>
         <div class="panel baseline-panel">
-          <div class="panel-heading"><div><p class="eyebrow">CONFIGURABLE REFERENCE RANGES</p><h3>Reference band settings</h3></div></div>
-          <p class="section-copy">Adjust the lower and upper comparison bounds for this local demo profile. Use only values supplied by an approved mission medical protocol in a real operational setting. These demo defaults are not medical guidance.</p>
+          <div class="panel-heading"><div><p class="eyebrow">ILLUSTRATIVE REFERENCE BANDS</p><h3>Fixed comparison bands</h3></div></div>
+          <p class="section-copy">These fixed lower and upper demo bands are separate from the personal baseline above. They are configurable software comparison settings, not medical thresholds or NASA flight rules.</p>
           <form id="baseline-form">
             <div class="baseline-grid">
               <fieldset class="baseline-group"><legend>Heart rate · BPM</legend><label>Lower <input id="band-heart-rate-lower" type="number" min="30" max="220" step="1" required></label><label>Upper <input id="band-heart-rate-upper" type="number" min="30" max="220" step="1" required></label></fieldset>
@@ -226,7 +250,7 @@
               <label class="slider-field"><span><strong>Fatigue</strong><output id="fatigue-value">2 / 5</output></span><input id="fatigue" type="range" min="1" max="5" value="2"><small>1 = low · 5 = high</small></label>
               <label class="slider-field"><span><strong>Mood</strong><output id="mood-value">4 / 5</output></span><input id="mood" type="range" min="1" max="5" value="4"><small>1 = very low · 5 = very good</small></label>
             </div>
-            <div class="form-footer"><p class="fine-print">This check-in is not a psychological evaluation. It is optional and stays in this browser.</p><button class="button button-primary" type="submit">Save wellbeing check-in</button></div>
+            <div class="form-footer"><p class="fine-print">This check-in is not a psychological evaluation. It is optional and stays in this browser. Illustrative review flags are triggered at sleep quality ≤2, stress ≥4, fatigue ≥4 or mood ≤2; these are not validated screening thresholds.</p><button class="button button-primary" type="submit">Save wellbeing check-in</button></div>
             <p class="form-message" id="wellbeing-message" role="status"></p>
           </form>
         </div>
