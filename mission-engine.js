@@ -172,14 +172,23 @@
       };
     }
 
-    const fatigue = window.map(function (record) { return Number(record.wellbeing && record.wellbeing.fatigue); }).filter(Number.isFinite);
-    const stress = window.map(function (record) { return Number(record.wellbeing && record.wellbeing.stress); }).filter(Number.isFinite);
+    const selfReportValues = function (key) {
+      return window.map(function (record) {
+        const raw = record && record.wellbeing ? record.wellbeing[key] : null;
+        if (raw === null || raw === undefined || raw === "" || !Number.isFinite(Number(raw))) return null;
+        return Number(raw);
+      }).filter(function (value) { return value !== null; });
+    };
+    const fatigue = selfReportValues("fatigue");
+    const stress = selfReportValues("stress");
+    const selfReportMissingCount = window.length * 2 - fatigue.length - stress.length;
     if (fatigue.length < 5 || stress.length < 5) {
       return {
         status: "LIMITED_DATA",
-        reason: "The model abstained because fewer than five daily self-report values are available.",
+        reason: "The model abstained because fewer than five daily values are available for both fatigue and stress self-reports.",
         missingFraction: missingFraction,
-        missingCount: missing
+        missingCount: missing,
+        selfReportMissingCount: selfReportMissingCount
       };
     }
 
@@ -207,6 +216,7 @@
         : null,
       missingFraction: missingFraction,
       missingCount: missing,
+      selfReportMissingCount: selfReportMissingCount,
       values: values,
       featureVector: Object.keys(FEATURE_LABELS).map(function (key) { return values[key]; })
     };
