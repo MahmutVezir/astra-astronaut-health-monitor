@@ -1,11 +1,11 @@
 # ASTRA — QA Checklist
 
-**Build:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · Service Worker v7 · UI cleanup from `main` baseline `a524123ec68c1047c0ce3c9c81a28604bf2a1cc6` · 15 November 2026  
+**Build:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · Service Worker v7 · `main` commit `75a10bb5b5d61e1e4ea5349e7b3c5ab7f950ad42` · 15 November 2026  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Current validation state
 
-The MLP v2 runtime and DATA LOSS TEST UI are merged in PRs #43, #44, and #47. PR #47 corrected the stale v5 app-shell cache. This UI cleanup removes the unrelated static DEMO DAY 042 label and bumps the app-shell cache to v7 so existing installations receive the corrected header. The v7 PR must pass automated tests and Pages deployment; the owner must still manually reopen the deployed v7 build and execute QA-28.
+The MLP v2 runtime and DATA LOSS TEST UI are merged in PRs #43, #44, and #47. PR #47 corrected the stale v5 app-shell cache. PR #49 removes the unrelated static DEMO DAY 042 label and bumps the app-shell cache to v7 so existing installations receive the corrected header. GitHub Actions run [43726371512](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43726371512) completed successfully: **128/128 automated tests passed** and GitHub Pages deployment succeeded. The owner must still manually reopen the deployed v7 build and execute QA-28.
 
 ## Automated logic tests
 
