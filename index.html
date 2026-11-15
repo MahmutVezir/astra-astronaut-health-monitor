@@ -45,6 +45,7 @@
       <nav class="tabs" aria-label="Main navigation">
         <button class="tab active" data-view="research" type="button">NASA Research Mode</button>
         <button class="tab" data-view="overview" type="button">Demo &amp; Manual Mode</button>
+        <button class="tab" data-view="replay" type="button">Mission replay</button>
         <button class="tab" data-view="signals" type="button">Health signals</button>
         <button class="tab" data-view="wellbeing" type="button">Wellbeing</button>
         <button class="tab" data-view="log" type="button">Mission log</button>
@@ -202,6 +203,86 @@
         <div class="bottom-note"><strong>DATA STATUS</strong><span id="data-completeness">0 of 4 signals available</span><span class="note-divider"></span><span id="storage-status">Stored on this device only</span></div>
       </section>
 
+ 
+      <section class="view" id="view-replay" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">SYNTHETIC MISSION TELEMETRY · LOCAL PLAYBACK</p>
+            <h2>Mission telemetry replay</h2>
+            <p class="section-copy">Replay a repeatable 30-day fictional mission profile, inspect missing readings and run ASTRA's local experimental ML pattern screen on rolling seven-day windows.</p>
+          </div>
+          <span class="state-label state-limited" id="replay-source-state">SIMULATED DATA</span>
+        </div>
+
+        <div class="panel replay-control-panel">
+          <div class="replay-controls-grid">
+            <label class="field"><span>Mission scenario <small>REPRODUCIBLE PROFILE</small></span>
+              <select id="replay-scenario">
+                <option value="nominal">Nominal mission routine</option>
+                <option value="cardiovascular-shift">Sustained heart-rate departure</option>
+                <option value="oxygen-deviation">Oxygen-signal departure</option>
+                <option value="sleep-fatigue">Sleep and fatigue co-occurrence</option>
+                <option value="temperature-drift">Temperature drift pattern</option>
+                <option value="multi-signal">Multi-signal deviation</option>
+                <option value="sensor-dropout">Sensor dropout and missing data</option>
+              </select>
+            </label>
+            <label class="field"><span>Playback speed <small>SIMULATION CONTROL</small></span>
+              <select id="replay-speed">
+                <option value="1000">1× · 1 day / second</option>
+                <option value="350">3× · faster replay</option>
+                <option value="140">8× · rapid replay</option>
+              </select>
+            </label>
+          </div>
+          <div class="replay-actions">
+            <div class="heading-actions">
+              <button class="button button-primary" id="replay-play" type="button">Play replay</button>
+              <button class="button button-secondary" id="replay-step" type="button">Next day</button>
+              <button class="button button-quiet" id="replay-reset" type="button">Restart</button>
+            </div>
+            <div class="replay-progress-block">
+              <div class="replay-progress-label"><span id="replay-day-label">Mission day 01 / 30</span><span id="replay-progress-percent">3%</span></div>
+              <div class="replay-progress" role="progressbar" aria-label="Mission replay progress" aria-valuemin="0" aria-valuemax="30" aria-valuenow="1" id="replay-progress-bar"><span id="replay-progress-fill"></span></div>
+            </div>
+            <button class="button button-quiet" id="replay-export" type="button">Export replay CSV</button>
+          </div>
+          <p class="form-message" id="replay-message" role="status">Replay is paused. Select a scenario and press Play replay.</p>
+        </div>
+
+        <div class="signal-grid replay-signal-grid" id="replay-signal-cards" aria-live="polite"></div>
+
+        <div class="content-grid replay-analysis-grid">
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">LOCAL MODEL · SEVEN-DAY WINDOW</p><h3>Experimental ML pattern screen</h3></div><span class="state-label state-limited" id="replay-model-status">WAITING FOR HISTORY</span></div>
+            <div class="model-score-row"><strong id="replay-model-score">—</strong><span>synthetic-pattern score</span></div>
+            <p class="assessment-summary" id="replay-model-summary">The model requires at least seven daily records and sufficient signal completeness.</p>
+            <div class="assessment-list" id="replay-model-drivers"></div>
+            <p class="fine-print">The compact MLP was trained only on generated synthetic telemetry windows. Its score is not a probability of illness, diagnosis, or medical risk. When data are too incomplete, it abstains.</p>
+          </article>
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">DATA QUALITY GATE</p><h3>Telemetry completeness</h3></div><span class="state-label state-limited" id="replay-data-status">WAITING</span></div>
+            <div class="model-score-row"><strong id="replay-data-percent">—</strong><span>available vital-sign cells · last 7 days</span></div>
+            <p class="assessment-summary" id="replay-data-summary">No rolling data window is available yet.</p>
+            <div class="assessment-list" id="replay-data-details"></div>
+            <p class="fine-print">Missing values are never interpolated or silently replaced. A sufficiently incomplete window blocks physiological pattern inference.</p>
+          </article>
+        </div>
+
+        <div class="replay-chart-grid">
+          <article class="panel replay-chart-panel"><div class="panel-heading"><div><p class="eyebrow">DAILY SIMULATED MEASUREMENTS</p><h3>Heart rate</h3></div><span class="mini-label">BPM</span></div><svg id="replay-chart-heart-rate" viewBox="0 0 520 170" role="img" aria-label="Simulated daily heart-rate replay chart"></svg><p class="chart-caption">Personal reference marker is illustrative and used only to explain this synthetic scenario.</p></article>
+          <article class="panel replay-chart-panel"><div class="panel-heading"><div><p class="eyebrow">DAILY SIMULATED MEASUREMENTS</p><h3>Blood oxygen</h3></div><span class="mini-label">SpO₂ · %</span></div><svg id="replay-chart-spo2" viewBox="0 0 520 170" role="img" aria-label="Simulated daily blood oxygen replay chart"></svg><p class="chart-caption">Gaps remain visible. No missing oxygen values are filled in.</p></article>
+          <article class="panel replay-chart-panel"><div class="panel-heading"><div><p class="eyebrow">DAILY SIMULATED MEASUREMENTS</p><h3>Body temperature</h3></div><span class="mini-label">°C</span></div><svg id="replay-chart-temperature" viewBox="0 0 520 170" role="img" aria-label="Simulated daily body temperature replay chart"></svg><p class="chart-caption">The replay is synthetic and does not represent an astronaut or clinical measurements.</p></article>
+          <article class="panel replay-chart-panel"><div class="panel-heading"><div><p class="eyebrow">DAILY SIMULATED MEASUREMENTS</p><h3>Sleep duration</h3></div><span class="mini-label">HOURS</span></div><svg id="replay-chart-sleep" viewBox="0 0 520 170" role="img" aria-label="Simulated daily sleep duration replay chart"></svg><p class="chart-caption">Sleep and self-report features are simulated for model demonstration.</p></article>
+        </div>
+
+        <article class="panel replay-table-panel">
+          <div class="panel-heading"><div><p class="eyebrow">AUDITABLE REPLAY RECORDS</p><h3>Last seven mission days</h3></div><span class="mini-label">NO IMPUTATION</span></div>
+          <div class="research-table-wrap" id="replay-record-table" aria-live="polite"></div>
+        </article>
+        <p class="research-footnote">This replay is a repeatable software simulation, not live spacecraft telemetry, a real astronaut health record, or NASA experimental data. The local ML model is a research/demo component trained and validated only against synthetic feature windows; it has not been validated for real crew health assessment.</p>
+      </section>
+
       <section class="view" id="view-signals" hidden>
         <div class="section-heading">
           <div><p class="eyebrow">MANUAL TELEMETRY ENTRY</p><h2>Health signals</h2><p class="section-copy">Enter a reading, then configure reference bands for this demo profile. Default bands are illustrative settings only.</p></div>
@@ -267,6 +348,9 @@
           <article class="panel source-card featured-source"><span class="source-tag">NASA OPEN SCIENCE DATA REPOSITORY</span><h3>Inspiration4 — OSD-575</h3><p>NASA OSDR study metadata describes blood-serum metabolic-panel and immune/cardiac cytokine assays from the Inspiration4 mission. Samples were collected before and after the flight; the study is not a continuous heart-rate or oxygen-saturation stream.</p><div class="source-facts"><span><strong>Mission</strong>3 days · September 2021</span><span><strong>Samples</strong>28 samples listed</span><span><strong>License</strong>CC0-1.0</span></div><div class="research-timeline" id="osd-timeline" aria-label="OSD-575 sample collection timeline"></div><a href="https://osdr.nasa.gov/bio/repo/data/studies/OSD-575" target="_blank" rel="noopener noreferrer">Open NASA OSDR study ↗</a></article>
           <article class="panel source-card"><span class="source-tag">NASA HUMAN RESEARCH PROGRAM</span><h3>Human spaceflight hazards</h3><p>NASA identifies radiation, isolation and confinement, distance from Earth, altered gravity, and hostile or closed environments as major human-spaceflight hazards.</p><a href="https://www.nasa.gov/hrp/hazards/" target="_blank" rel="noopener noreferrer">Read NASA HRP overview ↗</a></article>
           <article class="panel source-card"><span class="source-tag">NASA STANDARD MEASURES</span><h3>Multisystem monitoring context</h3><p>NASA's Standard Measures research includes activity and light exposure from a wrist sensor, sleep reports, immune and nutrition-related samples, cognition, and sensorimotor tests.</p><a href="https://www.nasa.gov/reference/standard-measures/" target="_blank" rel="noopener noreferrer">Read NASA Standard Measures ↗</a></article>
+          <article class="panel source-card"><span class="source-tag">NASA SPACE APPS RESOURCE · HUMAN RESEARCH PROGRAM</span><h3>Risks of Human Spaceflight</h3><p>NASA groups human-spaceflight health risks across physiology, behavioral performance and space radiation. ASTRA uses this resource as mission context for sleep, wellbeing and signal-review workflows; it does not turn the page into clinical thresholds.</p><a href="https://www.nasa.gov/hrp/risks/" target="_blank" rel="noopener noreferrer">Read NASA HRP risks ↗</a></article>
+          <article class="panel source-card"><span class="source-tag">NASA SPACE APPS RESOURCE · ONGOING RESEARCH</span><h3>Ongoing HRP Research in Space</h3><p>NASA describes current investigations including ARCHeR activity and sleep monitoring, immune biomarkers and Artemis II Standard Measures. These studies inform the indicator categories shown in ASTRA; they are not ingested as live mission telemetry.</p><a href="https://www.nasa.gov/hrp/ongoing-hrp-research/" target="_blank" rel="noopener noreferrer">Explore NASA HRP research ↗</a></article>
+
           <article class="panel source-card"><span class="source-tag">CHALLENGE BRIEF</span><h3>Why a crew health tool?</h3><p>The challenge asks for software that gathers health indicators and enables astronauts to evaluate and act on their health status during long-duration missions.</p><a href="https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/" target="_blank" rel="noopener noreferrer">Read official challenge ↗</a></article>
         </div>
         <article class="panel limitation-panel"><h3>What ASTRA does — and does not — claim</h3><ul><li>All dashboard readings and crew entries in this demonstration are simulated or manually entered by the user.</li><li>OSD-575 is referenced as a real NASA open research study; its biospecimen assay data are not used to fabricate vital-sign readings.</li><li>Personal reference bands are illustrative demo settings, not NASA standards or medical thresholds.</li><li>ASTRA does not diagnose, predict a medical event, prescribe treatment, or replace a flight surgeon or mission medical protocol.</li><li>No wearable, spacecraft telemetry, or remote medical connection is implemented.</li><li>Local browser storage is not an encrypted medical-record system. Do not enter real, identifiable, or sensitive health information.</li></ul></article>
@@ -278,6 +362,9 @@
   <script src="research-data.js"></script>
   <script src="research-data-loader.js"></script>
   <script src="health-engine.js"></script>
+  <script src="data/models/mission-anomaly-mlp-v1.js"></script>
+  <script src="mission-engine.js"></script>
   <script src="app.js"></script>
+  <script src="mission-replay-ui.js"></script>
 </body>
 </html>

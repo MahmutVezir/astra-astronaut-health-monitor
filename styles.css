@@ -296,3 +296,36 @@ h3 { font-size: 16px; margin: 0; }
   .research-evidence-metrics article { padding: 9px; }
   .research-evidence-metrics strong { font-size: 17px; }
 }
+
+
+.replay-control-panel { display: grid; gap: 16px; }
+.replay-controls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.replay-actions { display: grid; grid-template-columns: auto minmax(180px, 1fr) auto; align-items: center; gap: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.replay-progress-block { min-width: 0; display: grid; gap: 8px; }
+.replay-progress-label { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.replay-progress { height: 7px; overflow: hidden; background: rgba(143,163,185,.14); border-radius: 10px; }
+.replay-progress span { display: block; height: 100%; width: 3%; background: var(--cyan); border-radius: inherit; transition: width .18s ease; }
+.replay-analysis-grid { margin-top: 14px; }
+.model-score-row { display: flex; align-items: baseline; gap: 10px; margin: 3px 0 12px; }
+.model-score-row strong { color: var(--text); font-size: 30px; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.model-score-row span { color: var(--muted); font-size: 10px; }
+.replay-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.replay-chart-panel { min-width: 0; }
+.replay-chart-panel svg { width: 100%; height: auto; display: block; }
+.replay-series-line { fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.replay-chart-point { fill: var(--cyan); stroke: #102234; stroke-width: 1.5; }
+.replay-baseline-line { stroke: var(--amber); stroke-width: 1.2; stroke-dasharray: 4 5; }
+.replay-baseline-label { fill: var(--amber); font-size: 9px; }
+.replay-table-panel { margin-top: 14px; }
+@media (max-width: 850px) {
+  .replay-actions { grid-template-columns: 1fr; }
+  .replay-actions > .button { width: 100%; }
+}
+@media (max-width: 560px) {
+  .replay-controls-grid, .replay-chart-grid { grid-template-columns: 1fr; }
+  .replay-actions { align-items: stretch; }
+  .replay-actions .heading-actions { width: 100%; }
+  .replay-actions .heading-actions .button { flex: 1; }
+  .replay-progress-block { order: -1; }
+  .model-score-row strong { font-size: 26px; }
+}
