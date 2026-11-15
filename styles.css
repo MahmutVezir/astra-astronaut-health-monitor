@@ -85,6 +85,12 @@ h3 { font-size: 16px; margin: 0; }
 .chart-line { fill: none; stroke: var(--cyan); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .chart-point { fill: var(--cyan); stroke: #102234; stroke-width: 2; }
 .chart-caption { color: #758da5; font-size: 10px; margin: 12px 0 0; }
+
+.insight-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.insight-panel { min-width: 0; }
+.insight-source { color: var(--cyan); font-size: 9px; margin: -8px 0 10px; }
+.insight-empty { color: var(--muted); font-size: 10px; line-height: 1.5; margin: 8px 0 0; }
+
 .bottom-note { display: flex; align-items: center; gap: 12px; margin-top: 14px; color: var(--muted); font-size: 10px; }
 .bottom-note strong { color: var(--cyan); font-size: 9px; letter-spacing: .12em; }
 .note-divider { height: 12px; border-left: 1px solid var(--line); }
@@ -128,6 +134,7 @@ h3 { font-size: 16px; margin: 0; }
   .intro-actions label, .intro-actions select { grid-column: span 2; }
   .signal-grid { grid-template-columns: repeat(2, 1fr); }
   .content-grid { grid-template-columns: 1fr; }
+  .insight-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .app-shell { width: min(100% - 24px, 1180px); }
