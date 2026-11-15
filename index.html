@@ -255,10 +255,10 @@
         <div class="content-grid replay-analysis-grid">
           <article class="panel">
             <div class="panel-heading"><div><p class="eyebrow">LOCAL MODEL · SEVEN-DAY WINDOW</p><h3>Experimental ML pattern screen</h3></div><span class="state-label state-limited" id="replay-model-status">WAITING FOR HISTORY</span></div>
-            <div class="model-score-row"><strong id="replay-model-score">—</strong><span>synthetic-pattern score</span></div>
+            <div class="model-score-row"><strong id="replay-model-score">—</strong><span>unitless synthetic-pattern score · not a calibrated probability</span></div>
             <p class="assessment-summary" id="replay-model-summary">The model requires at least seven daily records and sufficient signal completeness.</p>
             <div class="assessment-list" id="replay-model-drivers"></div>
-            <p class="fine-print">The compact MLP was trained only on generated synthetic telemetry windows. Its score is not a probability of illness, diagnosis, or medical risk. When data are too incomplete, it abstains.</p>
+            <p class="fine-print">The compact MLP was trained only on generated synthetic telemetry windows. Its unitless score is not a probability of illness, diagnosis, or medical risk. Sensor dropout and incomplete windows are handled by a separate deterministic data-quality gate; the MLP does not classify them.</p>
           </article>
           <article class="panel">
             <div class="panel-heading"><div><p class="eyebrow">DATA QUALITY GATE</p><h3>Telemetry completeness</h3></div><span class="state-label state-limited" id="replay-data-status">WAITING</span></div>
@@ -362,7 +362,7 @@
   <script src="research-data.js"></script>
   <script src="research-data-loader.js"></script>
   <script src="health-engine.js"></script>
-  <script src="data/models/mission-anomaly-mlp-v1.js"></script>
+  <script src="data/models/mission-anomaly-mlp-v2.js"></script>
   <script src="mission-engine.js"></script>
   <script src="app.js"></script>
   <script src="mission-replay-ui.js"></script>
