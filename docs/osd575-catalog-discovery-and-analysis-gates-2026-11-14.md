@@ -1,5 +1,7 @@
 # OSD-575 catalog discovery and analysis-gate review
 
+> **Historical engineering review.** This document records early catalog/API investigations (runs #4–#6) and the unresolved redirect at that time. Those early acquisition blockers were later resolved for the transformed HDCVD9 CSV: the exact file was acquired in run #9 and re-audited in run #10. Current source-file integrity and analysis status are documented in the [latest live-data audit](osd575-hdcvd9-live-data-audit-2026-11-14.md). The raw assay file remains unavailable; this project uses the transformed CSV.
+
 **Review date:** 14 November 2026  
 **Scope:** Run #4's empty paginated catalog response, run #5's successful bare-endpoint file discovery, Gemini's review, redirect validation, and offline analysis test design.
 

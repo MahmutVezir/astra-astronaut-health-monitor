@@ -1,6 +1,6 @@
 # ASTRA — QA Checklist
 
-**Build:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · Service Worker v7 · `main` commit `75a10bb5b5d61e1e4ea5349e7b3c5ab7f950ad42` · 15 November 2026  
+**Application validation baseline:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · Service Worker v7 · commit `75a10bb5b5d61e1e4ea5349e7b3c5ab7f950ad42` (successful [GitHub Actions run 43726371512](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43726371512)) · 15 November 2026  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Current validation state

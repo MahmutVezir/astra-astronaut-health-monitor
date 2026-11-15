@@ -1,5 +1,7 @@
 # OSD-575 live-data verification attempt — 2026-11-14
 
+> **Historical attempt — superseded for current acquisition status.** This file preserves an early failed retrieval attempt. Its statements that the transformed CSV bytes had not yet been downloaded apply only to this attempt. The exact transformed CSV was later downloaded and re-audited successfully; see the [live-data audit](osd575-hdcvd9-live-data-audit-2026-11-14.md) and the recorded [run #10](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43616651617). The raw HDCVD9 assay data remain unavailable; only the transformed CSV is used.
+
 ## Status
 
 **Updated outcome:** the original execution environment could not resolve NASA DNS. A subsequent GitHub Actions run did reach the legacy metadata JSON endpoint (HTTP 200) and captured its response, but the run then stopped at the obsolete SPA HTML check. The file catalog and actual CSV have not yet been downloaded. This is an access/workflow blocker, not an `INVALID_DATA` finding. No synthetic or third-party checksum is substituted.
