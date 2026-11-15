@@ -2,35 +2,31 @@
 
 ## Summary
 
-ASTRA-SYNTH-MLP-2 is a compact multilayer perceptron (MLP) that runs locally in the ASTRA browser application. It screens a rolling seven-day synthetic telemetry feature window for similarity to four generated physiological-deviation patterns.
+ASTRA-SYNTH-MLP-2 is a compact multilayer perceptron (MLP) that runs locally in the ASTRA browser application. It evaluates a rolling seven-day synthetic telemetry feature window and reports whether the window resembles one of the generated deviation patterns.
 
-It is an experimental software demonstration. It is not a medical model, clinical decision system, diagnosis, event predictor, or validated astronaut-health risk estimator.
+This is an experimental software demonstration, not a medical model, clinical decision system, diagnosis, event predictor, or validated astronaut-health risk estimator.
 
 ## Training data and method
 
 - Training data: generated synthetic feature windows only.
-- NASA participant measurements, clinical datasets, and real crew telemetry were **not** used to train this model.
-- 16,000 nominal windows and 16,000 synthetic physiological-deviation windows were used for training.
-- Four generated deviation families were represented: sustained heart-rate departure, oxygen-signal departure, sleep/fatigue/stress co-occurrence, and temperature drift.
-- A separate held-out set contained 5,000 nominal and 5,000 synthetic deviation windows.
-- Training seed: 20261115.
+- No NASA participant measurements, clinical datasets, or real crew telemetry were used to train or validate this model.
+- Training set: 16,000 nominal windows and 16,000 generated deviation windows.
+- Hold-out set: 5,000 nominal windows and 5,000 generated deviation windows.
+- Four generated deviation families: sustained heart-rate departure, oxygen-signal departure, sleep/fatigue/stress co-occurrence, and temperature drift.
+- Sensor dropout is deliberately not a fifth classification label. A deterministic data-quality gate handles missing telemetry and abstains before MLP inference when coverage is insufficient.
+- Training seed: `20261115`.
+- Development dependencies: NumPy 2.3.5 and scikit-learn 1.8.0.
 - Architecture: 9 inputs → 24 ReLU units → 12 ReLU units → 1 sigmoid output.
-- Feature normalization: StandardScaler fitted on the synthetic training partition.
-- Scaler values, weights, and biases are rounded to eight decimal places for a compact, reproducible browser artifact.
-- Inference is implemented in mission-engine.js; static weights are stored in data/models/mission-anomaly-mlp-v2.json and bundled in data/models/mission-anomaly-mlp-v2.js for offline use.
+- Feature normalization: StandardScaler fitted only on the generated training partition.
 
-Reproduce the training artifact with Python 3.11+, NumPy 2.3.5 and scikit-learn 1.8.0:
+Reproduce the artifact with Python 3.11+ and the pinned dependencies:
 
-~~~bash
+```bash
 python -m pip install -r requirements-model-training.txt
 python scripts/train_mission_model.py
-~~~
+```
 
-The JSON artifact SHA-256 is:
-
-6d6e473962e100e41dd381761852b3df25177bbf695c2726cb48ad89d500dc56
-
-This is a project-maintained reproducibility hash, not a NASA checksum or signature.
+The training script writes both `data/models/mission-anomaly-mlp-v2.json` and the offline browser bundle `data/models/mission-anomaly-mlp-v2.js`.
 
 ## Synthetic hold-out results
 
@@ -46,16 +42,25 @@ At the fixed 0.5 score threshold on the 10,000-window synthetic hold-out set:
 | Precision | 98.96% |
 | Recall | 98.94% |
 
-Per-generated-pattern recall: heart-rate departure 99.36%; oxygen-signal departure 99.84%; sleep/fatigue/stress co-occurrence 99.60%; temperature drift 96.96%.
+Per-generated-pattern recall:
 
-**These metrics describe only the artificial generator and its held-out samples.** They do not estimate performance on real astronauts, actual spaceflight telemetry, clinical measurements, or future missions. The synthetic hold-out set is not independent biomedical validation.
+| Synthetic pattern | Recall |
+|---|---:|
+| Sustained heart-rate departure | 99.36% |
+| Oxygen-signal departure | 99.84% |
+| Sleep/fatigue/stress co-occurrence | 99.60% |
+| Temperature drift | 96.96% |
+
+**These metrics describe only this artificial generator and its generated hold-out samples.** Training and hold-out windows are sampled from the same project-defined synthetic generator. The results are not independent biomedical validation and do not estimate performance on astronauts, real spacecraft telemetry, clinical measurements, or future missions.
+
+The current JSON artifact is 8,943 bytes. Project-maintained SHA-256: `b82f960295409386fe12de542b72f778341dc0a7f28961a276e7c5ee4d057ea0`.
 
 ## Inputs and data-quality gate
 
-The model receives nine rolling-window features derived from seven daily simulated records:
+The MLP receives nine features from the most recent seven daily records:
 
 1. Mean heart-rate delta from a fixed demonstration reference.
-2. Heart-rate standard deviation (not clinical heart-rate variability).
+2. Day-to-day heart-rate spread (standard deviation across daily readings; not beat-to-beat heart-rate variability).
 3. Mean SpO₂ loss from a demonstration reference.
 4. Minimum SpO₂ loss from the same reference.
 5. Mean body-temperature delta.
@@ -64,25 +69,23 @@ The model receives nine rolling-window features derived from seven daily simulat
 8. Mean self-reported stress delta.
 9. Fraction of missing vital-sign cells.
 
-The application requires at least seven daily records; at least five of seven values for each vital-sign channel; at least five of seven fatigue and stress self-reports; and no more than 25% missing vital-sign cells. Otherwise, it abstains before inference. Missing values are not imputed.
-
-**Sensor dropout is not a fifth MLP class.** It is handled by the deterministic data-quality gate: a window that fails the gate is labelled limited/incomplete and is not classified by the MLP. This keeps the model's training scope aligned with its runtime use.
+Before inference, ASTRA requires at least seven daily records, at least five of seven values for each vital-sign channel, and at least five of seven values for both fatigue and stress self-reports. A window with more than 25% missing vital-sign cells is also blocked. Missing values are never imputed. A blocked window receives a reasoned limited-data/abstention result; the MLP does not classify sensor dropout.
 
 ## Output interpretation
 
-The output is an uncalibrated, unitless score for similarity to the generated physiological-deviation class. It is not a probability of illness, a medical-risk percentage, or a clinical alert. The UI's largest standardized feature departures are descriptive inputs, not causal explanations.
+The model emits a score between 0 and 1 for similarity to the generated deviation class. This score is **not calibrated** and must not be interpreted as a probability of illness, a medical-risk percentage, or a clinical alert. A score below the threshold is not evidence of health or safety.
 
-A model flag asks the user to inspect the simulated data and its completeness. It does not recommend treatment and must not override mission medical procedures. A lack of model flag is not a health clearance.
+The UI's largest standardized feature departures are descriptive model inputs, not causal explanations. A model flag asks the user to inspect the synthetic replay and data completeness. It does not recommend treatment or override mission medical procedures.
 
 ## Limitations and risks
 
-- The training generator uses hand-authored assumptions; the model can learn those assumptions rather than real physiology.
-- Synthetic distributions and reference values are not clinically justified.
+- The training generator uses hand-authored assumptions; the model may learn those assumptions rather than real physiology.
+- Synthetic distributions, reference values and thresholds are not clinically justified.
 - The model has not been evaluated with human-subject data or real spacecraft telemetry.
-- Fixed profile references are demonstrator settings, not NASA standards or medical thresholds.
-- A lack of model flag is not evidence of health or safety.
+- The fixed references are demonstrator settings, not NASA standards or medical thresholds.
 - The model is not suitable for real astronaut operations.
+- A browser-local MLP is not a live external AI assistant. No external LLM or inference API is called by the running application.
 
 ## License and provenance
 
-The model artifact was generated by the project's open training script and is distributed under the repository's MIT License. Training uses NumPy and scikit-learn only as development-time tools; deployed browser inference has no Python or third-party runtime dependency.
+The model artifact was generated by the project's open training script and is distributed under the repository's MIT License. Training uses NumPy and scikit-learn only as development-time tools; deployed browser inference has no Python or third-party runtime dependency. The model was developed for ASTRA and was not downloaded from Hugging Face or Kaggle.

@@ -10,7 +10,7 @@
   };
   const FEATURE_LABELS = {
     heart_rate_mean_delta_bpm: "Mean heart-rate change",
-    heart_rate_std_bpm: "Heart-rate standard deviation",
+    heart_rate_std_bpm: "Day-to-day heart-rate spread",
     spo2_mean_loss_percentage_points: "Mean SpO₂ change",
     spo2_min_loss_percentage_points: "Lowest SpO₂ departure",
     temperature_mean_delta_c: "Mean temperature change",
@@ -245,7 +245,7 @@
   }
 
   function predict(features, model) {
-    if (!model || model.modelId !== "ASTRA-SYNTH-MLP-2") {
+    if (!model || model.modelId !== "ASTRA-SYNTH-MLP-2" || model.version !== 2) {
       throw new Error("ASTRA synthetic model v2 is not available.");
     }
     if (!Number.isFinite(model.threshold) || model.threshold <= 0 || model.threshold >= 1) {
