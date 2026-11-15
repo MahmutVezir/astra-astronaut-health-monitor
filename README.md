@@ -11,7 +11,7 @@ ASTRA is an offline-first astronaut health-monitoring prototype with clearly sep
 - Responsive browser dashboard with four signals: heart rate, blood oxygen (SpO₂), body temperature, and sleep duration.
 - Manual data entry with basic input validation and explicit missing-data handling.
 - Three reproducible scenarios: nominal day, baseline shift, and incomplete data. The baseline-shift scenario compares its readings with an explicit nominal simulated baseline rather than relying only on fixed bands.
-- Two distinct signal comparisons: configurable fixed demo reference bands and per-signal absolute deviation from a captured personal baseline. Demo tolerances are explicit and are not clinical cutoffs.
+- Two distinct signal comparisons: configurable fixed demo reference bands and per-signal absolute deviation from a user-captured reference snapshot. The snapshot is one complete reading set, not a multi-day statistical baseline. Demo tolerances are explicit and are not clinical cutoffs.
 - Daily crew wellbeing self-report (sleep quality, perceived stress, fatigue, and mood) is evaluated through separate, transparent self-report rules and shown as context alongside signal comparisons.
 - A cross-domain review note surfaces when baseline deviations and wellbeing self-report flags co-occur. It does not calculate a composite medical risk score or infer causation.
 - Heart-rate history plots only saved readings; one reading is shown as one point and is never duplicated to imply a trend.
@@ -74,12 +74,12 @@ A project-maintained SHA-256 pin and successful automated tests do not independe
 The demo engine keeps three evidence layers separate:
 
 1. **Fixed reference-band comparison:** checks each valid reading against a user-configurable illustrative demo band.
-2. **Personal-baseline comparison:** after a complete set of readings is saved, the user can capture those values as a local personal baseline. New readings are compared with that snapshot using explicit absolute tolerances: 15 BPM for heart rate, 2 percentage points for SpO₂, 0.5 °C for temperature, and 1.5 hours for sleep. These are prototype demonstration sensitivities, not clinical limits.
+2. **Reference-snapshot comparison:** after a complete set of four readings is saved, the user can capture those exact values as a local reference snapshot. New readings are compared with that snapshot using explicit absolute tolerances: 15 BPM for heart rate, 2 percentage points for SpO₂, 0.5 °C for temperature, and 1.5 hours for sleep. One captured set is not a multi-day statistical baseline, population reference, or clinical limit. These are prototype demonstration sensitivities only.
 3. **Wellbeing self-report:** a saved check-in is reviewed separately. The illustrative flags are sleep quality ≤2, perceived stress ≥4, fatigue ≥4, or mood ≤2 on the app's 1–5 sliders.
 
 A combined context note is produced only when both a complete baseline comparison and a saved wellbeing check-in exist. When both contain flags, the interface reports their co-occurrence as a reason for human review; it does not claim correlation, causation, diagnosis, or a medical condition. The main signal assessment remains separate from this context and no composite risk score is calculated.
 
-Blank values stay missing, invalid entries are rejected, and an incomplete comparison is labelled **Limited**. Missing data is never silently imputed. The Baseline Shift scenario uses a clearly labelled nominal simulated reference; manually entered readings do not become a personal baseline unless the user explicitly captures them.
+Blank values stay missing, invalid entries are rejected, and an incomplete comparison is labelled **Limited**. Missing data is never silently imputed. The Baseline Shift scenario uses a clearly labelled nominal simulated reference snapshot; manually entered readings do not become a comparison snapshot unless the user explicitly captures them.
 
 All fixed bands, comparison tolerances, and self-report rules are illustrative software settings. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
 
