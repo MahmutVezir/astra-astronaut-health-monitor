@@ -106,7 +106,7 @@ test("Mission Replay UI selectors exist and replay scripts are loaded after the 
   const ids = new Set(Array.from(html.matchAll(/\bid="([^"]+)"/g), (match) => match[1]));
   const required = Array.from(replayUi.matchAll(/\$\("([^"]+)"\)/g), (match) => match[1]);
   assert.deepEqual(required.filter((id) => !ids.has(id)), []);
-  const modelIndex = html.indexOf('src="data/models/mission-anomaly-mlp-v1.js"');
+  const modelIndex = html.indexOf('src="data/models/mission-anomaly-mlp-v2.js"');
   const engineIndex = html.indexOf('src="mission-engine.js"');
   const uiIndex = html.indexOf('src="mission-replay-ui.js"');
   assert.ok(modelIndex >= 0 && engineIndex > modelIndex && uiIndex > engineIndex);
@@ -115,11 +115,11 @@ test("Mission Replay UI selectors exist and replay scripts are loaded after the 
 });
 
 test("model artefact, offline bundle and reproducible training documentation are present", function () {
-  const model = JSON.parse(read("data/models/mission-anomaly-mlp-v1.json"));
-  assert.equal(model.modelId, "ASTRA-SYNTH-MLP-1");
+  const model = JSON.parse(read("data/models/mission-anomaly-mlp-v2.json"));
+  assert.equal(model.modelId, "ASTRA-SYNTH-MLP-2");
   assert.equal(model.training.syntheticOnly, true);
   assert.equal(model.training.noNASAOrClinicalTrainingData, true);
-  assert.equal(fs.existsSync(path.join(root, "data/models/mission-anomaly-mlp-v1.js")), true);
+  assert.equal(fs.existsSync(path.join(root, "data/models/mission-anomaly-mlp-v2.js")), true);
   assert.equal(fs.existsSync(path.join(root, "scripts/train_mission_model.py")), true);
   assert.equal(fs.existsSync(path.join(root, "docs/mission-ml-model-card.md")), true);
   assert.equal(fs.existsSync(path.join(root, "THIRD_PARTY_NOTICES.md")), true);
