@@ -136,3 +136,16 @@ test("model rejects malformed feature vectors", function () {
   assert.throws(() => mission.predict([1, 2], model), /complete finite feature vector/i);
   assert.throws(() => mission.predict(new Array(9).fill(NaN), model), /complete finite feature vector/i);
 });
+
+
+test("sensor-dropout scenario is discoverable and explains how to verify abstention", function () {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+  const replayUi = fs.readFileSync(path.join(__dirname, "../mission-replay-ui.js"), "utf8");
+  assert.match(html, /value="sensor-dropout">DATA LOSS TEST — Sensor dropout \(model abstains\)/);
+  assert.match(html, /replay-scenario-help/);
+  assert.match(html, /advance to day 30/i);
+  assert.match(replayUi, /Sensor dropout begins on mission day 10/);
+  assert.match(replayUi, /MODEL ABSTAINED/);
+});

@@ -217,15 +217,16 @@
         <div class="panel replay-control-panel">
           <div class="replay-controls-grid">
             <label class="field"><span>Mission scenario <small>REPRODUCIBLE PROFILE</small></span>
-              <select id="replay-scenario">
+              <select id="replay-scenario" aria-describedby="replay-scenario-help">
                 <option value="nominal">Nominal mission routine</option>
                 <option value="cardiovascular-shift">Sustained heart-rate departure</option>
                 <option value="oxygen-deviation">Oxygen-signal departure</option>
                 <option value="sleep-fatigue">Sleep and fatigue co-occurrence</option>
                 <option value="temperature-drift">Temperature drift pattern</option>
                 <option value="multi-signal">Multi-signal deviation</option>
-                <option value="sensor-dropout">Sensor dropout and missing data</option>
+                <option value="sensor-dropout">DATA LOSS TEST — Sensor dropout (model abstains)</option>
               </select>
+              <em id="replay-scenario-help" class="field-hint">To test uncertainty handling, select DATA LOSS TEST. Missing readings begin on mission day 10; advance to day 30 to inspect the final seven-day window. Gaps remain blank and the model should abstain when data coverage is insufficient.</em>
             </label>
             <label class="field"><span>Playback speed <small>SIMULATION CONTROL</small></span>
               <select id="replay-speed">
