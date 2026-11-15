@@ -214,9 +214,21 @@
       });
     });
 
-    const staleCount = samples.filter(function (sample) {
-      return Number.isFinite(Number(sample.latencySeconds)) && Number(sample.latencySeconds) > 120;
-    }).length;
+    const latencyValues = samples.map(function (sample) {
+      return typeof sample.latencySeconds === "number" && Number.isFinite(sample.latencySeconds)
+        ? sample.latencySeconds
+        : null;
+    }).filter(function (value) { return value !== null; });
+    const latencyCoverageRate = latencyValues.length / samples.length;
+    if (latencyCoverageRate < 0.75) {
+      return {
+        status: "ABSTAIN",
+        reason: "Latency is measured for fewer than 75% of checkpoints. The model will not assume that unmeasured latency means fresh telemetry.",
+        validCounts: validCounts,
+        latencyCoverageRate: round(latencyCoverageRate, 4)
+      };
+    }
+    const staleCount = latencyValues.filter(function (value) { return value > 120; }).length;
 
     const lastWellbeing = samples[samples.length - 1].wellbeing;
     const features = {
@@ -225,7 +237,7 @@
       temperature_delta_c: round(feature.temperature.last - feature.temperature.first, 3),
       sleep_delta_hours: round(feature.sleepHours.last - feature.sleepHours.first, 3),
       missing_rate: round(missing / expected, 4),
-      stale_rate: round(staleCount / samples.length, 4),
+      stale_rate: round(staleCount / latencyValues.length, 4),
       flatline_rate: round(pairs ? repeated / pairs : 0, 4),
       wellbeing_flag_count: wellbeingFlagCount(lastWellbeing)
     };
@@ -242,7 +254,7 @@
       return { status: "ABSTAIN", reason: "Feature values are outside the model's supported envelope: " + outOfRange.join(", ") + ".", features: features, validCounts: validCounts };
     }
 
-    return { status: "READY", features: features, validCounts: validCounts };
+    return { status: "READY", features: features, validCounts: validCounts, latencyCoverageRate: round(latencyCoverageRate, 4) };
   }
 
   function predictPattern(features, model, options) {
@@ -312,6 +324,7 @@
         reason: featureResult.reason,
         features: featureResult.features || null,
         validCounts: featureResult.validCounts || null,
+        latencyCoverageRate: featureResult.latencyCoverageRate || null,
         source: windowData && windowData.source || "UNKNOWN"
       };
     }
@@ -319,6 +332,7 @@
     return Object.assign({}, prediction, {
       features: featureResult.features,
       validCounts: featureResult.validCounts,
+      latencyCoverageRate: featureResult.latencyCoverageRate,
       source: windowData && windowData.source || "UNKNOWN",
       sampleCount: (Array.isArray(windowData) ? windowData : windowData.samples).length
     });
