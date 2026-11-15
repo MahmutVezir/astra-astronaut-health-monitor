@@ -27,7 +27,7 @@ function createDom() {
     remove() {},
     classList: { toggle() {} }
   });
-  const viewNames = ["research", "overview", "signals", "wellbeing", "log", "sources"];
+  const viewNames = ["research", "overview", "signals", "wellbeing", "log", "sources", "telemetry"];
   const tabs = viewNames.map(function (name) {
     const tab = makeElement("tab-" + name);
     tab.dataset.view = name;
