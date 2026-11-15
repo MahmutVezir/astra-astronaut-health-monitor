@@ -14,6 +14,10 @@
   let researchEvidenceError = null;
   let selectedResearchMarker = "crp";
   let activeView = "research";
+  let missionAIModel = null;
+  let missionAIModelError = null;
+  let missionWindow = null;
+  let missionAnalysis = null;
   let state = {
     readings: Object.assign({}, SCENARIOS.nominal),
     bands: Object.keys(DEFAULT_BANDS).reduce(function (out, key) { out[key] = Object.assign({}, DEFAULT_BANDS[key]); return out; }, {}),
@@ -21,6 +25,7 @@
     wellbeingRecorded: false,
     baseline: null,
     readingsRecorded: false,
+    telemetryLatencySeconds: null,
     log: [],
     updatedAt: null,
     scenario: "nominal"
@@ -128,6 +133,9 @@
           readingsRecorded: parsed.readingsRecorded === true || parsed.log.some(function (entry) {
             return ["READINGS SAVED", "DEMO SCENARIO", "DEMO RESET"].includes(entry.type);
           }),
+          telemetryLatencySeconds: Number.isFinite(Number(parsed.telemetryLatencySeconds)) && Number(parsed.telemetryLatencySeconds) >= 0
+            ? Number(parsed.telemetryLatencySeconds)
+            : null,
           log: parsed.log.slice(0, 100),
           updatedAt: parsed.updatedAt || null,
           scenario: SCENARIOS[parsed.scenario] ? parsed.scenario : "nominal"
@@ -141,6 +149,7 @@
         wellbeingRecorded: false,
         baseline: null,
         readingsRecorded: false,
+        telemetryLatencySeconds: null,
         log: [],
         updatedAt: null,
         scenario: "nominal"
@@ -544,6 +553,7 @@
     $("spo2").value = state.readings.spo2 === null ? "" : state.readings.spo2;
     $("temperature").value = state.readings.temperature === null ? "" : state.readings.temperature;
     $("sleep").value = state.readings.sleep === null ? "" : state.readings.sleep;
+    $("telemetry-latency").value = state.telemetryLatencySeconds === null ? "" : state.telemetryLatencySeconds;
     Object.keys(window.AstraHealth.SIGNALS).forEach(function (key) {
       $(bandFieldId(key, "lower")).value = state.bands[key].lower;
       $(bandFieldId(key, "upper")).value = state.bands[key].upper;
@@ -606,6 +616,7 @@
     state.scenario = name;
     state.readings = Object.assign({}, SCENARIOS[name]);
     state.readingsRecorded = true;
+    state.telemetryLatencySeconds = null;
     state.updatedAt = new Date().toISOString();
     state.baseline = { readings: Object.assign({}, SCENARIOS.nominal), source: "scenario", capturedAt: state.updatedAt };
     addLog("DEMO SCENARIO", "Loaded " + name + " scenario against the nominal simulated baseline. All readings are simulated.");
@@ -623,6 +634,12 @@
       temperature: $("temperature").value,
       sleep: $("sleep").value
     };
+    const latencyRaw = $("telemetry-latency").value;
+    const latencyValue = latencyRaw === "" ? null : Number(latencyRaw);
+    if (latencyRaw !== "" && (!Number.isFinite(latencyValue) || latencyValue < 0 || latencyValue > 86400)) {
+      $("signals-message").textContent = "Measurement age / arrival latency must be between 0 and 86,400 seconds. Leave it blank when it is unknown.";
+      return;
+    }
     const invalid = Object.keys(raw).filter(function (key) {
       const result = window.AstraHealth.evaluateSignal(key, raw[key]);
       return result.status === "INVALID";
@@ -638,6 +655,7 @@
       sleep: raw.sleep === "" ? null : Number(raw.sleep)
     };
     state.readingsRecorded = true;
+    state.telemetryLatencySeconds = latencyValue;
     state.scenario = "manual";
     state.updatedAt = new Date().toISOString();
     const assessment = window.AstraHealth.assess(state.readings, state.bands);
@@ -716,12 +734,12 @@
   }
 
   function exportCsv() {
-    const rows = [["recorded_at", "record_type", "heart_rate_bpm", "spo2_percent", "temperature_c", "sleep_hours", "note"]];
+    const rows = [["recorded_at", "record_type", "heart_rate_bpm", "spo2_percent", "temperature_c", "sleep_hours", "measurement_age_or_arrival_latency_seconds", "note"]];
     state.log.forEach(function (entry) {
-      rows.push([entry.time, entry.type, entry.heartRate ?? "", entry.spo2 ?? "", entry.temperature ?? "", entry.sleep ?? "", entry.message]);
+      rows.push([entry.time, entry.type, entry.heartRate ?? "", entry.spo2 ?? "", entry.temperature ?? "", entry.sleep ?? "", entry.latencySeconds ?? "", entry.message]);
     });
     if (state.log.length === 0) {
-      rows.push([new Date().toISOString(), "CURRENT DEMO STATE", state.readings.heartRate ?? "", state.readings.spo2 ?? "", state.readings.temperature ?? "", state.readings.sleep ?? "", "Simulated or manually entered; not a medical record"]);
+      rows.push([new Date().toISOString(), "CURRENT DEMO STATE", state.readings.heartRate ?? "", state.readings.spo2 ?? "", state.readings.temperature ?? "", state.readings.sleep ?? "", state.telemetryLatencySeconds ?? "", "Simulated or manually entered; not a medical record"]);
     }
     const csv = rows.map(function (row) {
       return row.map(function (cell) {
@@ -745,7 +763,16 @@
   }
 
   function addLog(type, message) {
-    state.log.unshift({ time: new Date().toISOString(), type: type, message: message, heartRate: state.readings.heartRate, spo2: state.readings.spo2, temperature: state.readings.temperature, sleep: state.readings.sleep });
+    state.log.unshift({
+      time: new Date().toISOString(),
+      type: type,
+      message: message,
+      heartRate: state.readings.heartRate,
+      spo2: state.readings.spo2,
+      temperature: state.readings.temperature,
+      sleep: state.readings.sleep,
+      latencySeconds: state.telemetryLatencySeconds
+    });
     state.log = state.log.slice(0, 100);
   }
 
@@ -758,6 +785,7 @@
     state.wellbeing = Object.assign({}, DEFAULT_WELLBEING);
     state.wellbeingRecorded = false;
     state.readingsRecorded = true;
+    state.telemetryLatencySeconds = null;
     state.scenario = "nominal";
     state.updatedAt = new Date().toISOString();
     state.baseline = { readings: Object.assign({}, SCENARIOS.nominal), source: "scenario", capturedAt: state.updatedAt };
