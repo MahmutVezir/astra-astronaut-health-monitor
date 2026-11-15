@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "astra-astronaut-health-monitor-";
-const CACHE_NAME = "astra-astronaut-health-monitor-shell-v3";
+const CACHE_NAME = "astra-astronaut-health-monitor-shell-v4";
 const LEGACY_CACHE_NAMES = ["astra-shell-v1", "astra-shell-v2"];
 const APP_SHELL = [
   "./",
@@ -11,6 +11,8 @@ const APP_SHELL = [
   "./app.js",
   "./research-data.js",
   "./research-data-loader.js",
+  "./mission-ai.js",
+  "./data/models/mission-pattern-model.json",
   "./data/osdr/OSD-575/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
   "./data/osdr/OSD-575/isa-sample-map.json",
   "./data/osdr/OSD-575/source-audit.json",
