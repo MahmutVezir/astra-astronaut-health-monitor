@@ -1,11 +1,11 @@
 # ASTRA — QA Checklist
 
-**Build:** ASTRA-SYNTH-MLP-2 · `main` commit `ce7556c1f088118854dc176436bee93ffffce100` · 15 November 2026  
+**Build:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · `main` commit `569d5c0a1be81c1a3afd52719dc4004171ed8ff8` · 15 November 2026  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Current validation state
 
-The MLP v2 runtime migration is merged to `main` in commit `ce7556c1f088118854dc176436bee93ffffce100` (PR #43). GitHub Actions run [43723360680](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43723360680) completed successfully: JavaScript syntax checks passed, **126/126 automated tests passed**, and the GitHub Pages deployment job succeeded. Manual browser QA remains separate; only user-reported checks explicitly recorded below are marked as user-reported passes.
+The MLP v2 runtime migration is merged in PR #43. The sensor-dropout discoverability and QA update is merged in PR #44. Current `main` is `569d5c0a1be81c1a3afd52719dc4004171ed8ff8`. GitHub Actions run [43724496070](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43724496070) completed successfully: JavaScript syntax checks passed, **127/127 automated tests passed**, and the GitHub Pages deployment job succeeded. Manual browser QA remains separate; only user-reported checks explicitly recorded below are marked as user-reported passes.
 
 ## Automated logic tests
 
@@ -117,7 +117,7 @@ These are user-reported results, not independently reproduced by the CI runner. 
 
 ## User-reported checks on deployed MLP v2 — 15 November 2026
 
-The project owner tested the deployed build after commit `ce7556c1f088118854dc176436bee93ffffce100` and reported the following outcomes. These are manual user reports; the browser/device and screenshot evidence were not recorded.
+The project owner tested the deployed MLP v2 build after commit `ce7556c1f088118854dc176436bee93ffffce100` and before the sensor-dropout discoverability change in PR #44, then reported the following outcomes. These are manual user reports; the browser/device and screenshot evidence were not recorded.
 
 | Check | User-reported result | Scope note |
 |---|---|---|
@@ -158,7 +158,7 @@ The project owner tested the deployed build after commit `ce7556c1f088118854dc17
 | QA-25 | Mission Replay repeatability | Select a scenario, restart twice with the fixed seed, and compare the exported records | The same selected scenario generates identical 30-day records; all rows say SIMULATED | Not yet recorded |
 | QA-26 | Nominal ML window | Advance the nominal replay to day 7 and inspect the model panel | Seven-day completeness gate passes and the model output is labelled synthetic-pattern similarity, not health clearance | User-reported PASS on 15 Nov 2026; device/browser not recorded |
 | QA-27 | Multi-signal synthetic scenario | Select Multi-signal deviation and advance until the seven-day window includes the deviation period | The model can flag the generated deviation pattern; UI does not label it a diagnosis or risk probability | User-reported PASS on 15 Nov 2026; device/browser not recorded |
-| QA-28 | Sensor dropout abstention | Select DATA LOSS TEST — Sensor dropout and advance to day 30 | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | Not yet executed; user could not find the option before the discoverability update |
+| QA-28 | Sensor dropout abstention | Select DATA LOSS TEST — Sensor dropout and advance to day 30 | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | Not yet executed; discoverability fix merged in PR #44, awaiting manual re-test |
 | QA-29 | Replay CSV export | Export the full mission replay and inspect the CSV | Thirty data rows, expected nine columns, SIMULATED source and selected scenario are present | Not yet recorded |
 | QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the current v5 app-shell cache; no external model service is required | Not yet recorded |
 
