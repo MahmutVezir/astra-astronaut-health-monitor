@@ -18,6 +18,9 @@
     readings: Object.assign({}, SCENARIOS.nominal),
     bands: Object.keys(DEFAULT_BANDS).reduce(function (out, key) { out[key] = Object.assign({}, DEFAULT_BANDS[key]); return out; }, {}),
     wellbeing: Object.assign({}, DEFAULT_WELLBEING),
+    wellbeingRecorded: false,
+    baseline: null,
+    readingsRecorded: false,
     log: [],
     updatedAt: null,
     scenario: "nominal"
@@ -35,10 +38,39 @@
     return Number(value).toFixed(spec.digits) + " " + spec.unit;
   };
   const statusText = function (status) {
-    return ({ WITHIN: "Within configured band", REVIEW: "Review", NO_DATA: "No data", INVALID: "Invalid", LIMITED: "Assessment limited" })[status] || status;
+    return ({
+      WITHIN: "Within configured band",
+      REVIEW: "Review",
+      NO_DATA: "No data",
+      INVALID: "Invalid",
+      LIMITED: "Assessment limited",
+      SHIFT: "Baseline shift",
+      STABLE: "Within baseline tolerance",
+      NO_BASELINE: "No baseline",
+      NO_CHECK_IN: "No check-in",
+      NO_FLAGS: "No self-report flags",
+      RECORDED: "Recorded",
+      CONCURRENT_FLAGS: "Combined review",
+      BASELINE_ONLY: "Baseline review",
+      WELLBEING_ONLY: "Wellbeing review"
+    })[status] || status;
   };
   const statusClass = function (status) {
-    return ({ WITHIN: "good", REVIEW: "review", NO_DATA: "missing", INVALID: "invalid", LIMITED: "limited" })[status] || "neutral";
+    return ({
+      WITHIN: "good",
+      REVIEW: "review",
+      SHIFT: "review",
+      STABLE: "good",
+      NO_DATA: "missing",
+      NO_BASELINE: "limited",
+      NO_CHECK_IN: "missing",
+      NO_FLAGS: "good",
+      CONCURRENT_FLAGS: "review",
+      BASELINE_ONLY: "review",
+      WELLBEING_ONLY: "review",
+      INVALID: "invalid",
+      LIMITED: "limited"
+    })[status] || "neutral";
   };
   function saveState() {
     try {
@@ -61,6 +93,21 @@
     return "band-" + slug + "-" + edge;
   }
 
+  function normalizeBaseline(source) {
+    if (!source || !source.readings || typeof source.readings !== "object") return null;
+    const readings = {};
+    for (const key of Object.keys(window.AstraHealth.SIGNALS)) {
+      const result = window.AstraHealth.evaluateSignal(key, source.readings[key]);
+      if (result.status !== "WITHIN" && result.status !== "REVIEW") return null;
+      readings[key] = result.value;
+    }
+    return {
+      readings: readings,
+      source: source.source === "scenario" ? "scenario" : "user",
+      capturedAt: typeof source.capturedAt === "string" ? source.capturedAt : null
+    };
+  }
+
   function loadState() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -76,6 +123,11 @@
           }, {}),
           bands: mergeBands(parsed.bands),
           wellbeing: Object.assign({}, DEFAULT_WELLBEING, parsed.wellbeing),
+          wellbeingRecorded: parsed.wellbeingRecorded === true,
+          baseline: normalizeBaseline(parsed.baseline),
+          readingsRecorded: parsed.readingsRecorded === true || parsed.log.some(function (entry) {
+            return ["READINGS SAVED", "DEMO SCENARIO", "DEMO RESET"].includes(entry.type);
+          }),
           log: parsed.log.slice(0, 100),
           updatedAt: parsed.updatedAt || null,
           scenario: SCENARIOS[parsed.scenario] ? parsed.scenario : "nominal"
@@ -86,6 +138,9 @@
         readings: Object.assign({}, SCENARIOS.nominal),
         bands: mergeBands(null),
         wellbeing: Object.assign({}, DEFAULT_WELLBEING),
+        wellbeingRecorded: false,
+        baseline: null,
+        readingsRecorded: false,
         log: [],
         updatedAt: null,
         scenario: "nominal"
@@ -109,25 +164,75 @@
     $("assessment-list").innerHTML = assessment.items.map(function (item) {
       return '<div class="assessment-row"><span class="assessment-dot dot-' + statusClass(item.status) + '"></span><div><strong>' + esc(item.label) + '</strong><small>' + esc(item.explanation) + '</small></div><span class="assessment-state">' + esc(statusText(item.status)) + '</span></div>';
     }).join("");
+
+    const baseline = assessment.baseline;
+    $("baseline-assessment-status").textContent = statusText(baseline.status);
+    $("baseline-assessment-status").className = "state-label state-" + statusClass(baseline.status);
+    $("baseline-assessment-summary").textContent = baseline.summary;
+    $("baseline-source-label").textContent = !state.baseline
+      ? "No baseline captured"
+      : state.baseline.source === "scenario"
+        ? "Simulated nominal scenario baseline"
+        : "Personal baseline saved on this device";
+    $("baseline-assessment-list").innerHTML = baseline.items.map(function (item) {
+      const spec = window.AstraHealth.SIGNALS[item.key];
+      const delta = item.delta === null ? "—" : (item.delta > 0 ? "+" : "") + item.delta.toFixed(spec.digits) + " " + spec.unit;
+      return '<div class="assessment-row"><span class="assessment-dot dot-' + statusClass(item.status) + '"></span><div><strong>' + esc(item.label) + '</strong><small>' + esc(item.explanation) + '</small></div><span class="assessment-state">' + esc(delta) + '</span></div>';
+    }).join("");
+
+    const wellbeing = assessment.wellbeing;
+    $("wellbeing-assessment-status").textContent = statusText(wellbeing.status);
+    $("wellbeing-assessment-status").className = "state-label state-" + statusClass(wellbeing.status);
+    $("wellbeing-assessment-summary").textContent = wellbeing.summary;
+    $("wellbeing-assessment-list").innerHTML = wellbeing.flags.length
+      ? wellbeing.flags.map(function (flag) {
+        return '<div class="assessment-row"><span class="assessment-dot dot-review"></span><div><strong>' + esc(flag.label) + '</strong><small>' + esc(flag.message) + '</small></div><span class="assessment-state">Self-report</span></div>';
+      }).join("")
+      : '<p class="insight-empty">' + esc(wellbeing.status === "NO_CHECK_IN" ? "Save a wellbeing check-in to include this context." : "No illustrative self-report flags were triggered.") + '</p>';
+
+    const context = assessment.context;
+    $("context-assessment-status").textContent = statusText(context.status);
+    $("context-assessment-status").className = "state-label state-" + statusClass(context.status);
+    $("context-assessment-summary").textContent = context.summary;
     $("data-completeness").textContent = assessment.available + " of " + assessment.total + " signals available";
   }
 
   function renderTrend() {
-    const values = state.log.filter(function (entry) { return entry.heartRate !== null && Number.isFinite(Number(entry.heartRate)); }).slice(0, 8).reverse().map(function (entry) { return Number(entry.heartRate); });
-    if (values.length === 0) values.push(Number(state.readings.heartRate) || 72);
-    if (values.length === 1) values.unshift(values[0]);
+    const historyTypes = ["READINGS SAVED", "DEMO SCENARIO", "DEMO RESET"];
+    const values = state.log.filter(function (entry) {
+      return historyTypes.includes(entry.type) &&
+        entry.heartRate !== null &&
+        entry.heartRate !== undefined &&
+        Number.isFinite(Number(entry.heartRate));
+    }).slice(0, 8).reverse().map(function (entry) { return Number(entry.heartRate); });
+    const line = $("trend-line");
+    const markers = $("trend-points");
+    const caption = $("trend-caption");
+
+    if (values.length === 0) {
+      line.setAttribute("points", "");
+      markers.innerHTML = "";
+      caption.textContent = "No saved heart-rate readings yet. A trend will appear after multiple readings are recorded.";
+      return;
+    }
+
     const min = Math.min.apply(null, values.concat([50]));
     const max = Math.max.apply(null, values.concat([110]));
     const range = Math.max(10, max - min);
     const points = values.map(function (value, index) {
-      const x = 34 + (index * (492 / Math.max(1, values.length - 1)));
+      const x = values.length === 1 ? 280 : 34 + (index * (492 / (values.length - 1)));
       const y = 150 - ((value - (min - 5)) / (range + 10)) * 118;
       return { x: x, y: y };
     });
-    $("trend-line").setAttribute("points", points.map(function (point) { return point.x.toFixed(1) + "," + point.y.toFixed(1); }).join(" "));
-    $("trend-points").innerHTML = points.map(function (point) {
+    line.setAttribute("points", values.length > 1
+      ? points.map(function (point) { return point.x.toFixed(1) + "," + point.y.toFixed(1); }).join(" ")
+      : "");
+    markers.innerHTML = points.map(function (point) {
       return '<circle cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4" class="chart-point"></circle>';
     }).join("");
+    caption.textContent = values.length === 1
+      ? "One saved reading is available; a time trend cannot be inferred from a single point."
+      : "Showing " + values.length + " saved readings. This illustrative history is not a clinical trend.";
   }
 
   function renderResearchTimeline() {
@@ -453,7 +558,11 @@
   }
 
   function renderAll() {
-    const assessment = window.AstraHealth.assess(state.readings, state.bands);
+    const assessment = window.AstraHealth.assess(state.readings, state.bands, {
+      baseline: state.baseline && state.baseline.readings,
+      wellbeing: state.wellbeing,
+      wellbeingRecorded: state.wellbeingRecorded
+    });
     renderCards(assessment);
     renderAssessment(assessment);
     renderTrend();
@@ -496,8 +605,10 @@
     if (!SCENARIOS[name]) return;
     state.scenario = name;
     state.readings = Object.assign({}, SCENARIOS[name]);
+    state.readingsRecorded = true;
     state.updatedAt = new Date().toISOString();
-    addLog("DEMO SCENARIO", "Loaded " + name + " scenario. All readings are simulated.");
+    state.baseline = { readings: Object.assign({}, SCENARIOS.nominal), source: "scenario", capturedAt: state.updatedAt };
+    addLog("DEMO SCENARIO", "Loaded " + name + " scenario against the nominal simulated baseline. All readings are simulated.");
     saveState();
     renderAll();
     $("signals-message").textContent = "Scenario loaded. These are simulated demo readings.";
@@ -526,6 +637,7 @@
       temperature: raw.temperature === "" ? null : Number(raw.temperature),
       sleep: raw.sleep === "" ? null : Number(raw.sleep)
     };
+    state.readingsRecorded = true;
     state.scenario = "manual";
     state.updatedAt = new Date().toISOString();
     const assessment = window.AstraHealth.assess(state.readings, state.bands);
@@ -533,6 +645,32 @@
     saveState();
     renderAll();
     $("signals-message").textContent = "Readings saved locally. " + assessment.summary;
+  }
+
+  function captureBaseline() {
+    if (!state.readingsRecorded) {
+      $("baseline-capture-message").textContent = "Save readings or load a demo scenario before capturing a baseline.";
+      return;
+    }
+    const invalid = Object.keys(window.AstraHealth.SIGNALS).filter(function (key) {
+      const result = window.AstraHealth.evaluateSignal(key, state.readings[key]);
+      return result.status !== "WITHIN" && result.status !== "REVIEW";
+    });
+    if (invalid.length) {
+      $("baseline-capture-message").textContent = "Save a complete set of four valid readings before capturing a personal baseline. Missing or invalid: " +
+        invalid.map(function (key) { return window.AstraHealth.SIGNALS[key].label; }).join(", ") + ".";
+      return;
+    }
+    state.baseline = {
+      readings: Object.assign({}, state.readings),
+      source: "user",
+      capturedAt: new Date().toISOString()
+    };
+    state.updatedAt = new Date().toISOString();
+    addLog("PERSONAL BASELINE CAPTURED", "A complete set of current readings was saved as the local comparison baseline. This is not a medical reference.");
+    saveState();
+    renderAll();
+    $("baseline-capture-message").textContent = "Personal baseline captured on this device. Future readings will be compared with these values.";
   }
 
   function saveBands(event) {
@@ -569,6 +707,7 @@
       const inputId = key.replace(/[A-Z]/g, function (letter) { return "-" + letter.toLowerCase(); });
       state.wellbeing[key] = Number($(inputId).value);
     });
+    state.wellbeingRecorded = true;
     state.updatedAt = new Date().toISOString();
     addLog("WELLBEING CHECK-IN", "Self-report saved: " + Object.keys(LABELS).map(function (key) { return LABELS[key] + " " + state.wellbeing[key] + "/5"; }).join(", ") + ".");
     saveState();
@@ -617,15 +756,19 @@
   $("reset-demo").addEventListener("click", function () {
     state.readings = Object.assign({}, SCENARIOS.nominal);
     state.wellbeing = Object.assign({}, DEFAULT_WELLBEING);
+    state.wellbeingRecorded = false;
+    state.readingsRecorded = true;
     state.scenario = "nominal";
     state.updatedAt = new Date().toISOString();
-    addLog("DEMO RESET", "Returned to the nominal simulated scenario.");
+    state.baseline = { readings: Object.assign({}, SCENARIOS.nominal), source: "scenario", capturedAt: state.updatedAt };
+    addLog("DEMO RESET", "Returned to the nominal simulated scenario and its nominal comparison baseline.");
     saveState();
     renderAll();
     $("demo-scenario").value = "nominal";
     $("signals-message").textContent = "Demo reset to nominal simulated values.";
   });
   $("signals-form").addEventListener("submit", saveReadings);
+  $("capture-baseline").addEventListener("click", captureBaseline);
   $("baseline-form").addEventListener("submit", saveBands);
   $("wellbeing-form").addEventListener("submit", saveWellbeing);
   $("export-csv").addEventListener("click", exportCsv);
