@@ -354,6 +354,7 @@
           <h3>How the AI works and where it stops</h3>
           <p class="section-copy">ASTRA uses a locally executed, interpretable decision tree. It evaluates eight features: four signal changes, missing-data rate, stale-data rate, flatline rate, and wellbeing self-report flags. The model was trained and holdout-tested only on simulator-generated synthetic examples. A model-support value describes the class share in the reached training leaf; it is not a clinical probability.</p>
           <p class="fine-print">The system abstains when a window is too short, signal coverage is inadequate, a feature is outside the supported envelope, or leaf support is below 65%. Model output is separate from fixed reference-band and personal-reference checks. It does not diagnose, predict a medical event, recommend treatment, or establish flight readiness.</p>
+          <p class="fine-print" id="mission-ai-validation">Loading local model evaluation metadata…</p>
           <a href="./docs/mission-pattern-model-card.md" target="_blank" rel="noopener noreferrer">Read the complete model card ↗</a>
         </article>
       </section>
