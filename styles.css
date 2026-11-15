@@ -24,11 +24,9 @@ button, select { cursor: pointer; }
 .brand strong { display: block; letter-spacing: .18em; font-size: 14px; }
 .brand small { color: var(--muted); font-size: 9px; letter-spacing: .18em; }
 .topbar-right { display: flex; align-items: center; gap: 18px; }
-.demo-pill, .mission-chip { font-size: 10px; letter-spacing: .1em; color: var(--muted); }
+.demo-pill { font-size: 10px; letter-spacing: .1em; color: var(--muted); }
 .demo-pill { display: flex; align-items: center; gap: 8px; }
 .pulse-dot { width: 7px; height: 7px; background: var(--amber); border-radius: 50%; box-shadow: 0 0 10px var(--amber); }
-.mission-chip { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; }
-.mission-chip strong { color: var(--text); margin-left: 5px; }
 .intro { display: flex; align-items: center; justify-content: space-between; gap: 40px; padding: 42px 0 32px; }
 .eyebrow { margin: 0 0 10px; color: var(--cyan); font-size: 10px; font-weight: 750; letter-spacing: .18em; }
 h1 { font-size: clamp(32px, 4.6vw, 54px); line-height: 1.04; letter-spacing: -.045em; margin: 0; }
@@ -141,7 +139,6 @@ h3 { font-size: 16px; margin: 0; }
   .topbar { height: auto; min-height: 68px; }
   .topbar-right { gap: 8px; }
   .demo-pill { max-width: 110px; line-height: 1.4; font-size: 8px; }
-  .mission-chip { font-size: 8px; padding: 8px; }
   .intro { padding: 30px 0 22px; }
   .tabs { margin: 0 -2px; }
   .tab { padding: 9px 11px; font-size: 11px; }
