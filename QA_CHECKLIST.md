@@ -5,7 +5,7 @@
 
 ## Current validation state
 
-The MLP v2 runtime and DATA LOSS TEST UI are merged in PRs #43, #44, and #47. PR #47 corrected the stale v5 app-shell cache. PR #49 removes the unrelated static DEMO DAY 042 label and bumps the app-shell cache to v7 so existing installations receive the corrected header. GitHub Actions run [43726371512](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43726371512) completed successfully: **128/128 automated tests passed** and GitHub Pages deployment succeeded. The owner must still manually reopen the deployed v7 build and execute QA-28.
+The MLP v2 runtime, DATA LOSS TEST UI, static-header cleanup and Service Worker v7 are merged in PRs #43, #44, #47 and #49. GitHub Actions run [43726371512](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43726371512) completed successfully: **128/128 automated tests passed** and GitHub Pages deployment succeeded. On 15 November 2026, the project owner subsequently reported completing the v7 sensor-dropout abstention check (QA-28) and offline-use check (QA-30). These are recorded as owner-reported manual passes; the browser, operating system and device details were not supplied.
 
 ## Automated logic tests
 
@@ -165,9 +165,9 @@ The project owner tested the deployed MLP v2 build after commit `ce7556c1f088118
 | QA-25 | Mission Replay repeatability | Select a scenario, restart twice with the fixed seed, and compare the exported records | The same selected scenario generates identical 30-day records; all rows say SIMULATED | Not yet recorded |
 | QA-26 | Nominal ML window | Advance the nominal replay to day 7 and inspect the model panel | Seven-day completeness gate passes and the model output is labelled synthetic-pattern similarity, not health clearance | User-reported PASS on 15 Nov 2026; device/browser not recorded |
 | QA-27 | Multi-signal synthetic scenario | Select Multi-signal deviation and advance until the seven-day window includes the deviation period | The model can flag the generated deviation pattern; UI does not label it a diagnosis or risk probability | User-reported PASS on 15 Nov 2026; device/browser not recorded |
-| QA-28 | Sensor dropout abstention | Select DATA LOSS TEST — Sensor dropout and advance to day 30 | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | Not yet executed on v7; awaiting manual re-test |
+| QA-28 | Sensor dropout abstention | Select DATA LOSS TEST — Sensor dropout and advance to day 30 | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | **PASS — owner-reported 15 Nov 2026**; browser/device and screenshot not supplied |
 | QA-29 | Replay CSV export | Export the full mission replay and inspect the CSV | Thirty data rows, expected nine columns, SIMULATED source and selected scenario are present | Not yet recorded |
-| QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the current v7 app-shell cache; no external model service is required | Not yet recorded |
+| QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the current v7 app-shell cache; no external model service is required | **PASS — owner-reported 15 Nov 2026**; browser/device and screenshot not supplied |
 
 ## Defect report template
 
@@ -185,3 +185,13 @@ The project owner tested the deployed MLP v2 build after commit `ce7556c1f088118
 ## Completion gate
 
 The prototype is ready to demonstrate only after the team has run the browser tests, recorded actual results, fixed critical defects, verified all public links, and checked the application on the intended demo device. Passing unit tests alone is not enough.
+
+
+## Final manual validation — 15 November 2026
+
+The project owner confirmed that both previously pending final checks were completed on the deployed Service Worker v7 build:
+
+- **QA-28 — Sensor dropout abstention: PASS (owner-reported).** The owner confirmed completion of the sensor-dropout scenario test. The acceptance criteria remain: on day 30, missing sensor values stay missing, the model displays `MODEL ABSTAINED`, and no model score is emitted.
+- **QA-30 — Offline Mission Replay: PASS (owner-reported).** The owner confirmed completion of the offline-use test after the app had first been loaded online. The expected behavior is that the cached Mission Replay app shell and local model bundle remain available without a network connection; external links and uncached resources are not expected to work offline.
+
+No browser version, operating system, device model, screenshot or screen recording was provided. These results are recorded as owner-reported manual passes, not independently witnessed laboratory QA. The project remains a student prototype and is not clinically validated.
