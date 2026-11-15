@@ -169,7 +169,7 @@
     const prediction = result.prediction;
     status.textContent = prediction.status === "PATTERN_DEVIATION" ? "SYNTHETIC PATTERN FLAG" : "NO MODEL FLAG";
     status.className = "state-label " + statusClass(prediction.status);
-    score.textContent = (prediction.score * 100).toFixed(1) + "%";
+    score.textContent = prediction.score.toFixed(3);
     summary.textContent = prediction.explanation;
     drivers.innerHTML = '<p class="mini-label">LARGEST STANDARDIZED FEATURE DEPARTURES · NOT CAUSAL EXPLANATIONS</p>' +
       prediction.drivers.map(function (driver) {
