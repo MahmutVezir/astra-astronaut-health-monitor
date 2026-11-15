@@ -20,6 +20,7 @@
     wellbeing: Object.assign({}, DEFAULT_WELLBEING),
     wellbeingRecorded: false,
     baseline: null,
+    readingsRecorded: false,
     log: [],
     updatedAt: null,
     scenario: "nominal"
@@ -124,6 +125,9 @@
           wellbeing: Object.assign({}, DEFAULT_WELLBEING, parsed.wellbeing),
           wellbeingRecorded: parsed.wellbeingRecorded === true,
           baseline: normalizeBaseline(parsed.baseline),
+          readingsRecorded: parsed.readingsRecorded === true || parsed.log.some(function (entry) {
+            return ["READINGS SAVED", "DEMO SCENARIO", "DEMO RESET"].includes(entry.type);
+          }),
           log: parsed.log.slice(0, 100),
           updatedAt: parsed.updatedAt || null,
           scenario: SCENARIOS[parsed.scenario] ? parsed.scenario : "nominal"
@@ -136,6 +140,7 @@
         wellbeing: Object.assign({}, DEFAULT_WELLBEING),
         wellbeingRecorded: false,
         baseline: null,
+        readingsRecorded: false,
         log: [],
         updatedAt: null,
         scenario: "nominal"
@@ -600,6 +605,7 @@
     if (!SCENARIOS[name]) return;
     state.scenario = name;
     state.readings = Object.assign({}, SCENARIOS[name]);
+    state.readingsRecorded = true;
     state.updatedAt = new Date().toISOString();
     state.baseline = { readings: Object.assign({}, SCENARIOS.nominal), source: "scenario", capturedAt: state.updatedAt };
     addLog("DEMO SCENARIO", "Loaded " + name + " scenario against the nominal simulated baseline. All readings are simulated.");
@@ -631,6 +637,7 @@
       temperature: raw.temperature === "" ? null : Number(raw.temperature),
       sleep: raw.sleep === "" ? null : Number(raw.sleep)
     };
+    state.readingsRecorded = true;
     state.scenario = "manual";
     state.updatedAt = new Date().toISOString();
     const assessment = window.AstraHealth.assess(state.readings, state.bands);
@@ -641,6 +648,10 @@
   }
 
   function captureBaseline() {
+    if (!state.readingsRecorded) {
+      $("baseline-capture-message").textContent = "Save readings or load a demo scenario before capturing a baseline.";
+      return;
+    }
     const invalid = Object.keys(window.AstraHealth.SIGNALS).filter(function (key) {
       const result = window.AstraHealth.evaluateSignal(key, state.readings[key]);
       return result.status !== "WITHIN" && result.status !== "REVIEW";
@@ -746,6 +757,7 @@
     state.readings = Object.assign({}, SCENARIOS.nominal);
     state.wellbeing = Object.assign({}, DEFAULT_WELLBEING);
     state.wellbeingRecorded = false;
+    state.readingsRecorded = true;
     state.scenario = "nominal";
     state.updatedAt = new Date().toISOString();
     state.baseline = { readings: Object.assign({}, SCENARIOS.nominal), source: "scenario", capturedAt: state.updatedAt };
