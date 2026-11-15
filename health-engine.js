@@ -132,11 +132,37 @@
       const reference = hasBaseline ? toNumberOrNull(baselineValues[key]) : null;
       const tolerance = parseFiniteNumber(activeTolerances[key]);
 
-      if (!hasBaseline || reference === null) {
+      if (!hasBaseline) {
         return {
           key: key,
           label: spec.label,
           value: Number.isFinite(current) ? current : null,
+          baseline: null,
+          delta: null,
+          tolerance: Number.isFinite(tolerance) ? tolerance : null,
+          status: "NO_BASELINE",
+          explanation: "No personal baseline is recorded for this signal."
+        };
+      }
+
+      if (current === null) {
+        return {
+          key: key,
+          label: spec.label,
+          value: null,
+          baseline: Number.isFinite(reference) ? reference : null,
+          delta: null,
+          tolerance: Number.isFinite(tolerance) ? tolerance : null,
+          status: "NO_DATA",
+          explanation: "No current reading is available for comparison."
+        };
+      }
+
+      if (reference === null) {
+        return {
+          key: key,
+          label: spec.label,
+          value: current,
           baseline: null,
           delta: null,
           tolerance: Number.isFinite(tolerance) ? tolerance : null,
