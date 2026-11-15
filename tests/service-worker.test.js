@@ -117,6 +117,7 @@ test("activation deletes only ASTRA caches and preserves unrelated application c
       "astra-astronaut-health-monitor-shell-v1",
       "astra-astronaut-health-monitor-shell-v2",
       "astra-astronaut-health-monitor-shell-v5",
+      "astra-astronaut-health-monitor-shell-v6",
       "other-app-cache"
     ]
   });
@@ -249,7 +250,10 @@ test("v7 cache refresh replaces the v6 shell and ships the cleaned app header", 
   let activatePromise;
   worker.handlers.activate({ waitUntil(promise) { activatePromise = promise; } });
   await activatePromise;
-  assert.deepEqual(worker.calls.deleted, ["astra-astronaut-health-monitor-shell-v6"]);
+  assert.deepEqual(worker.calls.deleted, [
+    "astra-astronaut-health-monitor-shell-v5",
+    "astra-astronaut-health-monitor-shell-v6"
+  ]);
   assert.equal(worker.calls.claimed, 1);
 
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
