@@ -1,9 +1,11 @@
-# ASTRA-MED — OSDR Dataset Audit v1
+# ASTRA — OSDR Dataset Audit v1
 
 **Audit date:** 2026-11-14  
 **Repository baseline inspected:** `e2cd04d65a903559446ea1ee061a9e2d205dd52d` (`main`)  
 **Scope:** OSD-575 (required pilot dataset) and OSD-53 (second-phase candidate). OSD-919 is explicitly out of scope.  
 **Audit status:** Study-page metadata verified; live API response, full file download and local checksum are pending execution of the pilot.
+
+**Historical note (15 November 2026):** This v1 planning audit was captured before the successful live acquisition of the HDCVD9 transformed CSV. Its pending-download/checksum statements describe the state at that time and are superseded by the [later live-data audit](osd575-hdcvd9-live-data-audit-2026-11-14.md) and [current NASA source portfolio](nasa-research-data-portfolio-2026-11-14.md). The raw HDCVD9 assay file itself remains unavailable; ASTRA uses the transformed CSV only. The earlier working title “ASTRA-MED” referred to this same project, not a separate product.
 
 ## 1. Executive decision
 
