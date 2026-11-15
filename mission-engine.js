@@ -248,6 +248,9 @@
     if (!model || model.modelId !== "ASTRA-SYNTH-MLP-1") {
       throw new Error("ASTRA synthetic model v1 is not available.");
     }
+    if (!Number.isFinite(model.threshold) || model.threshold <= 0 || model.threshold >= 1) {
+      throw new Error("ASTRA synthetic model v1 has no valid classification threshold.");
+    }
     if (!Array.isArray(features) || features.length !== model.featureNames.length ||
         features.some(function (value) { return !Number.isFinite(value); })) {
       throw new Error("The model requires a complete finite feature vector.");
