@@ -90,7 +90,7 @@ test("install pre-caches all assets required to reopen NASA Research Mode offlin
   });
   await installPromise;
 
-  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v6"), true);
+  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v7"), true);
   assert.equal(worker.calls.skippedWaiting, 1);
   for (const asset of [
     "./index.html",
@@ -134,7 +134,8 @@ test("activation deletes only ASTRA caches and preserves unrelated application c
     "astra-astronaut-health-monitor-shell-v0",
     "astra-astronaut-health-monitor-shell-v1",
     "astra-astronaut-health-monitor-shell-v2",
-    "astra-astronaut-health-monitor-shell-v5"
+    "astra-astronaut-health-monitor-shell-v5",
+    "astra-astronaut-health-monitor-shell-v6"
   ]);
   assert.equal(worker.calls.claimed, 1);
 });
@@ -230,27 +231,29 @@ test("cross-origin and non-GET requests are left to the browser", () => {
 });
 
 
-test("v6 cache refresh replaces the stale v5 shell containing the previous replay UI", async () => {
+test("v7 cache refresh replaces the v6 shell and ships the cleaned app header", async () => {
   const worker = createWorker({
     cacheKeys: [
       "astra-astronaut-health-monitor-shell-v5",
+      "astra-astronaut-health-monitor-shell-v6",
       "unrelated-app-cache"
     ]
   });
   let installPromise;
   worker.handlers.install({ waitUntil(promise) { installPromise = promise; } });
   await installPromise;
-  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v6"), true);
+  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v7"), true);
   assert.equal(worker.calls.precached.includes("./index.html"), true);
   assert.equal(worker.calls.precached.includes("./mission-replay-ui.js"), true);
 
   let activatePromise;
   worker.handlers.activate({ waitUntil(promise) { activatePromise = promise; } });
   await activatePromise;
-  assert.deepEqual(worker.calls.deleted, ["astra-astronaut-health-monitor-shell-v5"]);
+  assert.deepEqual(worker.calls.deleted, ["astra-astronaut-health-monitor-shell-v6"]);
   assert.equal(worker.calls.claimed, 1);
 
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   assert.match(html, /DATA LOSS TEST — Sensor dropout \(model abstains\)/);
   assert.match(html, /advance to day 30/i);
+  assert.doesNotMatch(html, /DEMO DAY|mission-chip|mission-day/);
 });
