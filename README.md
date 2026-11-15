@@ -101,7 +101,7 @@ ChatGPT (OpenAI) assisted during the hackathon with research synthesis, code dra
 
 ## Team roles
 
-- **Hasan Hüseyin Küçükbıyık — Team Leader & Testing Lead:** project leadership and testing coordination.
+- **Hasan Hüseyin Küçükbıyık — Team Leader, Project Lead & Testing Lead:** project leadership and testing coordination.
 - **Mahmut Vezir — Coding Lead & Communications Lead:** coding responsibilities and project communications.
 
 ## Project structure
