@@ -610,8 +610,10 @@
         ? "SIMULATED · " + count + " CHECKPOINTS"
         : "LOCAL MANUAL LOG · " + count + " CHECKPOINTS";
 
-    const chartLine = $("mission-heart-rate-line");
+    const chartSegments = $("mission-heart-rate-segments");
     const chartPoints = $("mission-heart-rate-points");
+    const exportButton = $("export-mission-window-csv");
+    if (exportButton) exportButton.disabled = !count;
     const chartCaption = $("mission-chart-caption");
     const validHeartRates = samples.map(function (sample, index) {
       return {
@@ -625,8 +627,7 @@
     });
     const availableHeartRates = validHeartRates.filter(function (point) { return point.value !== null; });
     if (!availableHeartRates.length) {
-      chartLine.setAttribute("points", "");
-      chartLine.innerHTML = "";
+      chartSegments.innerHTML = "";
       chartPoints.innerHTML = "";
       chartCaption.textContent = "No valid heart-rate observations are available in this window.";
     } else {
@@ -647,9 +648,8 @@
           '" r="4" class="chart-point"><title>' + esc(point.timepoint + " · " + point.value.toFixed(1) + " BPM") +
           '</title></circle>');
       });
-      chartLine.setAttribute("points", "");
-      chartLine.innerHTML = "";
-      chartPoints.innerHTML = markup.join("");
+      chartSegments.innerHTML = markup.filter(function (item) { return item.indexOf("<line ") === 0; }).join("");
+      chartPoints.innerHTML = markup.filter(function (item) { return item.indexOf("<circle ") === 0; }).join("");
       chartCaption.textContent = availableHeartRates.length + " of " + count +
         " checkpoints contain heart-rate values. Missing points break the plotted line; no values are interpolated.";
     }
@@ -808,6 +808,56 @@
     } catch (error) {
       $("mission-ai-message").textContent = error && error.message ? error.message : "The mission scenario could not be generated.";
     }
+  }
+
+  function exportMissionWindowCsv() {
+    if (!missionWindow || !Array.isArray(missionWindow.samples) || !missionWindow.samples.length) {
+      $("mission-ai-message").textContent = "There is no mission window to export.";
+      return;
+    }
+    const rows = [[
+      "checkpoint", "source", "heart_rate_bpm", "spo2_percent", "temperature_c",
+      "sleep_hours", "measurement_age_or_arrival_latency_seconds",
+      "sleep_quality_self_report", "stress_self_report", "fatigue_self_report", "mood_self_report"
+    ]];
+    missionWindow.samples.forEach(function (sample) {
+      const wellbeing = sample.wellbeing || {};
+      rows.push([
+        sample.timepoint || "",
+        sample.source || missionWindow.source || "",
+        sample.heartRate ?? "",
+        sample.spo2 ?? "",
+        sample.temperature ?? "",
+        sample.sleepHours ?? "",
+        sample.latencySeconds ?? "",
+        wellbeing.sleepQuality ?? "",
+        wellbeing.stress ?? "",
+        wellbeing.fatigue ?? "",
+        wellbeing.mood ?? ""
+      ]);
+    });
+    const csv = rows.map(function (row) {
+      return row.map(function (cell) {
+        const value = String(cell === null || cell === undefined ? "" : cell);
+        return '"' + value.replace(/"/g, '""') + '"';
+      }).join(",");
+    }).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = missionWindow.source === "SIMULATED"
+      ? "astra-simulated-mission-window.csv"
+      : "astra-local-manual-mission-window.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    if (typeof window.setTimeout === "function") {
+      window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    } else {
+      URL.revokeObjectURL(url);
+    }
+    $("mission-ai-message").textContent = "Mission-window CSV exported locally. The file preserves missing values as blank cells.";
   }
 
   function analyzeSavedTelemetry() {
@@ -1090,6 +1140,7 @@
   $("research-marker-select").addEventListener("change", function () { selectedResearchMarker = this.value; renderResearchEvidence(); });
   $("run-mission-simulation").addEventListener("click", runMissionSimulation);
   $("analyze-saved-telemetry").addEventListener("click", analyzeSavedTelemetry);
+  $("export-mission-window-csv").addEventListener("click", exportMissionWindowCsv);
   $("clear-log").addEventListener("click", function () {
     state.log = [];
     saveState();
