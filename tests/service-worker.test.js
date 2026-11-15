@@ -90,11 +90,13 @@ test("install pre-caches all assets required to reopen NASA Research Mode offlin
   });
   await installPromise;
 
-  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v3"), true);
+  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v4"), true);
   assert.equal(worker.calls.skippedWaiting, 1);
   for (const asset of [
     "./index.html",
     "./research-data-loader.js",
+    "./mission-ai.js",
+    "./data/models/mission-pattern-model.json",
     "./data/osdr/OSD-575/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
     "./data/osdr/OSD-575/isa-sample-map.json",
     "./data/osdr/OSD-575/source-audit.json",
@@ -113,6 +115,7 @@ test("activation deletes only ASTRA caches and preserves unrelated application c
       "astra-astronaut-health-monitor-shell-v0",
       "astra-astronaut-health-monitor-shell-v1",
       "astra-astronaut-health-monitor-shell-v2",
+      "astra-astronaut-health-monitor-shell-v3",
       "other-app-cache"
     ]
   });
@@ -129,7 +132,8 @@ test("activation deletes only ASTRA caches and preserves unrelated application c
     "astra-shell-v2",
     "astra-astronaut-health-monitor-shell-v0",
     "astra-astronaut-health-monitor-shell-v1",
-    "astra-astronaut-health-monitor-shell-v2"
+    "astra-astronaut-health-monitor-shell-v2",
+    "astra-astronaut-health-monitor-shell-v3"
   ]);
   assert.equal(worker.calls.claimed, 1);
 });
