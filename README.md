@@ -34,7 +34,7 @@ No third-party JavaScript packages or build step are required.
 2. In the project folder, run `python -m http.server 8000` (Python 3) or use another local static web server.
 3. Open `http://localhost:8000` in a browser.
 4. Try the three Demo & Manual scenarios, edit readings under **Health signals**, save a wellbeing check-in, and export the mission log.
-5. Open **Mission replay**, select each synthetic scenario, use Play / Next day / Restart, inspect the rolling model/data-quality panels, and export the replay CSV. All replay values are synthetic.
+5. Open **Mission replay**, select each synthetic scenario, use Play / Next day / Restart, inspect the rolling model/data-quality panels, and export the replay CSV. To test missing-data abstention, select **DATA LOSS TEST — Sensor dropout (model abstains)**; gaps begin on day 10, and the final seven-day window is available at day 30. All replay values are synthetic.
 
 Opening `index.html` directly also allows the core interface to run, but service-worker caching requires an HTTP(S) origin such as localhost or GitHub Pages.
 
