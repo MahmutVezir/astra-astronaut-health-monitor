@@ -21,13 +21,12 @@ Run `npm test` with Node.js 18+.
 - A one-point heart-rate history is not duplicated or presented as a time trend.
 - Static integration tests verify that app.js element IDs exist in index.html and all referenced offline-shell assets exist.
 
-## Latest main-branch CI result before this development branch — 15 November 2026
+## Service Worker v3 regression and resolution — 15 November 2026
 
-- Main commit: `134c368e5ba7be6eebd235380bb409d25e7398dc`.
-- Workflow run [43707514759](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43707514759) failed.
-- Automated tests: **103 passed, 1 failed out of 104**.
-- Failure: the Service Worker activation test expected the old `astra-shell-v1` cache to be retained, but production code correctly deleted it as a legacy ASTRA cache. The development branch updates the test expectation to match the cleanup behaviour.
-- Deployment was skipped after the test job failed. The current development branch must pass a fresh workflow before it is considered deployable.
+- An intermediate main commit `134c368e5ba7be6eebd235380bb409d25e7398dc` failed [workflow run 43707514759](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43707514759): **103 passed, 1 failed out of 104**. The failure was a stale test expectation for the legacy `astra-shell-v1` cache.
+- The expectation was corrected in the baseline subsequently merged to main.
+- Main commit `79d50cabae9636c399c4e955eef46a7edd1351db` passed [workflow run 43709796792](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43709796792): **112 passed, 0 failed, 0 skipped**. The deployment job also succeeded.
+- The present PR adds the dashboard integration and is separately validated by PR workflow run [43710375434](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43710375434): **112 passed, 0 failed, 0 skipped**. PR checks pass; deployment will follow merge.
 
 ## NASA OSD-575 Research Mode gates
 
