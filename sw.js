@@ -1,8 +1,8 @@
 "use strict";
 
 const CACHE_PREFIX = "astra-astronaut-health-monitor-";
-const CACHE_NAME = "astra-astronaut-health-monitor-shell-v2";
-const LEGACY_CACHE_NAMES = ["astra-shell-v2"];
+const CACHE_NAME = "astra-astronaut-health-monitor-shell-v3";
+const LEGACY_CACHE_NAMES = ["astra-shell-v1", "astra-shell-v2"];
 const APP_SHELL = [
   "./",
   "./index.html",
