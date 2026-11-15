@@ -103,8 +103,8 @@ test("every navigation tab targets exactly one existing view section", function 
 test("Mission Replay UI selectors exist and replay scripts are loaded after the model and engine", function () {
   const html = read("index.html");
   const replayUi = read("mission-replay-ui.js");
-  const ids = new Set(Array.from(html.matchAll(/\\bid="([^"]+)"/g), (match) => match[1]));
-  const required = Array.from(replayUi.matchAll(/\\$\\("([^"]+)"\\)/g), (match) => match[1]);
+  const ids = new Set(Array.from(html.matchAll(/\bid="([^"]+)"/g), (match) => match[1]));
+  const required = Array.from(replayUi.matchAll(/\$\("([^"]+)"\)/g), (match) => match[1]);
   assert.deepEqual(required.filter((id) => !ids.has(id)), []);
   const modelIndex = html.indexOf('src="data/models/mission-anomaly-mlp-v1.js"');
   const engineIndex = html.indexOf('src="mission-engine.js"');
