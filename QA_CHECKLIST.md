@@ -1,11 +1,11 @@
 # ASTRA — QA Checklist
 
-**Build:** MLP v2 runtime integration candidate · branch `fix/mission-mlp-v2-runtime-20261115` · 15 November 2026  
+**Build:** ASTRA-SYNTH-MLP-2 · `main` commit `ce7556c1f088118854dc176436bee93ffffce100` · 15 November 2026  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Current validation state
 
-The active model migration from MLP v1 to MLP v2 is under validation. The last main-branch workflow for commit `24c85c2e84de15abfdda3e2f2a98a37e04842ff8` failed because model v2 had been added while the runtime still required the v1 model ID and the stored v2 JSON did not match the updated training script. Do not treat that failed run as a passing deployment. The current feature branch aligns the engine, model JSON, offline JS bundle, HTML script reference, service-worker cache and tests. Record the new workflow result below only after it finishes.
+The MLP v2 runtime migration is merged to `main` in commit `ce7556c1f088118854dc176436bee93ffffce100` (PR #43). GitHub Actions run [43723360680](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43723360680) completed successfully: JavaScript syntax checks passed, **126/126 automated tests passed**, and the GitHub Pages deployment job succeeded. Manual browser QA remains separate; only user-reported checks explicitly recorded below are marked as user-reported passes.
 
 ## Automated logic tests
 
@@ -98,7 +98,7 @@ The 104/104 result below belongs to the earlier prototype commit and predates th
 - Initial NASA OSD-575 acquisition: [run #9 (43612460864)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43612460864).
 - Latest NASA OSD-575 re-audit: [run #10 (43616651617)](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43616651617).
 
-The team still needs to perform and record the manual real-browser checks below. CI success is not a substitute for that visual QA.
+The checks below distinguish user-reported passes from tests that remain unperformed. CI success is not a substitute for manual QA, and device/browser details or screenshots were not supplied with the latest user report.
 
 ## User-reported manual smoke test — 15 November 2026
 
@@ -113,7 +113,19 @@ The project owner reported these checks on the previously deployed build before 
 | MR-05 | Manual vital-sign entry | PASS | User reported that the assessment badge and summary changed after saving |
 | MR-06 | Mission Log CSV export | PASS | User reported a downloaded file containing 5 data rows and 7 columns |
 
-These are user-reported results, not independently reproduced by the CI runner. Repeat them on the final candidate build and record device, browser and evidence before submission.
+These are user-reported results, not independently reproduced by the CI runner. The latest deployed MLP v2 checks are recorded in the following section; browser name, device model and screenshots were not supplied.
+
+## User-reported checks on deployed MLP v2 — 15 November 2026
+
+The project owner tested the deployed build after commit `ce7556c1f088118854dc176436bee93ffffce100` and reported the following outcomes. These are manual user reports; the browser/device and screenshot evidence were not recorded.
+
+| Check | User-reported result | Scope note |
+|---|---|---|
+| NASA Research Mode / OSD-575 panels and chart | PASS | User reported that Research Mode opened and the OSD-575 data panels/visualization appeared. |
+| Nominal seven-day Mission Replay | PASS | User reported that the nominal replay test behaved as expected. |
+| Multi-signal deviation | PASS | User reported that the synthetic multi-signal scenario was detected as expected. This is a synthetic demonstration only. |
+| Mobile layout | PASS | User reported that the mobile layout was usable. Exact viewport and device were not recorded. |
+| Sensor dropout / model abstention | NOT EXECUTED | User could not locate the sensor-dropout option. The option existed at the bottom of the scenario list; discoverability and instructions are being improved. Do not mark this test passed until re-tested. |
 
 ## Browser functional tests
 
@@ -134,21 +146,21 @@ These are user-reported results, not independently reproduced by the CI runner. 
 | QA-12 | Clear log | Clear the log | Log empties; current readings remain unchanged | Not yet recorded |
 | QA-13 | Reset demo | Load another scenario and select reset | Nominal values and default wellbeing values return | Not yet recorded |
 | QA-14 | NASA source panel | Open Sources & limits | OSD-575 details and NASA source links are visible | Not yet recorded |
-| QA-15 | Mobile layout | Test a narrow viewport | Tabs remain usable, cards stack, and page has no horizontal overflow | Not yet recorded |
+| QA-15 | Mobile layout | Test a narrow viewport | Tabs remain usable, cards stack, and page has no horizontal overflow | User-reported PASS on 15 Nov 2026; device/viewport not recorded |
 | QA-16 | Offline shell | Load once online, then disable network and reload on localhost/HTTPS | App shell is served from cache; external links are unavailable offline | Not yet recorded |
 | QA-18 | PWA installation | Open the deployed app in the target Chromium browser and inspect its install UI; install only on a test device | Browser recognizes the manifest and shows ASTRA icon/name; app opens in standalone mode | Not yet recorded |
-| QA-19 | NASA ISA sample-map status | Observe the audit panel before and after Research Mode verification, then simulate a failed source fetch | Before verification it says pending; on success it says Verified · 28/28 ISA matches and DATA + ANALYSIS VERIFIED; on failure it says Browser verification failed and never claims verified analysis | Not yet recorded |
+| QA-19 | NASA ISA sample-map status | Observe the audit panel before and after Research Mode verification, then simulate a failed source fetch | Before verification it says pending; on success it says Verified · 28/28 ISA matches and DATA + ANALYSIS VERIFIED; on failure it says Browser verification failed and never claims verified analysis | User reported Research Mode and OSD-575 panels/chart loaded; failure-path state not manually tested |
 | QA-20 | Partial saved state | On a clean test browser, restore a saved demo record with one signal and missing remaining fields | Missing signals remain “No data”; no nominal values are silently inserted | Automated regression passed; manual browser check not yet recorded |
 | QA-21 | CSV download timing | Export the mission log and open the downloaded CSV | File downloads and opens before its temporary object URL is revoked | Automated regression passed; manual browser check not yet recorded |
 | QA-22 | One-point trend | Record one heart-rate reading and inspect Signal history | One point is shown; the line is empty and the caption states that a trend cannot be inferred from one reading | Not yet recorded |
 | QA-23 | Personal-baseline capture | Try capture before saving data, then save four valid readings and capture | Initial/default unsaved values are rejected; only one complete saved reading set can become the comparison snapshot; the app does not imply a multi-day average | Not yet recorded |
 | QA-24 | Combined context | Capture a baseline, save shifted readings and a wellbeing check-in that triggers a flag | The panel reports co-occurring flags without claiming correlation, causation, diagnosis or medical risk | Not yet recorded |
 | QA-25 | Mission Replay repeatability | Select a scenario, restart twice with the fixed seed, and compare the exported records | The same selected scenario generates identical 30-day records; all rows say SIMULATED | Not yet recorded |
-| QA-26 | Nominal ML window | Advance the nominal replay to day 7 and inspect the model panel | Seven-day completeness gate passes and the model output is labelled synthetic-pattern similarity, not health clearance | Not yet recorded |
-| QA-27 | Multi-signal synthetic scenario | Select Multi-signal deviation and advance until the seven-day window includes the deviation period | The model can flag the generated deviation pattern; UI does not label it a diagnosis or risk probability | Not yet recorded |
-| QA-28 | Sensor dropout abstention | Select Sensor dropout and advance through a rolling window with insufficient signal coverage | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | Not yet recorded |
+| QA-26 | Nominal ML window | Advance the nominal replay to day 7 and inspect the model panel | Seven-day completeness gate passes and the model output is labelled synthetic-pattern similarity, not health clearance | User-reported PASS on 15 Nov 2026; device/browser not recorded |
+| QA-27 | Multi-signal synthetic scenario | Select Multi-signal deviation and advance until the seven-day window includes the deviation period | The model can flag the generated deviation pattern; UI does not label it a diagnosis or risk probability | User-reported PASS on 15 Nov 2026; device/browser not recorded |
+| QA-28 | Sensor dropout abstention | Select DATA LOSS TEST — Sensor dropout and advance to day 30 | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | Not yet executed; user could not find the option before the discoverability update |
 | QA-29 | Replay CSV export | Export the full mission replay and inspect the CSV | Thirty data rows, expected nine columns, SIMULATED source and selected scenario are present | Not yet recorded |
-| QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the v4 app-shell cache; no external model service is required | Not yet recorded |
+| QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the current v5 app-shell cache; no external model service is required | Not yet recorded |
 
 ## Defect report template
 
