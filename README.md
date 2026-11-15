@@ -10,9 +10,11 @@ ASTRA is an offline-first astronaut health-monitoring prototype with clearly sep
 
 - Responsive browser dashboard with four signals: heart rate, blood oxygen (SpO₂), body temperature, and sleep duration.
 - Manual data entry with basic input validation and explicit missing-data handling.
-- Three reproducible scenarios: nominal day, baseline shift, and incomplete data.
-- Configurable reference-band comparison with transparent, inspectable rules.
-- Daily crew wellbeing self-report (sleep quality, perceived stress, fatigue, and mood).
+- Three reproducible scenarios: nominal day, baseline shift, and incomplete data. The baseline-shift scenario compares its readings with an explicit nominal simulated baseline rather than relying only on fixed bands.
+- Two distinct signal comparisons: configurable fixed demo reference bands and per-signal absolute deviation from a captured personal baseline. Demo tolerances are explicit and are not clinical cutoffs.
+- Daily crew wellbeing self-report (sleep quality, perceived stress, fatigue, and mood) is evaluated through separate, transparent self-report rules and shown as context alongside signal comparisons.
+- A cross-domain review note surfaces when baseline deviations and wellbeing self-report flags co-occur. It does not calculate a composite medical risk score or infer causation.
+- Heart-rate history plots only saved readings; one reading is shown as one point and is never duplicated to imply a trend.
 - Local mission log, browser persistence, and CSV export.
 - Research Mode with the exact downloaded OSD-575 HDCVD9 transformed CSV, a preserved NASA ISA sample map, SHA-256 pin, 28/28 sample join, and nine-analyte baseline-normalization audit.
 - Participant-level descriptive biomarker trends across seven reported collection timepoints; browser-side checks re-verify the local CSV bytes, schema, sample map, and normalization before any measurements are rendered.
@@ -69,14 +71,17 @@ OSD-575 therefore supports retrospective descriptive biomarker exploration, not 
 A project-maintained SHA-256 pin and successful automated tests do not independently authenticate NASA's source. They establish that the exact downloaded byte sequence is preserved and can be checked again.
 ## Transparent assessment logic
 
-For each demo signal, the engine:
-1. Distinguishes a blank field from a numeric value.
-2. Rejects non-numeric or out-of-app-range entries.
-3. Compares valid values with that signal's illustrative demo reference band.
-4. Returns **Within baseline**, **Review**, or **No data** for that individual signal.
-5. Makes the overall assessment **Limited** when readings are missing; missing information is never silently treated as normal.
+The demo engine keeps three evidence layers separate:
 
-The initial reference bands are fictional example settings. Users can configure different lower/upper values locally for the demo profile, but this does not clinically validate them. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
+1. **Fixed reference-band comparison:** checks each valid reading against a user-configurable illustrative demo band.
+2. **Personal-baseline comparison:** after a complete set of readings is saved, the user can capture those values as a local personal baseline. New readings are compared with that snapshot using explicit absolute tolerances: 15 BPM for heart rate, 2 percentage points for SpO₂, 0.5 °C for temperature, and 1.5 hours for sleep. These are prototype demonstration sensitivities, not clinical limits.
+3. **Wellbeing self-report:** a saved check-in is reviewed separately. The illustrative flags are sleep quality ≤2, perceived stress ≥4, fatigue ≥4, or mood ≤2 on the app's 1–5 sliders.
+
+A combined context note is produced only when both a complete baseline comparison and a saved wellbeing check-in exist. When both contain flags, the interface reports their co-occurrence as a reason for human review; it does not claim correlation, causation, diagnosis, or a medical condition. The main signal assessment remains separate from this context and no composite risk score is calculated.
+
+Blank values stay missing, invalid entries are rejected, and an incomplete comparison is labelled **Limited**. Missing data is never silently imputed. The Baseline Shift scenario uses a clearly labelled nominal simulated reference; manually entered readings do not become a personal baseline unless the user explicitly captures them.
+
+All fixed bands, comparison tolerances, and self-report rules are illustrative software settings. They must not be interpreted as healthy/unhealthy thresholds, clinical advice, or operational NASA flight rules.
 
 ## AI assistance disclosure
 
@@ -93,8 +98,8 @@ ChatGPT (OpenAI) was used during the hackathon to help draft and review applicat
 ## Team roles
 
 - **Mahmut:** project lead, application integration, data model, and technical explanation.
-- **Teammate 1:** interface review, usability, and responsive-browser testing.
-- **Teammate 2 (if present):** NASA source verification, QA execution, documentation, and demo.
+
+Only confirmed team members and their actual contributions should be added here; no placeholder roles are used.
 
 ## Project structure
 
