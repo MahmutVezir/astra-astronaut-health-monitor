@@ -1,5 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
 const model = require("../data/models/mission-anomaly-mlp-v2.json");
 
 globalThis.AstraMissionModel = model;
@@ -27,6 +30,19 @@ test("local MLP artifact has the documented feature and weight dimensions", func
     .update(require("node:fs").readFileSync(require("node:path").join(__dirname, "../data/models/mission-anomaly-mlp-v2.json")))
     .digest("hex");
   assert.equal(digest, "b82f960295409386fe12de542b72f778341dc0a7f28961a276e7c5ee4d057ea0");
+});
+
+test("offline browser bundle exposes the exact MLP v2 JSON artifact", function () {
+  const browserWindow = {};
+  const source = fs.readFileSync(path.join(__dirname, "../data/models/mission-anomaly-mlp-v2.js"), "utf8");
+  vm.runInNewContext(source, { window: browserWindow });
+  assert.deepEqual(JSON.parse(JSON.stringify(browserWindow.AstraMissionModel)), model);
+  assert.equal(browserWindow.AstraMissionModel.modelId, "ASTRA-SYNTH-MLP-2");
+  assert.equal(browserWindow.AstraMissionModel.version, 2);
+});
+
+test("daily heart-rate spread is not described as beat-to-beat HRV", function () {
+  assert.equal(mission.FEATURE_LABELS.heart_rate_std_bpm, "Day-to-day heart-rate spread");
 });
 
 test("mission replay is deterministic for a fixed scenario and seed", function () {
