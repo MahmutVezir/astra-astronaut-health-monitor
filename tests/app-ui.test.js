@@ -155,10 +155,18 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, export, and pe
   assert.match(get("research-source-grid").innerHTML, /DSO-470/);
   assert.match(get("mode-indicator").textContent, /NASA RESEARCH MODE/);
   assert.equal(get("overall-status").textContent, "WITHIN CONFIGURED BAND");
+  assert.equal(get("baseline-assessment-status").textContent, "No baseline");
+  get("capture-baseline").click();
+  assert.match(get("baseline-capture-message").textContent, /load a demo scenario/i);
 
   get("demo-scenario").value = "shift";
   get("load-scenario").click();
   assert.equal(get("overall-status").textContent, "REVIEW READINGS");
+  assert.equal(get("baseline-assessment-status").textContent, "Baseline shift");
+  assert.match(get("baseline-assessment-summary").textContent, /4 of 4 signals exceed/);
+  assert.match(get("trend-caption").textContent, /One saved reading/);
+  assert.equal(get("trend-points").innerHTML.match(/<circle/g).length, 1);
+  assert.equal(get("trend-line").attributes.points, "");
 
   get("demo-scenario").value = "incomplete";
   get("load-scenario").click();
@@ -171,6 +179,10 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, export, and pe
   get("sleep").value = "7.6";
   get("signals-form").handlers.submit({ preventDefault() {} });
   assert.equal(get("overall-status").textContent, "WITHIN CONFIGURED BAND");
+  get("capture-baseline").click();
+  assert.equal(get("baseline-assessment-status").textContent, "Within baseline tolerance");
+  assert.equal(get("baseline-source-label").textContent, "Personal baseline saved on this device");
+  assert.match(get("baseline-capture-message").textContent, /captured/i);
 
   get("band-heart-rate-lower").value = "75";
   get("band-heart-rate-upper").value = "100";
@@ -189,11 +201,16 @@ test("dashboard scenarios, manual entry, custom bands, wellbeing, export, and pe
   get("mood").value = "2";
   get("wellbeing-form").handlers.submit({ preventDefault() {} });
   assert.match(get("wellbeing-message").textContent, /saved/i);
+  assert.match(get("wellbeing-assessment-summary").textContent, /High self-reported stress/);
+  assert.match(get("wellbeing-assessment-summary").textContent, /Low self-reported mood/);
+  assert.equal(get("context-assessment-status").textContent, "Wellbeing review");
 
   const reloaded = launchApp();
   assert.equal(String(reloaded.get("heart-rate").value), "72");
   assert.equal(Number(reloaded.get("band-heart-rate-lower").value), 75);
   assert.match(reloaded.get("log-list").innerHTML, /WELLBEING CHECK-IN/);
+  assert.equal(reloaded.get("baseline-source-label").textContent, "Personal baseline saved on this device");
+  assert.equal(reloaded.get("wellbeing-assessment-status").textContent, "Review");
 
   reloaded.get("export-csv").click();
   assert.equal(exportedBlobs.length, 1);
