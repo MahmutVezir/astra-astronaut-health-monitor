@@ -15,7 +15,7 @@ Run `npm test` with Node.js 18+.
 - Fully populated out-of-band readings produce `REVIEW`.
 - The nominal demo scenario produces `WITHIN`.
 - Custom reference bands are respected and invalid lower/upper pairs are rejected.
-- Personal-baseline capture requires a complete, valid saved reading set; current values are compared with the captured baseline using documented demonstration tolerances.
+- Reference-snapshot capture requires a complete, valid saved reading set; current values are compared with the captured snapshot using documented demonstration tolerances. A single snapshot is not a multi-day statistical baseline.
 - Missing current readings remain missing in baseline comparison; they are not imputed.
 - Saved wellbeing self-reports trigger separate, inspectable flags; combined context is reported only when both baseline and wellbeing evidence exist.
 - A one-point heart-rate history is not duplicated or presented as a time trend.
@@ -124,7 +124,7 @@ These are user-reported results, not independently reproduced by the CI runner. 
 | QA-20 | Partial saved state | On a clean test browser, restore a saved demo record with one signal and missing remaining fields | Missing signals remain “No data”; no nominal values are silently inserted | Automated regression passed; manual browser check not yet recorded |
 | QA-21 | CSV download timing | Export the mission log and open the downloaded CSV | File downloads and opens before its temporary object URL is revoked | Automated regression passed; manual browser check not yet recorded |
 | QA-22 | One-point trend | Record one heart-rate reading and inspect Signal history | One point is shown; the line is empty and the caption states that a trend cannot be inferred from one reading | Not yet recorded |
-| QA-23 | Personal-baseline capture | Try capture before saving data, then save four valid readings and capture | Initial/default unsaved values are rejected; only a complete saved reading set can become the personal baseline | Not yet recorded |
+| QA-23 | Personal-baseline capture | Try capture before saving data, then save four valid readings and capture | Initial/default unsaved values are rejected; only one complete saved reading set can become the comparison snapshot; the app does not imply a multi-day average | Not yet recorded |
 | QA-24 | Combined context | Capture a baseline, save shifted readings and a wellbeing check-in that triggers a flag | The panel reports co-occurring flags without claiming correlation, causation, diagnosis or medical risk | Not yet recorded |
 
 ## Defect report template
