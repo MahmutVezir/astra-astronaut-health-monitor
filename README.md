@@ -17,8 +17,8 @@ ASTRA is an offline-first astronaut health-monitoring research and demonstration
 - Heart-rate history plots only saved readings; one reading is shown as one point and is never duplicated to imply a trend.
 - Local mission log, browser persistence, and CSV export.
 - Mission Replay with seven deterministic 30-day synthetic scenarios: nominal, cardiovascular departure, oxygen-signal departure, sleep/fatigue co-occurrence, temperature drift, multi-signal deviation, and sensor dropout. Playback supports pause, step, restart, speed control, daily charts, a seven-day data-quality window, and full replay CSV export.
-- An offline, browser-local MLP pattern screen that evaluates nine features from the rolling seven-day synthetic replay. It abstains when history or data completeness is insufficient and displays the largest standardized feature departures as descriptive inputs, not causal explanations.
-- The MLP was trained on generated synthetic windows only: 16,000 nominal and 16,000 deviation training windows, with a separate 5,000 + 5,000 synthetic hold-out set. Its validation metrics apply only to that generator and do not estimate real astronaut or clinical performance. See the [model card](docs/mission-ml-model-card.md) and [reproducible training script](scripts/train_mission_model.py).
+- An offline, browser-local MLP v2 pattern screen that evaluates nine features from the rolling seven-day synthetic replay. It recognises four generated deviation families; sensor dropout remains a separate deterministic data-quality gate and causes abstention when coverage is insufficient. The displayed 0–1 model score is not calibrated and is not a medical probability. The largest standardized feature departures are descriptive inputs, not causal explanations.
+- The active MLP v2 was trained on generated synthetic windows only: 16,000 nominal and 16,000 deviation training windows, with a separate 5,000 + 5,000 synthetic hold-out set. It uses four generated deviation families; missing sensor telemetry is handled by the deterministic abstention gate, not a fifth model label. Its validation metrics apply only to that generator and do not estimate real astronaut or clinical performance. See the [model card](docs/mission-ml-model-card.md) and [reproducible training script](scripts/train_mission_model.py).
 - Research Mode with the exact downloaded OSD-575 HDCVD9 transformed CSV, a preserved NASA ISA sample map, SHA-256 pin, 28/28 sample join, and nine-analyte baseline-normalization audit.
 - Participant-level descriptive biomarker trends across seven reported collection timepoints; browser-side checks re-verify the local CSV bytes, schema, sample map, and normalization before any measurements are rendered.
 - A clear LIMITED_EVIDENCE decision: four independent participants, 28 repeated samples, raw assay data unavailable, and fibrinogen flagged for assay-suitability review.
@@ -89,7 +89,7 @@ All fixed bands, comparison tolerances, and self-report rules are illustrative s
 
 ## AI assistance disclosure
 
-ChatGPT (OpenAI) was used during the hackathon to assist with code review, test design, and documentation. The team is responsible for reviewing, testing, and explaining the submitted work. ASTRA includes a project-trained, browser-local MLP, but that model was trained only on generated synthetic telemetry windows; it was not trained on NASA participant records or clinical datasets. The MLP has no external inference API and is not a medical model. No external LLM is called by the running application. NASA research data, synthetic replay data, and manually entered values remain clearly separated.
+ChatGPT (OpenAI) assisted during the hackathon with research synthesis, code drafting and modification, debugging, code review, test design, data/analysis interpretation, and documentation. The project lead reviewed and tested the AI-assisted changes and remains responsible for the submitted work. ASTRA includes the project-trained, browser-local ASTRA-SYNTH-MLP-2, trained only on generated synthetic telemetry windows; it was not trained on NASA participant records or clinical datasets. The MLP has no external inference API and is not a medical model. No external LLM is called by the running application. NASA research data, synthetic replay data, and manually entered values remain clearly separated.
 
 ## Privacy and safety
 
@@ -112,7 +112,7 @@ Only confirmed team members and their actual contributions should be added here;
 - `app.js` — application state, local persistence, scenarios, and CSV export
 - `health-engine.js` — pure, testable demo assessment rules
 - `mission-engine.js` and `mission-replay-ui.js` — deterministic synthetic mission generation, rolling data-quality analysis, local MLP inference and replay interface
-- `data/models/mission-anomaly-mlp-v1.json` and `.js` — model weights, training metadata and offline browser bundle
+- `data/models/mission-anomaly-mlp-v2.json` and `.js` — model weights, training metadata and offline browser bundle
 - `scripts/train_mission_model.py`, `requirements-model-training.txt` and `docs/mission-ml-model-card.md` — reproducible synthetic-only model training, pinned development dependencies and model limitations
 - `THIRD_PARTY_NOTICES.md` — license and source register for NASA data, challenge research pages, project code and training tools
 - `research-data.js` — NASA OSDR study metadata, verified source paths, and research-source status registry
