@@ -298,6 +298,7 @@
             <div class="mission-actions">
               <button class="button button-primary" id="run-mission-simulation" type="button">Run scenario</button>
               <button class="button button-secondary" id="analyze-saved-telemetry" type="button">Analyze saved entries</button>
+              <button class="button button-quiet" id="export-mission-window-csv" type="button" disabled>Export window CSV</button>
             </div>
           </div>
           <p class="fine-print">All checkpoints generated here are labelled SIMULATED. “Analyze saved entries” uses only local Demo &amp; Manual records; NASA Research Mode data is never passed into this model.</p>
@@ -334,7 +335,7 @@
               <svg id="mission-heart-rate-chart" viewBox="0 0 560 190" role="img" aria-label="Simulated heart-rate readings across mission checkpoints">
                 <line x1="28" y1="22" x2="28" y2="158" class="chart-axis"></line>
                 <line x1="28" y1="158" x2="540" y2="158" class="chart-axis"></line>
-                <polyline id="mission-heart-rate-line" points="" class="chart-line"></polyline>
+                <g id="mission-heart-rate-segments"></g>
                 <g id="mission-heart-rate-points"></g>
                 <text x="34" y="15" class="chart-label">BPM</text>
               </svg>
