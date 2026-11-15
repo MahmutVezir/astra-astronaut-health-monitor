@@ -1,11 +1,11 @@
 # ASTRA — QA Checklist
 
-**Build:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · `main` commit `569d5c0a1be81c1a3afd52719dc4004171ed8ff8` · 15 November 2026  
+**Build:** ASTRA-SYNTH-MLP-2 + DATA LOSS TEST UX · Service Worker v6 cache refresh candidate · 15 November 2026  
 **Rule:** Do not mark a test passed until a person has actually executed it. Record date, device, browser, result, and evidence.
 
 ## Current validation state
 
-The MLP v2 runtime migration is merged in PR #43. The sensor-dropout discoverability and QA update is merged in PR #44. Current `main` is `569d5c0a1be81c1a3afd52719dc4004171ed8ff8`. GitHub Actions run [43724496070](https://github.com/MahmutVezir/astra-astronaut-health-monitor/actions/runs/43724496070) completed successfully: JavaScript syntax checks passed, **127/127 automated tests passed**, and the GitHub Pages deployment job succeeded. Manual browser QA remains separate; only user-reported checks explicitly recorded below are marked as user-reported passes.
+The MLP v2 runtime and DATA LOSS TEST UI are merged in PRs #43 and #44. The PR #44 release kept the Service Worker cache at v5 while changing cache-first app-shell files (`index.html` and `mission-replay-ui.js`); this could leave an already-installed browser serving the previous replay label and instructions. The v6 candidate explicitly invalidates v5 and pre-caches the updated shell. Do not call the fix deployed until the v6 merge workflow and Pages deployment succeed. Manual browser QA remains separate.
 
 ## Automated logic tests
 
@@ -24,6 +24,13 @@ Run `npm test` with Node.js 18+.
 - Saved wellbeing self-reports trigger separate, inspectable flags; combined context is reported only when both baseline and wellbeing evidence exist.
 - A one-point heart-rate history is not duplicated or presented as a time trend.
 - Static integration tests verify that app.js element IDs exist in index.html and all referenced offline-shell assets exist.
+
+## Service Worker v5 → v6 stale-app-shell correction — 15 November 2026
+
+- The DATA LOSS TEST label and help text were added to `index.html` and `mission-replay-ui.js`, but the cache-first Service Worker still used shell cache `v5`.
+- Existing installations could therefore keep the earlier index and replay UI even though GitHub Pages contained the new files. This explains why the owner did not see the full updated label.
+- The correction bumps the app-shell cache to `v6`, installs a fresh shell, deletes older ASTRA shell caches (including v5), and claims existing clients.
+- Automated tests cover opening v6, pre-caching the new app shell assets, removing v5, and checking the current DATA LOSS TEST text. A human must still re-open the deployed app and confirm the label and abstention display.
 
 ## Mission Replay and synthetic ML
 
@@ -160,7 +167,7 @@ The project owner tested the deployed MLP v2 build after commit `ce7556c1f088118
 | QA-27 | Multi-signal synthetic scenario | Select Multi-signal deviation and advance until the seven-day window includes the deviation period | The model can flag the generated deviation pattern; UI does not label it a diagnosis or risk probability | User-reported PASS on 15 Nov 2026; device/browser not recorded |
 | QA-28 | Sensor dropout abstention | Select DATA LOSS TEST — Sensor dropout and advance to day 30 | Missing cells remain blank in the table and charts; the model says MODEL ABSTAINED and provides no score | Not yet executed; discoverability fix merged in PR #44, awaiting manual re-test |
 | QA-29 | Replay CSV export | Export the full mission replay and inspect the CSV | Thirty data rows, expected nine columns, SIMULATED source and selected scenario are present | Not yet recorded |
-| QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the current v5 app-shell cache; no external model service is required | Not yet recorded |
+| QA-30 | Offline Mission Replay | Install/load the app once online, disable network, reload, and open Mission Replay | Mission engine, UI and model bundle load from the current v6 app-shell cache; no external model service is required | Not yet recorded |
 
 ## Defect report template
 
