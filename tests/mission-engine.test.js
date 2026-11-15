@@ -17,6 +17,8 @@ test("local MLP artifact has the documented feature and weight dimensions", func
   assert.equal(model.threshold, 0.5);
   assert.equal(model.training.syntheticOnly, true);
   assert.equal(model.training.noNASAOrClinicalTrainingData, true);
+  assert.equal(model.training.nominalTrainingWindows, 16000);
+  assert.equal(model.training.deviationTrainingWindows, 16000);
 });
 
 test("mission replay is deterministic for a fixed scenario and seed", function () {
@@ -75,14 +77,18 @@ test("insufficient telemetry coverage causes model abstention and preserves miss
   assert.ok(records.every((record) => record.readings.heartRate === null));
 });
 
-test("missing wellbeing values are not coerced to zero", function () {
+test("missing wellbeing values are ignored rather than coerced to zero", function () {
   const records = mission.createMissionReplay("nominal", { seed: 20261115, days: 7 });
   records[0].wellbeing.fatigue = null;
   records[1].wellbeing.stress = null;
   const result = mission.buildFeatureVector(records);
+  const expectedFatigue = records.slice(1).reduce((sum, record) => sum + record.wellbeing.fatigue, 0) / 6 - 2;
+  const expectedStress = records.filter((record, index) => index !== 1)
+    .reduce((sum, record) => sum + record.wellbeing.stress, 0) / 6 - 2;
   assert.equal(result.status, "READY");
-  assert.ok(Number.isFinite(result.values.fatigue_mean_delta_1_to_5));
-  assert.ok(Number.isFinite(result.values.stress_mean_delta_1_to_5));
+  assert.equal(result.selfReportMissingCount, 2);
+  assert.ok(Math.abs(result.values.fatigue_mean_delta_1_to_5 - expectedFatigue) < 1e-10);
+  assert.ok(Math.abs(result.values.stress_mean_delta_1_to_5 - expectedStress) < 1e-10);
 });
 
 test("seven-day sensor dropout scenario retains null values", function () {
