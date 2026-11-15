@@ -96,5 +96,6 @@ test("every navigation tab targets exactly one existing view section", function 
   assert.equal(new Set(tabViews).size, tabViews.length, "navigation targets must be unique");
   assert.equal(new Set(sectionViews).size, sectionViews.length, "view sections must be unique");
   assert.deepEqual([...tabViews].sort(), [...sectionViews].sort());
-  assert.equal(tabViews.length, 6);
+  assert.equal(tabViews.length, 7);
+  assert.ok(tabViews.includes("telemetry"));
 });
