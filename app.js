@@ -567,6 +567,291 @@
     });
   }
 
+  function renderMissionTelemetry() {
+    const modelStatus = $("mission-ai-model-status");
+    const resultStatus = $("mission-ai-status");
+    if (modelStatus) {
+      modelStatus.textContent = missionAIModel
+        ? "LOCAL MODEL LOADED · SYNTHETIC ONLY"
+        : missionAIModelError
+          ? "MODEL UNAVAILABLE"
+          : "LOADING LOCAL MODEL";
+      modelStatus.className = "state-label " + (missionAIModel ? "state-good" : "state-limited");
+    }
+
+    const samples = missionWindow && Array.isArray(missionWindow.samples) ? missionWindow.samples : [];
+    const count = samples.length;
+    const signalKeys = ["heartRate", "spo2", "temperature", "sleepHours"];
+    const expected = count * signalKeys.length;
+    const missing = samples.reduce(function (total, sample) {
+      return total + signalKeys.filter(function (key) {
+        return typeof sample[key] !== "number" || !Number.isFinite(sample[key]);
+      }).length;
+    }, 0);
+    const latencyValues = samples.map(function (sample) {
+      return typeof sample.latencySeconds === "number" && Number.isFinite(sample.latencySeconds)
+        ? sample.latencySeconds
+        : null;
+    }).filter(function (value) { return value !== null; });
+    const stale = latencyValues.filter(function (value) { return value > 120; }).length;
+    const flatline = missionAnalysis && missionAnalysis.features
+      ? missionAnalysis.features.flatline_rate
+      : null;
+
+    $("mission-checkpoint-count").textContent = count ? String(count) : "—";
+    $("mission-missing-rate").textContent = count ? (100 * missing / expected).toFixed(1) + "%" : "—";
+    $("mission-stale-rate").textContent = latencyValues.length
+      ? (100 * stale / latencyValues.length).toFixed(1) + "%"
+      : "Unknown";
+    $("mission-flatline-rate").textContent = flatline === null ? "—" : (100 * flatline).toFixed(1) + "%";
+    $("mission-source-label").textContent = !missionWindow
+      ? "NO DATA SOURCE"
+      : missionWindow.source === "SIMULATED"
+        ? "SIMULATED · " + count + " CHECKPOINTS"
+        : "LOCAL MANUAL LOG · " + count + " CHECKPOINTS";
+
+    const chartLine = $("mission-heart-rate-line");
+    const chartPoints = $("mission-heart-rate-points");
+    const chartCaption = $("mission-chart-caption");
+    const validHeartRates = samples.map(function (sample, index) {
+      return {
+        index: index,
+        x: count > 1 ? 34 + index * 492 / (count - 1) : 280,
+        value: typeof sample.heartRate === "number" && Number.isFinite(sample.heartRate)
+          ? sample.heartRate
+          : null,
+        timepoint: sample.timepoint || "T+" + index
+      };
+    });
+    const availableHeartRates = validHeartRates.filter(function (point) { return point.value !== null; });
+    if (!availableHeartRates.length) {
+      chartLine.setAttribute("points", "");
+      chartLine.innerHTML = "";
+      chartPoints.innerHTML = "";
+      chartCaption.textContent = "No valid heart-rate observations are available in this window.";
+    } else {
+      const minimum = Math.min(50, ...availableHeartRates.map(function (point) { return point.value; }));
+      const maximum = Math.max(110, ...availableHeartRates.map(function (point) { return point.value; }));
+      const range = Math.max(10, maximum - minimum);
+      const yFor = function (value) { return 150 - ((value - (minimum - 5)) / (range + 10)) * 118; };
+      const markup = [];
+      validHeartRates.forEach(function (point, index) {
+        if (point.value === null) return;
+        const y = yFor(point.value);
+        const previous = validHeartRates[index - 1];
+        if (previous && previous.value !== null) {
+          markup.push('<line x1="' + previous.x.toFixed(1) + '" y1="' + yFor(previous.value).toFixed(1) +
+            '" x2="' + point.x.toFixed(1) + '" y2="' + y.toFixed(1) + '" class="chart-line"></line>');
+        }
+        markup.push('<circle cx="' + point.x.toFixed(1) + '" cy="' + y.toFixed(1) +
+          '" r="4" class="chart-point"><title>' + esc(point.timepoint + " · " + point.value.toFixed(1) + " BPM") +
+          '</title></circle>');
+      });
+      chartLine.setAttribute("points", "");
+      chartLine.innerHTML = "";
+      chartPoints.innerHTML = markup.join("");
+      chartCaption.textContent = availableHeartRates.length + " of " + count +
+        " checkpoints contain heart-rate values. Missing points break the plotted line; no values are interpolated.";
+    }
+
+    const table = $("mission-observation-table");
+    if (table) {
+      if (!count) {
+        table.innerHTML = '<p class="insight-empty">No checkpoints are loaded.</p>';
+      } else {
+        const columns = [
+          ["timepoint", "Checkpoint"],
+          ["heartRate", "HR · BPM"],
+          ["spo2", "SpO₂ · %"],
+          ["temperature", "Temp · °C"],
+          ["sleepHours", "Sleep · h"],
+          ["latencySeconds", "Age / delay · s"]
+        ];
+        let markup = '<table class="mission-observation-table"><thead><tr>' +
+          columns.map(function (column) { return '<th>' + esc(column[1]) + '</th>'; }).join("") +
+          '</tr></thead><tbody>';
+        samples.forEach(function (sample, index) {
+          markup += "<tr>";
+          columns.forEach(function (column) {
+            const value = sample[column[0]];
+            let display = value === null || value === undefined || !Number.isFinite(Number(value))
+              ? "—"
+              : typeof value === "number" ? String(roundDisplay(value, column[0])) : String(value);
+            const missingClass = display === "—" ? ' class="missing-cell"' : "";
+            markup += "<td" + missingClass + ">" + esc(display) + "</td>";
+          });
+          markup += "</tr>";
+        });
+        markup += "</tbody></table>";
+        table.innerHTML = markup;
+      }
+    }
+
+    const label = $("mission-ai-label");
+    const summary = $("mission-ai-summary");
+    const confidence = $("mission-ai-confidence");
+    const confidenceNote = $("mission-ai-confidence-note");
+    const path = $("mission-ai-path");
+    const validation = $("mission-ai-validation");
+
+    if (!missionWindow || !missionAnalysis) {
+      if (resultStatus) {
+        resultStatus.textContent = missionAIModelError ? "MODEL UNAVAILABLE" : "AWAITING DATA";
+        resultStatus.className = "state-label state-limited";
+      }
+      label.textContent = "No mission window analyzed";
+      summary.textContent = missionAIModelError || "Run a simulated scenario or analyze enough saved Demo & Manual entries to begin.";
+      confidence.textContent = "—";
+      path.innerHTML = '<p class="insight-empty">The decision path will appear here after a supported window is analyzed.</p>';
+    } else if (missionAnalysis.status === "PREDICTION") {
+      resultStatus.textContent = missionAnalysis.className.replace(/_/g, " ");
+      resultStatus.className = "state-label " + (missionAnalysis.className === "STABLE_MONITORING" ? "state-good" : "state-review");
+      label.textContent = missionAnalysis.label;
+      summary.textContent = missionAnalysis.description;
+      confidence.textContent = (missionAnalysis.confidence * 100).toFixed(1) + "% support";
+      confidenceNote.textContent = "Training-leaf class share only; not calibrated, not clinical, and not a health-risk probability.";
+      path.innerHTML = missionAnalysis.path.length
+        ? missionAnalysis.path.map(function (step, index) {
+          return '<div class="mission-path-step"><strong>' + (index + 1) + ". " + esc(step.label) +
+            '</strong><span>' + step.value.toFixed(3) + " " + step.operator + " " + step.threshold.toFixed(3) + '</span></div>';
+        }).join("")
+        : '<p class="insight-empty">The root node is a terminal class; no feature split was required.</p>';
+    } else {
+      resultStatus.textContent = "ABSTAINED · INSUFFICIENT SUPPORT";
+      resultStatus.className = "state-label state-limited";
+      label.textContent = "No pattern classification";
+      summary.textContent = missionAnalysis.reason || "The model declined to classify this window.";
+      confidence.textContent = missionAnalysis.confidence === undefined
+        ? "Not available"
+        : (missionAnalysis.confidence * 100).toFixed(1) + "% support";
+      confidenceNote.textContent = "Abstention preserves missing or unsupported evidence; no class is guessed.";
+      path.innerHTML = missionAnalysis.path && missionAnalysis.path.length
+        ? missionAnalysis.path.map(function (step, index) {
+          return '<div class="mission-path-step"><strong>' + (index + 1) + ". " + esc(step.label) +
+            '</strong><span>' + step.value.toFixed(3) + " " + step.operator + " " + step.threshold.toFixed(3) + '</span></div>';
+        }).join("")
+        : '<p class="insight-empty">No supported decision path was produced.</p>';
+    }
+
+    if (validation) {
+      const report = missionAIModel && missionAIModel.validation;
+      validation.textContent = report
+        ? "Model holdout: " + (report.accuracy * 100).toFixed(2) + "% accuracy · " +
+          (report.macro_f1 * 100).toFixed(2) + "% macro-F1 on " +
+          missionAIModel.dataset.test_samples.toLocaleString() +
+          " synthetic holdout windows. These figures do not validate performance on astronauts or real flight telemetry."
+        : missionAIModelError || "Loading local model evaluation metadata…";
+    }
+  }
+
+  function roundDisplay(value, key) {
+    if (key === "heartRate") return Number(value).toFixed(1);
+    if (key === "spo2" || key === "temperature" || key === "sleepHours" || key === "latencySeconds") return Number(value).toFixed(1);
+    return value;
+  }
+
+  function analyzeMissionWindow(windowData) {
+    missionWindow = windowData;
+    missionAnalysis = missionAIModel && window.AstraMissionAI
+      ? window.AstraMissionAI.analyzeWindow(windowData, missionAIModel, { minimumConfidence: 0.65 })
+      : { status: "ABSTAIN", reason: missionAIModelError || "The local mission-pattern model is not ready." };
+    renderMissionTelemetry();
+  }
+
+  async function loadMissionAIModel() {
+    const modelStatus = $("mission-ai-model-status");
+    if (!window.AstraMissionAI || typeof window.AstraMissionAI.analyzeWindow !== "function") {
+      missionAIModelError = "The local mission AI module did not load.";
+      renderMissionTelemetry();
+      return;
+    }
+    if (typeof window.fetch !== "function") {
+      missionAIModelError = "This browser does not support local model loading.";
+      renderMissionTelemetry();
+      return;
+    }
+    try {
+      const response = await window.fetch("./data/models/mission-pattern-model.json");
+      if (!response.ok) throw new Error("Model file request returned HTTP " + response.status + ".");
+      const model = await response.json();
+      if (!model || model.model_id !== "ASTRA-MISSION-PATTERN-TREE-1" ||
+          !model.dataset || model.dataset.type !== "synthetic_only" ||
+          !model.tree || !Array.isArray(model.dataset.features) ||
+          !model.validation || !Number.isFinite(model.validation.accuracy)) {
+        throw new Error("The local model artifact did not pass its metadata checks.");
+      }
+      missionAIModel = model;
+      missionAIModelError = null;
+    } catch (error) {
+      missionAIModel = null;
+      missionAIModelError = error && error.message ? error.message : "The local model could not be loaded.";
+    }
+    if (modelStatus) {
+      modelStatus.textContent = missionAIModel ? "LOCAL MODEL LOADED · SYNTHETIC ONLY" : "MODEL UNAVAILABLE";
+    }
+    renderMissionTelemetry();
+  }
+
+  function runMissionSimulation() {
+    const profile = $("mission-scenario").value;
+    if (!window.AstraMissionAI || !missionAIModel) {
+      $("mission-ai-message").textContent = missionAIModelError || "The local model is not ready yet.";
+      return;
+    }
+    try {
+      const windowData = window.AstraMissionAI.simulateWindow(profile, 20261115);
+      analyzeMissionWindow(windowData);
+      addLog("MISSION WINDOW SIMULATED", "Loaded the " + profile + " deterministic synthetic mission window. No NASA or sensor telemetry was used.");
+      saveState();
+      renderLog();
+      $("mission-ai-message").textContent = "A reproducible 12-checkpoint synthetic mission window was loaded and analyzed locally.";
+    } catch (error) {
+      $("mission-ai-message").textContent = error && error.message ? error.message : "The mission scenario could not be generated.";
+    }
+  }
+
+  function analyzeSavedTelemetry() {
+    if (!window.AstraMissionAI || !missionAIModel) {
+      $("mission-ai-message").textContent = missionAIModelError || "The local model is not ready yet.";
+      return;
+    }
+    const history = state.log.filter(function (entry) {
+      return entry.type === "READINGS SAVED" &&
+        ["heartRate", "spo2", "temperature", "sleep"].some(function (key) {
+          return typeof entry[key] === "number" && Number.isFinite(entry[key]);
+        });
+    }).slice(0, 100).reverse();
+    const wellbeingEntries = state.log.filter(function (entry) {
+      return entry.type === "WELLBEING CHECK-IN" && entry.wellbeing;
+    }).slice().reverse();
+
+    const samples = history.map(function (entry, index) {
+      let wellbeing = null;
+      wellbeingEntries.forEach(function (checkIn) {
+        if (new Date(checkIn.time).getTime() <= new Date(entry.time).getTime()) wellbeing = checkIn.wellbeing;
+      });
+      return {
+        index: index,
+        timepoint: new Date(entry.time).toLocaleString(),
+        heartRate: entry.heartRate,
+        spo2: entry.spo2,
+        temperature: entry.temperature,
+        sleepHours: entry.sleep,
+        latencySeconds: typeof entry.latencySeconds === "number" ? entry.latencySeconds : null,
+        wellbeing: wellbeing,
+        source: "MANUAL_LOCAL_LOG"
+      };
+    });
+    analyzeMissionWindow({
+      source: "MANUAL_LOCAL_LOG",
+      generatedAt: new Date().toISOString(),
+      samples: samples
+    });
+    $("mission-ai-message").textContent = samples.length
+      ? "Analyzed " + samples.length + " local manual reading records. Unknown latency remains missing; the model may abstain if coverage is inadequate."
+      : "No saved manual reading records are available yet. Save at least six readings before analyzing a window.";
+  }
+
   function renderAll() {
     const assessment = window.AstraHealth.assess(state.readings, state.bands, {
       baseline: state.baseline && state.baseline.readings,
@@ -582,6 +867,7 @@
     renderResearchTimeline();
     renderResearchSources();
     renderResearchEvidence();
+    renderMissionTelemetry();
     $("last-updated").textContent = state.updatedAt ? "Updated " + new Date(state.updatedAt).toLocaleString() : "Demo readings loaded";
   }
 
@@ -771,7 +1057,8 @@
       spo2: state.readings.spo2,
       temperature: state.readings.temperature,
       sleep: state.readings.sleep,
-      latencySeconds: state.telemetryLatencySeconds
+      latencySeconds: state.telemetryLatencySeconds,
+      wellbeing: type === "WELLBEING CHECK-IN" ? Object.assign({}, state.wellbeing) : null
     });
     state.log = state.log.slice(0, 100);
   }
@@ -801,6 +1088,8 @@
   $("wellbeing-form").addEventListener("submit", saveWellbeing);
   $("export-csv").addEventListener("click", exportCsv);
   $("research-marker-select").addEventListener("change", function () { selectedResearchMarker = this.value; renderResearchEvidence(); });
+  $("run-mission-simulation").addEventListener("click", runMissionSimulation);
+  $("analyze-saved-telemetry").addEventListener("click", analyzeSavedTelemetry);
   $("clear-log").addEventListener("click", function () {
     state.log = [];
     saveState();
@@ -814,6 +1103,7 @@
   activateView("research");
   renderAll();
   loadResearchEvidence();
+  loadMissionAIModel();
   if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("./sw.js").catch(function () {
