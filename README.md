@@ -1,4 +1,4 @@
-# ASTRA — Astronaut Health Monitoring
+# ASTRA — Evidence-First Astronaut Health Monitoring
 
 **Know your baseline. Notice the change. Act with evidence.**
 
@@ -101,9 +101,8 @@ ChatGPT (OpenAI) assisted during the hackathon with research synthesis, code dra
 
 ## Team roles
 
-- **Mahmut:** project lead, application integration, data model, and technical explanation.
-
-Only confirmed team members and their actual contributions should be added here; no placeholder roles are used.
+- **Hasan Hüseyin Küçükbıyık — Team Leader & Testing Lead:** project leadership and testing coordination.
+- **Mahmut Vezir — Coding Lead & Communications Lead:** coding responsibilities and project communications.
 
 ## Project structure
 
