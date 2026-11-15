@@ -24,7 +24,7 @@ ASTRA is an offline-first astronaut health-monitoring research and demonstration
 - A clear LIMITED_EVIDENCE decision: four independent participants, 28 repeated samples, raw assay data unavailable, and fibrinogen flagged for assay-suitability review.
 - Separate Demo & Manual Mode for simulated or user-entered signals; it is not presented as a live NASA feed.
 - The PWA manifest declares the app identity and scalable ASTRA SVG icon; the icon is also the browser favicon.
-- Service-worker installation pre-caches the app shell, Research Mode loader, verified OSD-575 CSV, ISA sample map, audit record, and app icon. Offline Research Mode is available after a successful online installation; external links and new uncached resources still require connectivity.
+- Service-worker v6 installation pre-caches the latest app shell, Mission Replay UI and model bundle, Research Mode loader, verified OSD-575 CSV, ISA sample map, audit record, and app icon. On update, the older ASTRA shell cache is removed so existing installations receive the latest replay interface. Offline Research Mode is available after a successful online installation; external links and new uncached resources still require connectivity.
 
 ## Run the application
 
