@@ -90,14 +90,14 @@ test("install pre-caches all assets required to reopen NASA Research Mode offlin
   });
   await installPromise;
 
-  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v4"), true);
+  assert.equal(worker.calls.opened.includes("astra-astronaut-health-monitor-shell-v5"), true);
   assert.equal(worker.calls.skippedWaiting, 1);
   for (const asset of [
     "./index.html",
     "./research-data-loader.js",
     "./mission-engine.js",
     "./mission-replay-ui.js",
-    "./data/models/mission-anomaly-mlp-v1.js",
+    "./data/models/mission-anomaly-mlp-v2.js",
     "./data/osdr/OSD-575/LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv",
     "./data/osdr/OSD-575/isa-sample-map.json",
     "./data/osdr/OSD-575/source-audit.json",
